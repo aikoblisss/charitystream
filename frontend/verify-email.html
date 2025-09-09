@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Email Verification - LetsWatchAds</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .verification-container {
+      background: #222;
+      border-radius: 12px;
+      padding: 40px;
+      width: 500px;
+      max-width: 90%;
+      border: 2px solid #333;
+      text-align: center;
+    }
+
+    .success-icon {
+      font-size: 4rem;
+      color: #44ff44;
+      margin-bottom: 20px;
+    }
+
+    .error-icon {
+      font-size: 4rem;
+      color: #ff4444;
+      margin-bottom: 20px;
+    }
+
+    .loading-icon {
+      font-size: 4rem;
+      color: #aaa;
+      margin-bottom: 20px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      color: #fff;
+    }
+
+    .message {
+      margin-bottom: 30px;
+      color: #ccc;
+      line-height: 1.6;
+    }
+
+    .success-message {
+      background: rgba(68, 255, 68, 0.1);
+      color: #44ff44;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .error-message {
+      background: rgba(255, 68, 68, 0.1);
+      color: #ff4444;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .redirect-button {
+      background: #3f9d5e;
+      color: white;
+      padding: 15px 30px;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background 0.3s ease;
+    }
+
+    .redirect-button:hover {
+      background: #2f7a48;
+    }
+
+    .redirect-button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <div class="verification-container">
+    <div id="loading-state">
+      <div class="loading-icon">⏳</div>
+      <h1>Verifying Email...</h1>
+      <div class="message">Please wait while we verify your email address.</div>
+    </div>
+
+    <div id="success-state" style="display: none;">
+      <div class="success-icon">✅</div>
+      <h1>Email Verified!</h1>
+      <div class="success-message">
+        <strong>Congratulations!</strong><br>
+        Your email has been successfully verified. You can now start watching ads for charity!
+      </div>
+      <div class="message">
+        You'll be redirected to the main page in a few seconds, or click the button below.
+      </div>
+      <a href="/" class="redirect-button">Start Watching Ads</a>
+    </div>
+
+    <div id="error-state" style="display: none;">
+      <div class="error-icon">❌</div>
+      <h1>Verification Failed</h1>
+      <div class="error-message" id="error-details">
+        There was an error verifying your email address.
+      </div>
+      <div class="message">
+        The verification link may be invalid or expired. Please try logging in again.
+      </div>
+      <a href="/auth.html" class="redirect-button">Back to Login</a>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Get the verification token from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+
+      if (!token) {
+        showError('No verification token provided');
+        return;
+      }
+
+      // Verify the email
+      verifyEmail(token);
+    });
+
+    async function verifyEmail(token) {
+      try {
+        const response = await fetch(`/api/auth/verify-email/${token}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showSuccess();
+          
+          // Store user data if provided
+          if (result.user) {
+            localStorage.setItem('currentUser', JSON.stringify(result.user));
+          }
+          
+          // Redirect after 3 seconds
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
+        } else {
+          showError(result.error || 'Verification failed');
+        }
+      } catch (error) {
+        console.error('Verification error:', error);
+        showError('Network error. Please check your connection.');
+      }
+    }
+
+    function showSuccess() {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('error-state').style.display = 'none';
+      document.getElementById('success-state').style.display = 'block';
+    }
+
+    function showError(message) {
+      document.getElementById('loading-state').style.display = 'none';
+      document.getElementById('success-state').style.display = 'none';
+      document.getElementById('error-state').style.display = 'block';
+      document.getElementById('error-details').textContent = message;
+    }
+  </script>
+</body>
+</html>
+

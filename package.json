@@ -1,0 +1,22 @@
+{
+  "name": "letswatchads",
+  "version": "1.0.0",
+  "description": "Charity streaming platform",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "cd backend && npm start",
+    "dev": "cd backend && npm run dev",
+    "build": "echo 'No build step needed'",
+    "postinstall": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "charity",
+    "streaming",
+    "ads"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
