@@ -19,6 +19,9 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
 
+// Trust proxy for Railway deployment
+app.set('trust proxy', 1);
+
 // Initialize database
 initializeDatabase();
 
