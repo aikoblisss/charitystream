@@ -78,14 +78,14 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:5500'],
+  origin: ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:5500', 'https://*.vercel.app'],
   credentials: true
 }));
 
 app.use(bodyParser.json());
 
-// Serve static files from frontend directory
-app.use(express.static(path.join(__dirname, '../frontend')));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Authentication middleware
 const authenticateToken = (req, res, next) => {

@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Charity Stream - Login</title>
+  <style>
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .auth-container {
+      background: #222;
+      border-radius: 12px;
+      padding: 40px;
+      width: 400px;
+      max-width: 90%;
+      border: 2px solid #333;
+    }
+
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #333;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .auth-tab.active {
+      color: #fff;
+      border-bottom: 2px solid #007bff;
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #ccc;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #333;
+      border-radius: 6px;
+      background: #111;
+      color: #fff;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: #007bff;
+    }
+
+    .auth-button {
+      width: 100%;
+      padding: 15px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    .auth-button:hover {
+      background: #0056b3;
+    }
+
+    .auth-button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .error-message {
+      color: #ff4444;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(255, 68, 68, 0.1);
+      border-radius: 4px;
+      display: none;
+    }
+
+    .success-message {
+      color: #44ff44;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(68, 255, 68, 0.1);
+      border-radius: 4px;
+      display: none;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      color: #aaa;
+      margin-top: 10px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: #fff;
+    }
+
+    .redirect-message {
+      text-align: center;
+      color: #aaa;
+      margin-top: 20px;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="auth-container">
+    <h1>🎬 Charity Stream</h1>
+    
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="login-tab">Login</button>
+      <button class="auth-tab" id="register-tab">Register</button>
+    </div>
+
+
+    <!-- Login Form -->
+    <div id="login-form" class="auth-form active">
+      <form id="login-form-element">
+        <div class="form-group">
+          <label for="login-username">Username or Email</label>
+          <input type="text" id="login-username" name="login" required>
+        </div>
+        <div class="form-group">
+          <label for="login-password">Password</label>
+          <input type="password" id="login-password" name="password" required>
+        </div>
+        <button type="submit" class="auth-button" id="login-button">Login</button>
+        <div class="loading" id="login-loading">Logging in...</div>
+        <div class="error-message" id="login-error"></div>
+        <div class="success-message" id="login-success"></div>
+      </form>
+    </div>
+
+    <!-- Register Form -->
+    <div id="register-form" class="auth-form">
+      <form id="register-form-element">
+        <div class="form-group">
+          <label for="register-username">Username</label>
+          <input type="text" id="register-username" name="username" required>
+        </div>
+        <div class="form-group">
+          <label for="register-email">Email</label>
+          <input type="email" id="register-email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label for="register-password">Password</label>
+          <input type="password" id="register-password" name="password" minlength="6" required>
+        </div>
+        <button type="submit" class="auth-button" id="register-button">Register</button>
+        <div class="loading" id="register-loading">Creating account...</div>
+        <div class="error-message" id="register-error"></div>
+        <div class="success-message" id="register-success"></div>
+      </form>
+    </div>
+
+    <div class="redirect-message">
+      <p>Watch ads for charity and compete on the leaderboard!</p>
+    </div>
+  </div>
+
+  <script>
+    // Wait for DOM to load
+    document.addEventListener('DOMContentLoaded', function() {
+      // Tab switching functionality
+      const loginTab = document.getElementById('login-tab');
+      const registerTab = document.getElementById('register-tab');
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+
+      loginTab.addEventListener('click', function() {
+        switchTab('login');
+      });
+
+      registerTab.addEventListener('click', function() {
+        switchTab('register');
+      });
+
+      // Form submissions
+      document.getElementById('login-form-element').addEventListener('submit', handleLogin);
+      document.getElementById('register-form-element').addEventListener('submit', handleRegister);
+
+      // Check if user is already logged in
+      const existingToken = localStorage.getItem('authToken');
+      if (existingToken) {
+        // User is already logged in, redirect to main page
+        window.location.href = '/';
+      }
+    });
+
+    // Switch between login and register tabs
+    function switchTab(tab) {
+      // Update tab buttons
+      document.querySelectorAll('.auth-tab').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      
+      if (tab === 'login') {
+        document.getElementById('login-tab').classList.add('active');
+        document.getElementById('login-form').classList.add('active');
+        document.getElementById('register-form').classList.remove('active');
+      } else {
+        document.getElementById('register-tab').classList.add('active');
+        document.getElementById('register-form').classList.add('active');
+        document.getElementById('login-form').classList.remove('active');
+      }
+
+      // Clear any previous messages
+      clearMessages();
+    }
+
+    function clearMessages() {
+      document.querySelectorAll('.error-message, .success-message').forEach(msg => {
+        msg.style.display = 'none';
+        msg.textContent = '';
+      });
+      document.querySelectorAll('.loading').forEach(loading => {
+        loading.style.display = 'none';
+      });
+    }
+
+    function showLoading(type) {
+      document.getElementById(`${type}-loading`).style.display = 'block';
+      document.getElementById(`${type}-button`).disabled = true;
+    }
+
+    function hideLoading(type) {
+      document.getElementById(`${type}-loading`).style.display = 'none';
+      document.getElementById(`${type}-button`).disabled = false;
+    }
+
+    function showError(type, message) {
+      const errorEl = document.getElementById(`${type}-error`);
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+    }
+
+    function showSuccess(type, message) {
+      const successEl = document.getElementById(`${type}-success`);
+      successEl.textContent = message;
+      successEl.style.display = 'block';
+    }
+
+    // Handle login
+    async function handleLogin(event) {
+      event.preventDefault();
+      clearMessages();
+      showLoading('login');
+
+      const formData = new FormData(event.target);
+      const loginData = {
+        login: formData.get('login'),
+        password: formData.get('password')
+      };
+
+      console.log('Attempting login...', loginData.login);
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(loginData)
+        });
+
+        console.log('Login response status:', response.status);
+        const result = await response.json();
+        console.log('Login response:', result);
+        hideLoading('login');
+
+        if (response.ok) {
+          // Store the JWT token
+          localStorage.setItem('authToken', result.token);
+          localStorage.setItem('currentUser', JSON.stringify(result.user));
+          
+          showSuccess('login', 'Login successful! Redirecting to video player...');
+          
+          // Redirect to main page after 2 seconds
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          showError('login', result.error || 'Login failed');
+        }
+      } catch (error) {
+        hideLoading('login');
+        showError('login', 'Network error. Please check your connection.');
+        console.error('Login error:', error);
+      }
+    }
+
+    // Handle registration
+    async function handleRegister(event) {
+      event.preventDefault();
+      clearMessages();
+      showLoading('register');
+
+      const formData = new FormData(event.target);
+      const registerData = {
+        username: formData.get('username'),
+        email: formData.get('email'),
+        password: formData.get('password')
+      };
+
+      console.log('Attempting registration...', registerData.username, registerData.email);
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(registerData)
+        });
+
+        console.log('Registration response status:', response.status);
+        const result = await response.json();
+        console.log('Registration response:', result);
+        hideLoading('register');
+
+        if (response.ok) {
+          // Store the JWT token
+          localStorage.setItem('authToken', result.token);
+          localStorage.setItem('currentUser', JSON.stringify(result.user));
+          
+          showSuccess('register', 'Account created successfully! Redirecting to video player...');
+          
+          // Redirect to main page after 2 seconds
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 2000);
+        } else {
+          showError('register', result.error || 'Registration failed');
+        }
+      } catch (error) {
+        hideLoading('register');
+        showError('register', 'Network error. Please check your connection.');
+        console.error('Registration error:', error);
+      }
+    }
+
+  </script>
+</body>
+</html>
