@@ -6,7 +6,7 @@
   "scripts": {
     "start": "cd backend && npm start",
     "dev": "cd backend && npm run dev",
-    "build": "echo 'No build step needed'",
+    "build": "cd backend && npm install",
     "postinstall": "cd backend && npm install"
   },
   "engines": {
