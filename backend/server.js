@@ -12,8 +12,14 @@ const passport = require('passport');
 const { initializeDatabase, dbHelpers } = require('./database');
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
-const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('./services/emailService');
-const config = require('./config');
+
+// Email service - handle missing config gracefully
+let emailService = null;
+try {
+  emailService = require('./services/emailService');
+} catch (error) {
+  console.log('⚠️ Email service not available (config file missing)');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -313,9 +319,9 @@ app.get('/api/auth/google/callback',
     try {
       const user = req.user;
       
-      // Generate verification token if email not verified
-      if (!user.email_verified) {
-        const verificationToken = generateVerificationToken();
+      // Generate verification token if email not verified and email service is available
+      if (!user.email_verified && emailService) {
+        const verificationToken = emailService.generateVerificationToken();
         
         // Update user with verification token
         const updateQuery = `UPDATE users SET email_verification_token = ? WHERE id = ?`;
@@ -324,7 +330,7 @@ app.get('/api/auth/google/callback',
             console.error('Error setting verification token:', err);
           } else {
             // Send verification email
-            await sendVerificationEmail(user.email, user.username, verificationToken);
+            await emailService.sendVerificationEmail(user.email, user.username, verificationToken);
           }
         });
       }

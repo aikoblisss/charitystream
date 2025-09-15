@@ -1,12 +1,23 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { dbHelpers } = require('../database');
-const config = require('./config');
 
-// Google OAuth configuration
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || config.google.clientId;
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || config.google.clientSecret;
-const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || config.google.callbackUrl;
+// Google OAuth configuration - prioritize environment variables
+let GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+let GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+let GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL;
+
+// Fallback to config file only if environment variables are not set
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+  try {
+    const config = require('./config');
+    GOOGLE_CLIENT_ID = GOOGLE_CLIENT_ID || config.google.clientId;
+    GOOGLE_CLIENT_SECRET = GOOGLE_CLIENT_SECRET || config.google.clientSecret;
+    GOOGLE_CALLBACK_URL = GOOGLE_CALLBACK_URL || config.google.callbackUrl;
+  } catch (error) {
+    console.log('⚠️ Config file not found, using environment variables only');
+  }
+}
 
 // Debug logging
 console.log('🔧 Google OAuth Config:');
