@@ -520,7 +520,7 @@
           <a href="#" class="nav-link">Account</a>
           <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-        <button id="loginButton" class="login-btn" onclick="goToAuth()">Login / Register</button>
+        <button id="loginButton" class="login-btn" onclick="goToAuth()">Sign in with Google</button>
       </nav>
     </div>
   </header>
@@ -557,9 +557,9 @@
           <!-- Login overlay for non-authenticated users -->
           <div class="login-overlay" id="loginOverlay">
             <div class="login-prompt">
-              <h3>Login Required</h3>
-              <p>Please log in to start watching ads for charity and track your impact!</p>
-              <button class="watch-ads-btn" onclick="goToAuth()">Login / Register</button>
+              <h3>Sign In Required</h3>
+              <p>Please sign in with your Google account to start watching ads for charity and track your impact!</p>
+              <button class="watch-ads-btn" onclick="goToAuth()">Sign in with Google</button>
             </div>
           </div>
         </div>
@@ -663,6 +663,16 @@
 
     // Check authentication on page load
     window.onload = function() {
+      // Check for token from URL parameters (Google OAuth callback)
+      const urlParams = new URLSearchParams(window.location.search);
+      const tokenFromUrl = urlParams.get('token');
+      
+      if (tokenFromUrl) {
+        localStorage.setItem('authToken', tokenFromUrl);
+        // Clean up URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
       authToken = localStorage.getItem('authToken');
       const userStr = localStorage.getItem('currentUser');
       

@@ -10,10 +10,10 @@ const session = require('express-session');
 const passport = require('passport');
 
 const { initializeDatabase, dbHelpers } = require('./database');
-// Google OAuth - Commented out for development, uncomment for production
-// const passportConfig = require('./config/google-oauth');
-// const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('./services/emailService');
-// const config = require('./config');
+// Google OAuth - Enabled for production
+const passportConfig = require('./config/google-oauth');
+const { generateVerificationToken, sendVerificationEmail, sendWelcomeEmail } = require('./services/emailService');
+const config = require('./config');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -25,17 +25,17 @@ app.set('trust proxy', 1);
 // Initialize database
 initializeDatabase();
 
-// Session configuration - Commented out for development
-// app.use(session({
-//   secret: JWT_SECRET,
-//   resave: false,
-//   saveUninitialized: false,
-//   cookie: { secure: false } // Set to true in production with HTTPS
-// }));
+// Session configuration - Enabled for production
+app.use(session({
+  secret: JWT_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' } // Secure cookies in production
+}));
 
-// Initialize Passport - Commented out for development
-// app.use(passport.initialize());
-// app.use(passport.session());
+// Initialize Passport - Enabled for production
+app.use(passport.initialize());
+app.use(passport.session());
 
 // Security middleware with relaxed CSP for development
 app.use(helmet({
@@ -252,10 +252,47 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
   });
 });
 
-// ===== GOOGLE OAUTH ROUTES =====
-// Commented out for development - uncomment for production
+// Update username for Google OAuth users
+app.post('/api/auth/update-username', authenticateToken, (req, res) => {
+  try {
+    const { username } = req.body;
+    const userId = req.user.userId;
 
-/*
+    if (!username || username.length < 3) {
+      return res.status(400).json({ error: 'Username must be at least 3 characters long' });
+    }
+
+    // Check if username is already taken
+    dbHelpers.getUserByLogin(username, (err, existingUser) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(409).json({ error: 'Username already taken' });
+      }
+
+      // Update username
+      const updateQuery = `UPDATE users SET username = ? WHERE id = ?`;
+      db.run(updateQuery, [username, userId], function(err) {
+        if (err) {
+          console.error('Error updating username:', err);
+          return res.status(500).json({ error: 'Failed to update username' });
+        }
+
+        console.log(`✅ Username updated for user ${userId}: ${username}`);
+        res.json({ message: 'Username updated successfully', username: username });
+      });
+    });
+  } catch (error) {
+    console.error('Update username error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ===== GOOGLE OAUTH ROUTES =====
+// Enabled for production
+
 // Google OAuth login
 app.get('/api/auth/google', passport.authenticate('google', {
   scope: ['profile', 'email']
@@ -383,7 +420,6 @@ app.post('/api/auth/resend-verification', authenticateToken, async (req, res) =>
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-*/
 
 // ===== TRACKING ROUTES (Ready for your video player) =====
 
