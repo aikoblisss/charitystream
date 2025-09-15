@@ -8,6 +8,17 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || config.google.clientId;
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || config.google.clientSecret;
 const GOOGLE_CALLBACK_URL = process.env.GOOGLE_CALLBACK_URL || config.google.callbackUrl;
 
+// Debug logging
+console.log('🔧 Google OAuth Config:');
+console.log('Client ID:', GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
+console.log('Client Secret:', GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
+console.log('Callback URL:', GOOGLE_CALLBACK_URL);
+
+if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
+  console.error('❌ Google OAuth credentials are missing!');
+  console.error('Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables');
+}
+
 // Configure Google OAuth Strategy
 passport.use(new GoogleStrategy({
   clientID: GOOGLE_CLIENT_ID,

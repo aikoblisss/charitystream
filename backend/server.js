@@ -294,9 +294,17 @@ app.post('/api/auth/update-username', authenticateToken, (req, res) => {
 // Enabled for production
 
 // Google OAuth login
-app.get('/api/auth/google', passport.authenticate('google', {
-  scope: ['profile', 'email']
-}));
+app.get('/api/auth/google', (req, res, next) => {
+  console.log('🔐 Google OAuth login requested');
+  console.log('Environment check:');
+  console.log('- GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
+  console.log('- GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
+  console.log('- GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || 'Using default');
+  
+  passport.authenticate('google', {
+    scope: ['profile', 'email']
+  })(req, res, next);
+});
 
 // Google OAuth callback
 app.get('/api/auth/google/callback', 
