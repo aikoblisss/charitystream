@@ -237,54 +237,67 @@
   </div>
 
   <script>
-    // Check for URL parameters (token from Google OAuth callback)
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
-    const emailVerified = urlParams.get('email_verified');
-    const error = urlParams.get('error');
+    // Initialize the page
+    function initializeAuthPage() {
+      // Check for URL parameters (token from Google OAuth callback)
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const emailVerified = urlParams.get('email_verified');
+      const error = urlParams.get('error');
 
-    // Handle OAuth errors
-    if (error) {
-      showError('OAuth authentication failed. Please try again.');
-      return;
-    }
+      // Handle OAuth errors
+      if (error) {
+        showError('OAuth authentication failed. Please try again.');
+        return;
+      }
 
-    // Handle successful OAuth callback
-    if (token) {
-      localStorage.setItem('authToken', token);
-      
-      // Get user info to check if username is set
-      fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
-      .then(response => response.json())
-      .then(data => {
-        if (data.user) {
-          document.getElementById('userEmail').textContent = data.user.email;
-          document.getElementById('userName').textContent = data.user.username || 'Not set';
-          
-          // Show user info
-          document.getElementById('userInfo').style.display = 'block';
-          
-          // Check if username needs to be set
-          if (!data.user.username || data.user.username === data.user.email.split('@')[0]) {
-            document.getElementById('usernameSetup').style.display = 'block';
-            document.getElementById('username').value = data.user.email.split('@')[0];
-          } else {
-            // Username is already set, redirect to main page
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 1000);
+      // Handle successful OAuth callback
+      if (token) {
+        localStorage.setItem('authToken', token);
+        
+        // Get user info to check if username is set
+        fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${token}`
           }
-        }
-      })
-      .catch(error => {
-        console.error('Error fetching user info:', error);
-        showError('Failed to load user information.');
-      });
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.user) {
+            document.getElementById('userEmail').textContent = data.user.email;
+            document.getElementById('userName').textContent = data.user.username || 'Not set';
+            
+            // Show user info
+            document.getElementById('userInfo').style.display = 'block';
+            
+            // Check if username needs to be set
+            if (!data.user.username || data.user.username === data.user.email.split('@')[0]) {
+              document.getElementById('usernameSetup').style.display = 'block';
+              document.getElementById('username').value = data.user.email.split('@')[0];
+            } else {
+              // Username is already set, redirect to main page
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1000);
+            }
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching user info:', error);
+          showError('Failed to load user information.');
+        });
+      }
+
+      // Check if user is already authenticated
+      const existingToken = localStorage.getItem('authToken');
+      if (existingToken && !token) {
+        // User is already logged in, redirect to main page
+        window.location.href = '/';
+      }
     }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', initializeAuthPage);
 
     // Google Sign-In button click handler
     document.getElementById('googleSignInBtn').addEventListener('click', function() {
@@ -363,12 +376,6 @@
       document.getElementById('continueBtn').disabled = false;
     }
 
-    // Check if user is already authenticated
-    const existingToken = localStorage.getItem('authToken');
-    if (existingToken && !token) {
-      // User is already logged in, redirect to main page
-      window.location.href = '/';
-    }
   </script>
 </body>
 </html>
