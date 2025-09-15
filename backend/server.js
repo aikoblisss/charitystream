@@ -9,7 +9,7 @@ const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
 
-const { initializeDatabase, dbHelpers } = require('./database-simple');
+const { initializeDatabase, dbHelpers } = require('./database-postgres');
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
 

@@ -1,6 +1,6 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
-const { dbHelpers } = require('../database');
+const { dbHelpers } = require('../database-postgres');
 
 // Google OAuth configuration - prioritize environment variables
 let GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
