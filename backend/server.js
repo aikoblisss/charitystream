@@ -299,6 +299,19 @@ app.post('/api/auth/update-username', authenticateToken, (req, res) => {
 // ===== GOOGLE OAUTH ROUTES =====
 // Enabled for production
 
+// Test endpoint to verify database connectivity
+app.get('/api/test/db', (req, res) => {
+  console.log('🧪 Testing database connectivity...');
+  dbHelpers.getUserById(1, (err, user) => {
+    if (err) {
+      console.error('❌ Database test failed:', err);
+      return res.status(500).json({ error: 'Database connection failed', details: err.message });
+    }
+    console.log('✅ Database test successful');
+    res.json({ message: 'Database connected successfully', user: user || 'No user with ID 1' });
+  });
+});
+
 // Google OAuth login
 app.get('/api/auth/google', (req, res, next) => {
   console.log('🔐 Google OAuth login requested');
@@ -317,10 +330,25 @@ app.get('/api/auth/google/callback',
   passport.authenticate('google', { failureRedirect: '/auth.html?error=oauth_failed' }),
   async (req, res) => {
     try {
+      console.log('🔄 Google OAuth callback received');
+      console.log('User object:', req.user ? 'Present' : 'Missing');
+      
+      if (!req.user) {
+        console.error('❌ No user object in request');
+        return res.redirect('/auth.html?error=no_user');
+      }
+
       const user = req.user;
+      console.log('👤 User details:', {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        googleId: user.google_id
+      });
       
       // Generate verification token if email not verified and email service is available
       if (!user.email_verified && emailService) {
+        console.log('📧 Generating verification token for:', user.email);
         const verificationToken = emailService.generateVerificationToken();
         
         // Update user with verification token
@@ -336,6 +364,7 @@ app.get('/api/auth/google/callback',
       }
 
       // Generate JWT token
+      console.log('🔑 Generating JWT token for user:', user.id);
       const token = jwt.sign(
         { userId: user.id, username: user.username, email: user.email },
         JWT_SECRET,
@@ -350,11 +379,13 @@ app.get('/api/auth/google/callback',
       });
 
       console.log(`✅ Google OAuth login successful: ${user.email}`);
+      console.log('🔗 Redirecting to auth.html with token');
       
       // Redirect to frontend with token
       res.redirect(`/auth.html?token=${token}&email_verified=${user.email_verified}`);
     } catch (error) {
-      console.error('Google OAuth callback error:', error);
+      console.error('❌ Google OAuth callback error:', error);
+      console.error('Error stack:', error.stack);
       res.redirect('/auth.html?error=oauth_callback_failed');
     }
   }

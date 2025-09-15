@@ -39,11 +39,13 @@ passport.use(new GoogleStrategy({
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     console.log('🔍 Google OAuth profile received:', profile.id);
+    console.log('📧 Email:', profile.emails?.[0]?.value);
+    console.log('👤 Display name:', profile.displayName);
     
     // Check if user already exists
     dbHelpers.getUserByGoogleId(profile.id, (err, existingUser) => {
       if (err) {
-        console.error('Database error during Google OAuth:', err);
+        console.error('❌ Database error during Google OAuth:', err);
         return done(err, null);
       }
 
@@ -61,9 +63,11 @@ passport.use(new GoogleStrategy({
         emailVerified: profile.emails[0].verified || false
       };
 
+      console.log('👤 Creating new user with data:', userData);
+
       dbHelpers.createGoogleUser(userData, function(err) {
         if (err) {
-          console.error('Error creating Google user:', err);
+          console.error('❌ Error creating Google user:', err);
           return done(err, null);
         }
 
@@ -76,7 +80,8 @@ passport.use(new GoogleStrategy({
       });
     });
   } catch (error) {
-    console.error('Google OAuth error:', error);
+    console.error('❌ Google OAuth error:', error);
+    console.error('Error stack:', error.stack);
     return done(error, null);
   }
 }));
