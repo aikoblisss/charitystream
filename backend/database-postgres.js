@@ -4,7 +4,7 @@ const { Pool } = require('pg');
 // Database connection
 let pool = null;
 
-function initializeDatabase() {
+async function initializeDatabase() {
   console.log('🔧 Initializing PostgreSQL database...');
   
   // Create connection pool
@@ -13,19 +13,18 @@ function initializeDatabase() {
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
   });
 
-  // Test connection
-  pool.query('SELECT NOW()', (err, result) => {
-    if (err) {
-      console.error('❌ Database connection failed:', err.message);
-    } else {
-      console.log('✅ Connected to PostgreSQL database');
-      console.log('📅 Database time:', result.rows[0].now);
-    }
-  });
+  try {
+    // Test connection
+    const result = await pool.query('SELECT NOW()');
+    console.log('✅ Connected to PostgreSQL database');
+    console.log('📅 Database time:', result.rows[0].now);
 
-  // Create tables if they don't exist
-  createTables();
-  console.log('🎉 PostgreSQL database initialization complete!');
+    // Create tables if they don't exist
+    await createTables();
+    console.log('🎉 PostgreSQL database initialization complete!');
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error.message);
+  }
 }
 
 async function createTables() {

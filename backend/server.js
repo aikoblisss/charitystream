@@ -29,7 +29,9 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-i
 app.set('trust proxy', 1);
 
 // Initialize database
-initializeDatabase();
+initializeDatabase().catch(error => {
+  console.error('❌ Database initialization failed:', error);
+});
 
 // Session configuration - Enabled for production
 app.use(session({
@@ -332,7 +334,7 @@ app.get('/api/auth/google', (req, res, next) => {
 
 // Google OAuth callback
 app.get('/api/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: '/auth.html?error=oauth_failed' }),
+  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stream.charity'}/auth.html?error=oauth_failed` }),
   async (req, res) => {
     try {
       console.log('🔄 Google OAuth callback received');
@@ -387,11 +389,13 @@ app.get('/api/auth/google/callback',
       console.log('🔗 Redirecting to auth.html with token');
       
       // Redirect to frontend with token
-      res.redirect(`/auth.html?token=${token}&email_verified=${user.email_verified}`);
+      const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
+      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.email_verified}`);
     } catch (error) {
       console.error('❌ Google OAuth callback error:', error);
       console.error('Error stack:', error.stack);
-      res.redirect('/auth.html?error=oauth_callback_failed');
+      const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
+      res.redirect(`${frontendUrl}/auth.html?error=oauth_callback_failed`);
     }
   }
 );
