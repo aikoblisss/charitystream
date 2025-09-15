@@ -9,7 +9,7 @@ const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
 
-const { initializeDatabase, dbHelpers } = require('./database');
+const { initializeDatabase, dbHelpers } = require('./database-simple');
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
 
@@ -236,8 +236,9 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // Get current user info
-app.get('/api/auth/me', authenticateToken, (req, res) => {
-  dbHelpers.getUserById(req.user.userId, (err, user) => {
+app.get('/api/auth/me', authenticateToken, async (req, res) => {
+  try {
+    const [err, user] = await dbHelpers.getUserById(req.user.userId);
     if (err || !user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -255,11 +256,14 @@ app.get('/api/auth/me', authenticateToken, (req, res) => {
         authProvider: user.auth_provider
       }
     });
-  });
+  } catch (error) {
+    console.error('Error fetching user info:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Update username for Google OAuth users
-app.post('/api/auth/update-username', authenticateToken, (req, res) => {
+app.post('/api/auth/update-username', authenticateToken, async (req, res) => {
   try {
     const { username } = req.body;
     const userId = req.user.userId;
@@ -269,27 +273,24 @@ app.post('/api/auth/update-username', authenticateToken, (req, res) => {
     }
 
     // Check if username is already taken
-    dbHelpers.getUserByLogin(username, (err, existingUser) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
+    const [err, existingUser] = await dbHelpers.getUserByLogin(username);
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
 
-      if (existingUser && existingUser.id !== userId) {
-        return res.status(409).json({ error: 'Username already taken' });
-      }
+    if (existingUser && existingUser.id !== userId) {
+      return res.status(409).json({ error: 'Username already taken' });
+    }
 
-      // Update username
-      const updateQuery = `UPDATE users SET username = ? WHERE id = ?`;
-      db.run(updateQuery, [username, userId], function(err) {
-        if (err) {
-          console.error('Error updating username:', err);
-          return res.status(500).json({ error: 'Failed to update username' });
-        }
+    // Update username
+    const [updateErr, updatedUser] = await dbHelpers.updateUsername(userId, username);
+    if (updateErr) {
+      console.error('Error updating username:', updateErr);
+      return res.status(500).json({ error: 'Failed to update username' });
+    }
 
-        console.log(`✅ Username updated for user ${userId}: ${username}`);
-        res.json({ message: 'Username updated successfully', username: username });
-      });
-    });
+    console.log(`✅ Username updated for user ${userId}: ${username}`);
+    res.json({ message: 'Username updated successfully', username: username });
   } catch (error) {
     console.error('Update username error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -300,16 +301,20 @@ app.post('/api/auth/update-username', authenticateToken, (req, res) => {
 // Enabled for production
 
 // Test endpoint to verify database connectivity
-app.get('/api/test/db', (req, res) => {
+app.get('/api/test/db', async (req, res) => {
   console.log('🧪 Testing database connectivity...');
-  dbHelpers.getUserById(1, (err, user) => {
+  try {
+    const [err, user] = await dbHelpers.getUserById(1);
     if (err) {
       console.error('❌ Database test failed:', err);
       return res.status(500).json({ error: 'Database connection failed', details: err.message });
     }
     console.log('✅ Database test successful');
     res.json({ message: 'Database connected successfully', user: user || 'No user with ID 1' });
-  });
+  } catch (error) {
+    console.error('❌ Database test error:', error);
+    res.status(500).json({ error: 'Database test failed', details: error.message });
+  }
 });
 
 // Google OAuth login
@@ -372,11 +377,11 @@ app.get('/api/auth/google/callback',
       );
 
       // Update last login
-      dbHelpers.updateLastLogin(user.id, (err) => {
-        if (err) {
-          console.error('Error updating last login:', err);
-        }
-      });
+      try {
+        await dbHelpers.updateLastLogin(user.id);
+      } catch (err) {
+        console.error('Error updating last login:', err);
+      }
 
       console.log(`✅ Google OAuth login successful: ${user.email}`);
       console.log('🔗 Redirecting to auth.html with token');

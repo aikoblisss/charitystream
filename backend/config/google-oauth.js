@@ -43,42 +43,40 @@ passport.use(new GoogleStrategy({
     console.log('👤 Display name:', profile.displayName);
     
     // Check if user already exists
-    dbHelpers.getUserByGoogleId(profile.id, (err, existingUser) => {
-      if (err) {
-        console.error('❌ Database error during Google OAuth:', err);
-        return done(err, null);
-      }
+    const [err, existingUser] = await dbHelpers.getUserByGoogleId(profile.id);
+    if (err) {
+      console.error('❌ Database error during Google OAuth:', err);
+      return done(err, null);
+    }
 
-      if (existingUser) {
-        console.log('✅ Existing Google user found:', existingUser.email);
-        return done(null, existingUser);
-      }
+    if (existingUser) {
+      console.log('✅ Existing Google user found:', existingUser.email);
+      return done(null, existingUser);
+    }
 
-      // Create new user
-      const userData = {
-        googleId: profile.id,
-        username: profile.displayName || profile.emails[0].value.split('@')[0],
-        email: profile.emails[0].value,
-        profilePicture: profile.photos[0]?.value || 'default.png',
-        emailVerified: profile.emails[0].verified || false
-      };
+    // Create new user
+    const userData = {
+      googleId: profile.id,
+      username: profile.displayName || profile.emails[0].value.split('@')[0],
+      email: profile.emails[0].value,
+      profilePicture: profile.photos[0]?.value || 'default.png',
+      emailVerified: profile.emails[0].verified || false
+    };
 
-      console.log('👤 Creating new user with data:', userData);
+    console.log('👤 Creating new user with data:', userData);
 
-      dbHelpers.createGoogleUser(userData, function(err) {
-        if (err) {
-          console.error('❌ Error creating Google user:', err);
-          return done(err, null);
-        }
+    const [createErr, userId] = await dbHelpers.createGoogleUser(userData);
+    if (createErr) {
+      console.error('❌ Error creating Google user:', createErr);
+      return done(createErr, null);
+    }
 
-        console.log('✅ New Google user created:', userData.email);
-        const newUser = {
-          id: this.lastID,
-          ...userData
-        };
-        return done(null, newUser);
-      });
-    });
+    console.log('✅ New Google user created:', userData.email);
+    const newUser = {
+      id: userId,
+      ...userData
+    };
+    return done(null, newUser);
   } catch (error) {
     console.error('❌ Google OAuth error:', error);
     console.error('Error stack:', error.stack);
@@ -92,10 +90,13 @@ passport.serializeUser((user, done) => {
 });
 
 // Deserialize user from session
-passport.deserializeUser((id, done) => {
-  dbHelpers.getUserById(id, (err, user) => {
+passport.deserializeUser(async (id, done) => {
+  try {
+    const [err, user] = await dbHelpers.getUserById(id);
     done(err, user);
-  });
+  } catch (error) {
+    done(error, null);
+  }
 });
 
 module.exports = passport;
