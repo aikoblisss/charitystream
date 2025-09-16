@@ -54,10 +54,10 @@ passport.use(new GoogleStrategy({
       return done(null, existingUser);
     }
 
-    // Create new user
+    // Create new user with temporary username (user must set custom username)
     const userData = {
       googleId: profile.id,
-      username: profile.displayName || profile.emails[0].value.split('@')[0],
+      username: profile.emails[0].value.split('@')[0], // Use email prefix as temporary username
       email: profile.emails[0].value,
       profilePicture: profile.photos[0]?.value || 'default.png',
       emailVerified: profile.emails[0].verified || false

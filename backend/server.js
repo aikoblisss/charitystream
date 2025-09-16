@@ -130,45 +130,44 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // Check if user already exists
-    dbHelpers.getUserByLogin(username, async (err, existingUser) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
+    const [err, existingUser] = await dbHelpers.getUserByLogin(username);
+    if (err) {
+      console.error('Database error during registration:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (existingUser) {
+      return res.status(409).json({ error: 'Username or email already exists' });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Create user
+    const userData = { username, email, password_hash };
+    const [createErr, newUser] = await dbHelpers.createUser(userData);
+    if (createErr) {
+      console.error('Registration error:', createErr);
+      return res.status(500).json({ error: 'Failed to create user' });
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: newUser.id, username: username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log(`✅ New user registered: ${username}`);
+    res.status(201).json({
+      message: 'User created successfully',
+      token: token,
+      user: {
+        id: newUser.id,
+        username: username,
+        email: email
       }
-
-      if (existingUser) {
-        return res.status(409).json({ error: 'Username or email already exists' });
-      }
-
-      // Hash password
-      const saltRounds = 10;
-      const password_hash = await bcrypt.hash(password, saltRounds);
-
-      // Create user
-      const userData = { username, email, password_hash };
-      dbHelpers.createUser(userData, function(err) {
-        if (err) {
-          console.error('Registration error:', err.message);
-          return res.status(500).json({ error: 'Failed to create user' });
-        }
-
-        // Generate JWT token
-        const token = jwt.sign(
-          { userId: this.lastID, username: username },
-          JWT_SECRET,
-          { expiresIn: '7d' }
-        );
-
-        console.log(`✅ New user registered: ${username}`);
-        res.status(201).json({
-          message: 'User created successfully',
-          token: token,
-          user: {
-            id: this.lastID,
-            username: username,
-            email: email
-          }
-        });
-      });
     });
 
   } catch (error) {
@@ -187,48 +186,47 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Find user
-    dbHelpers.getUserByLogin(login, async (err, user) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
+    const [err, user] = await dbHelpers.getUserByLogin(login);
+    if (err) {
+      console.error('Database error during login:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!user) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check password
+    const passwordMatch = await bcrypt.compare(password, user.password_hash);
+    if (!passwordMatch) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Update last login time
+    const [updateErr] = await dbHelpers.updateLastLogin(user.id);
+    if (updateErr) {
+      console.error('Error updating last login:', updateErr);
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    console.log(`✅ User logged in: ${user.username}`);
+    res.json({
+      message: 'Login successful',
+      token: token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        totalMinutesWatched: user.total_minutes_watched,
+        currentMonthMinutes: user.current_month_minutes,
+        subscriptionTier: user.subscription_tier
       }
-
-      if (!user) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-
-      // Check password
-      const passwordMatch = await bcrypt.compare(password, user.password_hash);
-      if (!passwordMatch) {
-        return res.status(401).json({ error: 'Invalid credentials' });
-      }
-
-      // Update last login time
-      dbHelpers.updateLastLogin(user.id, (err) => {
-        if (err) {
-          console.error('Error updating last login:', err);
-        }
-      });
-
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id, username: user.username },
-        JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-
-      console.log(`✅ User logged in: ${user.username}`);
-      res.json({
-        message: 'Login successful',
-        token: token,
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          totalMinutesWatched: user.total_minutes_watched,
-          currentMonthMinutes: user.current_month_minutes,
-          subscriptionTier: user.subscription_tier
-        }
-      });
     });
 
   } catch (error) {

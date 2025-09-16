@@ -387,11 +387,13 @@
             // Show user info
             document.getElementById('userInfo').style.display = 'block';
             
-            // Check if username needs to be set
-            if (!data.user.username || data.user.username === data.user.email.split('@')[0]) {
+            // Check if username needs to be set (if it's the email prefix, user needs to set custom username)
+            const emailPrefix = data.user.email.split('@')[0];
+            if (!data.user.username || data.user.username === emailPrefix) {
               console.log('📝 Username needs to be set, showing setup form');
               document.getElementById('usernameSetup').style.display = 'block';
-              document.getElementById('username').value = data.user.email.split('@')[0];
+              document.getElementById('username').value = ''; // Start with empty field
+              document.getElementById('username').placeholder = 'Enter your desired username';
             } else {
               console.log('✅ Username already set, redirecting to main page');
               // Username is already set, redirect to main page
@@ -484,10 +486,31 @@
 
         if (result.token) {
           localStorage.setItem('authToken', result.token);
-          showSuccess('signin', 'Sign in successful! Redirecting...');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1500);
+          localStorage.setItem('currentUser', JSON.stringify(result.user));
+          
+          // Check if username needs to be set (shouldn't happen for existing users, but just in case)
+          const emailPrefix = result.user.email.split('@')[0];
+          if (!result.user.username || result.user.username === emailPrefix) {
+            // Show username setup
+            document.getElementById('userEmail').textContent = result.user.email;
+            document.getElementById('userName').textContent = result.user.username || 'Not set';
+            document.getElementById('userInfo').style.display = 'block';
+            document.getElementById('usernameSetup').style.display = 'block';
+            document.getElementById('username').value = '';
+            document.getElementById('username').placeholder = 'Enter your desired username';
+            
+            // Hide the forms
+            document.getElementById('signInForm').style.display = 'none';
+            document.getElementById('signUpForm').style.display = 'none';
+            
+            showSuccess('signin', 'Sign in successful! Please set your username.');
+          } else {
+            // Username is set, redirect to main page
+            showSuccess('signin', 'Sign in successful! Redirecting...');
+            setTimeout(() => {
+              window.location.href = '/';
+            }, 1500);
+          }
         } else {
           showError('signin', result.error || 'Sign in failed');
         }
@@ -524,10 +547,21 @@
 
         if (result.token) {
           localStorage.setItem('authToken', result.token);
-          showSuccess('signup', 'Account created successfully! Redirecting...');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 1500);
+          localStorage.setItem('currentUser', JSON.stringify(result.user));
+          
+          // Show username setup (manual users also need to set username)
+          document.getElementById('userEmail').textContent = result.user.email;
+          document.getElementById('userName').textContent = result.user.username || 'Not set';
+          document.getElementById('userInfo').style.display = 'block';
+          document.getElementById('usernameSetup').style.display = 'block';
+          document.getElementById('username').value = '';
+          document.getElementById('username').placeholder = 'Enter your desired username';
+          
+          // Hide the forms
+          document.getElementById('signInForm').style.display = 'none';
+          document.getElementById('signUpForm').style.display = 'none';
+          
+          showSuccess('signup', 'Account created successfully! Please set your username.');
         } else {
           showError('signup', result.error || 'Sign up failed');
         }

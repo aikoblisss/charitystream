@@ -280,6 +280,26 @@ const dbHelpers = {
     } catch (error) {
       return [error, null];
     }
+  },
+
+  // Get user rank
+  getUserRank: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(`
+        SELECT 
+          u.id,
+          u.username,
+          u.email,
+          u.total_watch_time,
+          ROW_NUMBER() OVER (ORDER BY u.total_watch_time DESC) as rank
+        FROM users u
+        WHERE u.id = $1
+      `, [userId]);
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
   }
 };
 
