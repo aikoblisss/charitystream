@@ -427,10 +427,16 @@
 
     // Google Sign-In/Sign-Up button click handlers
     document.getElementById('googleSignInBtn').addEventListener('click', () => {
+      console.log('🔐 Google Sign-In button clicked');
+      console.log('Current URL:', window.location.href);
+      console.log('Redirecting to:', '/api/auth/google');
       window.location.href = '/api/auth/google';
     });
 
     document.getElementById('googleSignUpBtn').addEventListener('click', () => {
+      console.log('🔐 Google Sign-Up button clicked');
+      console.log('Current URL:', window.location.href);
+      console.log('Redirecting to:', '/api/auth/google');
       window.location.href = '/api/auth/google';
     });
 
