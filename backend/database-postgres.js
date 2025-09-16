@@ -118,7 +118,17 @@ const dbHelpers = {
         'SELECT * FROM users WHERE username = $1 OR email = $1',
         [login]
       );
-      return [null, result.rows[0] || null];
+      const user = result.rows[0] || null;
+      if (user) {
+        console.log('🔍 Database user data:', {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          password_hash_type: typeof user.password_hash,
+          password_hash_length: user.password_hash ? user.password_hash.length : 'null'
+        });
+      }
+      return [null, user];
     } catch (error) {
       return [error, null];
     }

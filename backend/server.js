@@ -209,6 +209,14 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Check password
     console.log('🔐 Checking password...');
+    console.log('🔍 Password hash type:', typeof user.password_hash);
+    console.log('🔍 Password hash value:', user.password_hash);
+    
+    if (!user.password_hash || typeof user.password_hash !== 'string') {
+      console.log('❌ Invalid password hash in database');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
       console.log('❌ Password mismatch');
@@ -335,14 +343,18 @@ app.get('/api/test/db', async (req, res) => {
 
 // Google OAuth login
 app.get('/api/auth/google', (req, res, next) => {
-  console.log('🔐 Google OAuth login requested');
+  const mode = req.query.mode || 'signin'; // Default to signin
+  console.log('🔐 Google OAuth requested with mode:', mode);
   console.log('Environment check:');
   console.log('- GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
   console.log('- GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
   console.log('- GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || 'Using default');
   console.log('- Request URL:', req.url);
   console.log('- Request headers:', req.headers);
-  
+
+  // Store the mode in session for the callback
+  req.session.googleAuthMode = mode;
+
   passport.authenticate('google', {
     scope: ['profile', 'email']
   })(req, res, next);
@@ -404,9 +416,20 @@ app.get('/api/auth/google/callback',
       console.log(`✅ Google OAuth login successful: ${user.email}`);
       console.log('🔗 Redirecting to auth.html with token');
       
-      // Redirect to frontend with token
+      // Check if this was a signup attempt
+      const authMode = req.session.googleAuthMode || 'signin';
+      console.log('🔍 Auth mode:', authMode);
+      
+      // For signup mode, always show username setup
+      // For signin mode, only show if username is email prefix
+      const emailPrefix = user.email.split('@')[0];
+      const needsUsernameSetup = authMode === 'signup' || user.username === emailPrefix;
+      
+      console.log('📝 Needs username setup:', needsUsernameSetup);
+      
+      // Redirect to frontend with token and setup flag
       const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
-      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.email_verified}`);
+      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.email_verified}&setup_username=${needsUsernameSetup}`);
     } catch (error) {
       console.error('❌ Google OAuth callback error:', error);
       console.error('Error stack:', error.stack);

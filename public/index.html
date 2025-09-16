@@ -688,9 +688,11 @@
       if (authToken) {
         console.log('✅ User has token, loading user info...');
         showAuthenticatedUI();
-        loadUserInfo();
-        // Give more time for Video.js to load before initializing
-        setTimeout(initializeVideoPlayer, 500);
+        // Load user info first, then initialize video player
+        loadUserInfo().then(() => {
+          // Give more time for Video.js to load before initializing
+          setTimeout(initializeVideoPlayer, 500);
+        });
       } else {
         console.log('❌ No token found, showing unauthenticated UI');
         showUnauthenticatedUI();
@@ -704,10 +706,9 @@
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('currentUserRow').style.display = 'flex';
       
-      if (currentUser) {
-        document.getElementById('usernameDisplay').textContent = currentUser.username;
-        document.getElementById('userLeaderboardName').textContent = currentUser.username;
-      }
+      // Username will be set by loadUserInfo() after it completes
+      document.getElementById('usernameDisplay').textContent = 'Loading...';
+      document.getElementById('userLeaderboardName').textContent = 'Loading...';
     }
 
     function showUnauthenticatedUI() {

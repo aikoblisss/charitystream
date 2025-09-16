@@ -368,6 +368,11 @@
         console.log('🔑 Token received from OAuth callback:', token);
         localStorage.setItem('authToken', token);
         
+        // Check if username setup is required from URL parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const setupUsername = urlParams.get('setup_username') === 'true';
+        console.log('📝 Setup username flag:', setupUsername);
+        
         // Get user info to check if username is set
         fetch('/api/auth/me', {
           headers: {
@@ -387,9 +392,11 @@
             // Show user info
             document.getElementById('userInfo').style.display = 'block';
             
-            // Check if username needs to be set (if it's the email prefix, user needs to set custom username)
+            // Check if username needs to be set
             const emailPrefix = data.user.email.split('@')[0];
-            if (!data.user.username || data.user.username === emailPrefix) {
+            const needsSetup = setupUsername || !data.user.username || data.user.username === emailPrefix;
+            
+            if (needsSetup) {
               console.log('📝 Username needs to be set, showing setup form');
               document.getElementById('usernameSetup').style.display = 'block';
               document.getElementById('username').value = ''; // Start with empty field
@@ -441,15 +448,15 @@
     document.getElementById('googleSignInBtn').addEventListener('click', () => {
       console.log('🔐 Google Sign-In button clicked');
       console.log('Current URL:', window.location.href);
-      console.log('Redirecting to:', '/api/auth/google');
-      window.location.href = '/api/auth/google';
+      console.log('Redirecting to:', '/api/auth/google?mode=signin');
+      window.location.href = '/api/auth/google?mode=signin';
     });
 
     document.getElementById('googleSignUpBtn').addEventListener('click', () => {
       console.log('🔐 Google Sign-Up button clicked');
       console.log('Current URL:', window.location.href);
-      console.log('Redirecting to:', '/api/auth/google');
-      window.location.href = '/api/auth/google';
+      console.log('Redirecting to:', '/api/auth/google?mode=signup');
+      window.location.href = '/api/auth/google?mode=signup';
     });
 
     // Email/Password Sign In
@@ -549,19 +556,11 @@
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
           
-          // Show username setup (manual users also need to set username)
-          document.getElementById('userEmail').textContent = result.user.email;
-          document.getElementById('userName').textContent = result.user.username || 'Not set';
-          document.getElementById('userInfo').style.display = 'block';
-          document.getElementById('usernameSetup').style.display = 'block';
-          document.getElementById('username').value = '';
-          document.getElementById('username').placeholder = 'Enter your desired username';
-          
-          // Hide the forms
-          document.getElementById('signInForm').style.display = 'none';
-          document.getElementById('signUpForm').style.display = 'none';
-          
-          showSuccess('signup', 'Account created successfully! Please set your username.');
+          // Manual signup is complete - redirect to main page
+          showSuccess('signup', 'Account created successfully! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
         } else {
           showError('signup', result.error || 'Sign up failed');
         }
