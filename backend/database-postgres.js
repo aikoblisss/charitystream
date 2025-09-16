@@ -7,13 +7,17 @@ let pool = null;
 async function initializeDatabase() {
   console.log('🔧 Initializing PostgreSQL database...');
   
-  // Create connection pool
+  // Create connection pool with timeout settings
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
       rejectUnauthorized: false,
       require: true
-    }
+    },
+    connectionTimeoutMillis: 10000, // 10 seconds
+    idleTimeoutMillis: 30000, // 30 seconds
+    max: 20, // Maximum number of clients in the pool
+    min: 2   // Minimum number of clients in the pool
   });
 
   try {

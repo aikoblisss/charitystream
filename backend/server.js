@@ -118,37 +118,44 @@ const authenticateToken = (req, res, next) => {
 // Register new user
 app.post('/api/auth/register', async (req, res) => {
   try {
+    console.log('📝 Registration attempt:', { username: req.body.username, email: req.body.email });
     const { username, email, password } = req.body;
 
     // Basic validation
     if (!username || !email || !password) {
+      console.log('❌ Missing required fields');
       return res.status(400).json({ error: 'Username, email, and password are required' });
     }
 
     if (password.length < 6) {
+      console.log('❌ Password too short');
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
     // Check if user already exists
+    console.log('🔍 Checking if user exists...');
     const [err, existingUser] = await dbHelpers.getUserByLogin(username);
     if (err) {
-      console.error('Database error during registration:', err);
+      console.error('❌ Database error during registration:', err);
       return res.status(500).json({ error: 'Database error' });
     }
 
     if (existingUser) {
+      console.log('❌ User already exists');
       return res.status(409).json({ error: 'Username or email already exists' });
     }
 
     // Hash password
+    console.log('🔐 Hashing password...');
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
     // Create user
+    console.log('👤 Creating user...');
     const userData = { username, email, password_hash };
     const [createErr, newUser] = await dbHelpers.createUser(userData);
     if (createErr) {
-      console.error('Registration error:', createErr);
+      console.error('❌ Registration error:', createErr);
       return res.status(500).json({ error: 'Failed to create user' });
     }
 
@@ -179,26 +186,32 @@ app.post('/api/auth/register', async (req, res) => {
 // Login user
 app.post('/api/auth/login', async (req, res) => {
   try {
+    console.log('🔑 Login attempt:', { login: req.body.login });
     const { login, password } = req.body; // login can be username or email
 
     if (!login || !password) {
+      console.log('❌ Missing login credentials');
       return res.status(400).json({ error: 'Username/email and password are required' });
     }
 
     // Find user
+    console.log('🔍 Looking up user...');
     const [err, user] = await dbHelpers.getUserByLogin(login);
     if (err) {
-      console.error('Database error during login:', err);
+      console.error('❌ Database error during login:', err);
       return res.status(500).json({ error: 'Database error' });
     }
 
     if (!user) {
+      console.log('❌ User not found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     // Check password
+    console.log('🔐 Checking password...');
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     if (!passwordMatch) {
+      console.log('❌ Password mismatch');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
@@ -238,11 +251,14 @@ app.post('/api/auth/login', async (req, res) => {
 // Get current user info
 app.get('/api/auth/me', authenticateToken, async (req, res) => {
   try {
+    console.log('👤 Getting user info for ID:', req.user.userId);
     const [err, user] = await dbHelpers.getUserById(req.user.userId);
     if (err || !user) {
+      console.log('❌ User not found:', err);
       return res.status(404).json({ error: 'User not found' });
     }
 
+    console.log('👤 User data from DB:', { id: user.id, username: user.username, email: user.email });
     res.json({
       user: {
         id: user.id,
