@@ -1,6 +1,7 @@
 const passport = require('passport');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const { dbHelpers } = require('../database-postgres');
+const googleAuthService = require('../services/googleAuthService');
 
 // Google OAuth configuration - prioritize environment variables
 let GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
@@ -35,15 +36,25 @@ passport.use(new GoogleStrategy({
   clientID: GOOGLE_CLIENT_ID,
   clientSecret: GOOGLE_CLIENT_SECRET,
   callbackURL: GOOGLE_CALLBACK_URL,
-  scope: ['profile', 'email']
+  scope: ['profile', 'email', 'openid']
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     console.log('🔍 Google OAuth profile received:', profile.id);
     console.log('📧 Email:', profile.emails?.[0]?.value);
     console.log('👤 Display name:', profile.displayName);
     
-    // Check if user already exists
-    const [err, existingUser] = await dbHelpers.getUserByGoogleId(profile.id);
+    // Verify the profile data matches what we expect
+    if (!profile.id || !profile.emails?.[0]?.value) {
+      console.error('❌ Invalid Google profile data');
+      return done(new Error('Invalid Google profile data'), null);
+    }
+
+    const googleId = profile.id;
+    const email = profile.emails[0].value;
+    const emailVerified = profile.emails[0].verified || false;
+
+    // Check if user already exists by Google ID
+    const [err, existingUser] = await dbHelpers.getUserByGoogleId(googleId);
     if (err) {
       console.error('❌ Database error during Google OAuth:', err);
       return done(err, null);
@@ -51,19 +62,22 @@ passport.use(new GoogleStrategy({
 
     if (existingUser) {
       console.log('✅ Existing Google user found:', existingUser.email);
+      // Update last login
+      await dbHelpers.updateLastLogin(existingUser.id);
       return done(null, existingUser);
     }
 
-    // Create new user with temporary username (user must set custom username)
+    // Create new user - passwordless authentication
     const userData = {
-      googleId: profile.id,
-      username: profile.emails[0].value.split('@')[0], // Use email prefix as temporary username
-      email: profile.emails[0].value,
-      profilePicture: profile.photos[0]?.value || 'default.png',
-      emailVerified: profile.emails[0].verified || false
+      googleId: googleId,
+      username: email.split('@')[0], // Use email prefix as temporary username
+      email: email,
+      profilePicture: profile.photos[0]?.value || null,
+      emailVerified: emailVerified,
+      authProvider: 'google'
     };
 
-    console.log('👤 Creating new user with data:', userData);
+    console.log('👤 Creating new Google user:', userData);
 
     const [createErr, userId] = await dbHelpers.createGoogleUser(userData);
     if (createErr) {
@@ -71,7 +85,7 @@ passport.use(new GoogleStrategy({
       return done(createErr, null);
     }
 
-    console.log('✅ New Google user created:', userData.email);
+    console.log('✅ New Google user created:', email);
     const newUser = {
       id: userId,
       ...userData

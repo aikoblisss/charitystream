@@ -371,7 +371,9 @@
         // Check if username setup is required from URL parameter
         const urlParams = new URLSearchParams(window.location.search);
         const setupUsername = urlParams.get('setup_username') === 'true';
+        const authProvider = urlParams.get('auth_provider') || 'google';
         console.log('📝 Setup username flag:', setupUsername);
+        console.log('🔐 Auth provider:', authProvider);
         
         // Get user info to check if username is set
         fetch('/api/auth/me', {
@@ -448,15 +450,15 @@
     document.getElementById('googleSignInBtn').addEventListener('click', () => {
       console.log('🔐 Google Sign-In button clicked');
       console.log('Current URL:', window.location.href);
-      console.log('Redirecting to:', '/api/auth/google?mode=signin');
-      window.location.href = '/api/auth/google?mode=signin';
+      console.log('Redirecting to:', '/api/auth/google?state=signin');
+      window.location.href = '/api/auth/google?state=signin';
     });
 
     document.getElementById('googleSignUpBtn').addEventListener('click', () => {
       console.log('🔐 Google Sign-Up button clicked');
       console.log('Current URL:', window.location.href);
-      console.log('Redirecting to:', '/api/auth/google?mode=signup');
-      window.location.href = '/api/auth/google?mode=signup';
+      console.log('Redirecting to:', '/api/auth/google?state=signup');
+      window.location.href = '/api/auth/google?state=signup';
     });
 
     // Email/Password Sign In

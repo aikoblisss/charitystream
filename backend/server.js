@@ -356,13 +356,17 @@ app.get('/api/auth/google', (req, res, next) => {
   req.session.googleAuthMode = mode;
 
   passport.authenticate('google', {
-    scope: ['profile', 'email']
+    scope: ['profile', 'email', 'openid'],
+    prompt: 'select_account' // Always show account chooser
   })(req, res, next);
 });
 
 // Google OAuth callback
 app.get('/api/auth/google/callback', 
-  passport.authenticate('google', { failureRedirect: `${process.env.FRONTEND_URL || 'https://stream.charity'}/auth.html?error=oauth_failed` }),
+  passport.authenticate('google', { 
+    failureRedirect: `${process.env.FRONTEND_URL || 'https://stream.charity'}/auth.html?error=oauth_failed`,
+    session: false // We'll use JWT instead of sessions
+  }),
   async (req, res) => {
     try {
       console.log('🔄 Google OAuth callback received');
@@ -416,20 +420,20 @@ app.get('/api/auth/google/callback',
       console.log(`✅ Google OAuth login successful: ${user.email}`);
       console.log('🔗 Redirecting to auth.html with token');
       
-      // Check if this was a signup attempt
-      const authMode = req.session.googleAuthMode || 'signin';
+      // Check if this was a signup attempt (from state parameter)
+      const authMode = req.query.state || 'signin';
       console.log('🔍 Auth mode:', authMode);
       
-      // For signup mode, always show username setup
-      // For signin mode, only show if username is email prefix
+      // For passwordless Google auth, always check if username needs setup
       const emailPrefix = user.email.split('@')[0];
-      const needsUsernameSetup = authMode === 'signup' || user.username === emailPrefix;
+      const needsUsernameSetup = user.username === emailPrefix;
       
       console.log('📝 Needs username setup:', needsUsernameSetup);
+      console.log('👤 User auth provider:', user.auth_provider || 'google');
       
       // Redirect to frontend with token and setup flag
       const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
-      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.email_verified}&setup_username=${needsUsernameSetup}`);
+      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.email_verified}&setup_username=${needsUsernameSetup}&auth_provider=google`);
     } catch (error) {
       console.error('❌ Google OAuth callback error:', error);
       console.error('Error stack:', error.stack);
