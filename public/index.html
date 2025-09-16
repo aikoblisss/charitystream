@@ -688,7 +688,22 @@
       if (authToken) {
         console.log('✅ User has token, loading user info...');
         showAuthenticatedUI();
-        // Load user info first, then initialize video player
+        
+        // Check if we have user data in localStorage first
+        if (userStr) {
+          try {
+            currentUser = JSON.parse(userStr);
+            console.log('👤 Using cached user data:', currentUser);
+            // Update UI with cached data immediately
+            const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+            document.getElementById('usernameDisplay').textContent = displayName;
+            document.getElementById('userLeaderboardName').textContent = displayName;
+          } catch (error) {
+            console.error('❌ Error parsing cached user data:', error);
+          }
+        }
+        
+        // Load fresh user info from server, then initialize video player
         loadUserInfo().then(() => {
           // Give more time for Video.js to load before initializing
           setTimeout(initializeVideoPlayer, 500);

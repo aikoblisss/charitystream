@@ -480,13 +480,19 @@
       };
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch('/api/auth/login', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(signInData)
+          body: JSON.stringify(signInData),
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
 
         const result = await response.json();
         hideLoading('signin');
@@ -495,36 +501,24 @@
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
           
-          // Check if username needs to be set (shouldn't happen for existing users, but just in case)
-          const emailPrefix = result.user.email.split('@')[0];
-          if (!result.user.username || result.user.username === emailPrefix) {
-            // Show username setup
-            document.getElementById('userEmail').textContent = result.user.email;
-            document.getElementById('userName').textContent = result.user.username || 'Not set';
-            document.getElementById('userInfo').style.display = 'block';
-            document.getElementById('usernameSetup').style.display = 'block';
-            document.getElementById('username').value = '';
-            document.getElementById('username').placeholder = 'Enter your desired username';
-            
-            // Hide the forms
-            document.getElementById('signInForm').style.display = 'none';
-            document.getElementById('signUpForm').style.display = 'none';
-            
-            showSuccess('signin', 'Sign in successful! Please set your username.');
-          } else {
-            // Username is set, redirect to main page
-            showSuccess('signin', 'Sign in successful! Redirecting...');
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 1500);
-          }
+          // Manual signin is complete - redirect to main page
+          showSuccess('signin', 'Sign in successful! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
         } else {
           showError('signin', result.error || 'Sign in failed');
         }
       } catch (error) {
         hideLoading('signin');
-        showError('signin', 'Network error. Please try again.');
         console.error('Sign in error:', error);
+        if (error.name === 'AbortError') {
+          showError('signin', 'Request timed out. Please try again.');
+        } else if (error.message.includes('Failed to fetch')) {
+          showError('signin', 'Network error. Please check your connection and try again.');
+        } else {
+          showError('signin', 'An error occurred. Please try again.');
+        }
       }
     }
 
@@ -541,13 +535,19 @@
       };
 
       try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+        
         const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify(signUpData)
+          body: JSON.stringify(signUpData),
+          signal: controller.signal
         });
+        
+        clearTimeout(timeoutId);
 
         const result = await response.json();
         hideLoading('signup');
@@ -559,6 +559,7 @@
           // Manual signup is complete - redirect to main page
           showSuccess('signup', 'Account created successfully! Redirecting...');
           setTimeout(() => {
+            // Clean URL parameters before redirect
             window.location.href = '/';
           }, 1500);
         } else {
@@ -566,8 +567,14 @@
         }
       } catch (error) {
         hideLoading('signup');
-        showError('signup', 'Network error. Please try again.');
         console.error('Sign up error:', error);
+        if (error.name === 'AbortError') {
+          showError('signup', 'Request timed out. Please try again.');
+        } else if (error.message.includes('Failed to fetch')) {
+          showError('signup', 'Network error. Please check your connection and try again.');
+        } else {
+          showError('signup', 'An error occurred. Please try again.');
+        }
       }
     }
 
