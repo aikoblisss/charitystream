@@ -663,11 +663,14 @@
 
     // Check authentication on page load
     window.onload = function() {
+      console.log('🚀 Page loading, checking authentication...');
+      
       // Check for token from URL parameters (Google OAuth callback)
       const urlParams = new URLSearchParams(window.location.search);
       const tokenFromUrl = urlParams.get('token');
       
       if (tokenFromUrl) {
+        console.log('🔑 Token found in URL, storing in localStorage');
         localStorage.setItem('authToken', tokenFromUrl);
         // Clean up URL
         window.history.replaceState({}, document.title, window.location.pathname);
@@ -676,13 +679,20 @@
       authToken = localStorage.getItem('authToken');
       const userStr = localStorage.getItem('currentUser');
       
-      if (authToken && userStr) {
-        currentUser = JSON.parse(userStr);
+      console.log('🔍 Auth check:', {
+        hasToken: !!authToken,
+        hasUser: !!userStr,
+        token: authToken ? 'Present' : 'Missing'
+      });
+      
+      if (authToken) {
+        console.log('✅ User has token, loading user info...');
         showAuthenticatedUI();
         loadUserInfo();
         // Give more time for Video.js to load before initializing
         setTimeout(initializeVideoPlayer, 500);
       } else {
+        console.log('❌ No token found, showing unauthenticated UI');
         showUnauthenticatedUI();
         setTimeout(initializeVideoPlayerForGuests, 500);
       }
@@ -729,14 +739,17 @@
     // Load fresh user info from server
     async function loadUserInfo() {
       try {
+        console.log('📡 Loading user info with token:', authToken ? 'Present' : 'Missing');
         const response = await fetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
         });
 
+        console.log('📡 User info response status:', response.status);
         if (response.ok) {
           const result = await response.json();
+          console.log('👤 User info received:', result);
           currentUser = result.user;
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
           

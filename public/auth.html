@@ -365,6 +365,7 @@
 
       // Handle successful OAuth callback
       if (token) {
+        console.log('🔑 Token received from OAuth callback:', token);
         localStorage.setItem('authToken', token);
         
         // Get user info to check if username is set
@@ -373,8 +374,12 @@
             'Authorization': `Bearer ${token}`
           }
         })
-        .then(response => response.json())
+        .then(response => {
+          console.log('📡 User info response status:', response.status);
+          return response.json();
+        })
         .then(data => {
+          console.log('👤 User data received:', data);
           if (data.user) {
             document.getElementById('userEmail').textContent = data.user.email;
             document.getElementById('userName').textContent = data.user.username || 'Not set';
@@ -384,18 +389,23 @@
             
             // Check if username needs to be set
             if (!data.user.username || data.user.username === data.user.email.split('@')[0]) {
+              console.log('📝 Username needs to be set, showing setup form');
               document.getElementById('usernameSetup').style.display = 'block';
               document.getElementById('username').value = data.user.email.split('@')[0];
             } else {
+              console.log('✅ Username already set, redirecting to main page');
               // Username is already set, redirect to main page
               setTimeout(() => {
                 window.location.href = '/';
               }, 1000);
             }
+          } else {
+            console.error('❌ No user data in response:', data);
+            showError('Failed to load user information.');
           }
         })
         .catch(error => {
-          console.error('Error fetching user info:', error);
+          console.error('❌ Error fetching user info:', error);
           showError('Failed to load user information.');
         });
       }
