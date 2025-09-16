@@ -37,6 +37,37 @@
       line-height: 1.5;
     }
 
+    .auth-tabs {
+      display: flex;
+      margin-bottom: 30px;
+      border-bottom: 2px solid #333;
+    }
+
+    .auth-tab {
+      flex: 1;
+      padding: 15px;
+      text-align: center;
+      background: none;
+      border: none;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.3s ease;
+    }
+
+    .auth-tab.active {
+      color: #fff;
+      border-bottom: 2px solid #3f9d5e;
+    }
+
+    .auth-form {
+      display: none;
+    }
+
+    .auth-form.active {
+      display: block;
+    }
+
     .google-signin-btn {
       width: 100%;
       padding: 15px;
@@ -61,25 +92,28 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
-    .google-signin-btn:active {
-      transform: translateY(0);
-    }
-
     .google-icon {
       width: 20px;
       height: 20px;
     }
 
-    .username-setup {
-      display: none;
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid #333;
+    .divider {
+      display: flex;
+      align-items: center;
+      margin: 20px 0;
+      color: #666;
     }
 
-    .username-setup h3 {
-      margin-bottom: 15px;
-      color: #3f9d5e;
+    .divider::before,
+    .divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #333;
+    }
+
+    .divider span {
+      padding: 0 15px;
     }
 
     .form-group {
@@ -110,7 +144,7 @@
       border-color: #3f9d5e;
     }
 
-    .continue-btn {
+    .auth-button {
       width: 100%;
       padding: 15px;
       background: #3f9d5e;
@@ -123,11 +157,11 @@
       transition: background 0.3s ease;
     }
 
-    .continue-btn:hover {
+    .auth-button:hover {
       background: #2f7a48;
     }
 
-    .continue-btn:disabled {
+    .auth-button:disabled {
       background: #555;
       cursor: not-allowed;
     }
@@ -191,23 +225,101 @@
       margin: 5px 0;
       color: #ccc;
     }
+
+    .username-setup {
+      display: none;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #333;
+    }
+
+    .username-setup h3 {
+      margin-bottom: 15px;
+      color: #3f9d5e;
+    }
   </style>
 </head>
 <body>
   <div class="auth-container">
     <h1>Charity Stream</h1>
-    <p>Sign in with your Google account to start watching ads for charity</p>
+    <p>Sign in to start watching ads for charity and track your impact!</p>
     
-    <!-- Google Sign-In Button -->
-    <button class="google-signin-btn" id="googleSignInBtn">
-      <svg class="google-icon" viewBox="0 0 24 24">
-        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-      </svg>
-      Sign in with Google
-    </button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="signin-tab">Sign In</button>
+      <button class="auth-tab" id="signup-tab">Sign Up</button>
+    </div>
+
+    <!-- Sign In Form -->
+    <div id="signin-form" class="auth-form active">
+      <!-- Google Sign-In Button -->
+      <button class="google-signin-btn" id="googleSignInBtn">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign in with Google
+      </button>
+
+      <div class="divider">
+        <span>or</span>
+      </div>
+
+      <!-- Email/Password Sign In -->
+      <form id="signin-form-element">
+        <div class="form-group">
+          <label for="signin-email">Email</label>
+          <input type="email" id="signin-email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label for="signin-password">Password</label>
+          <input type="password" id="signin-password" name="password" required>
+        </div>
+        <button type="submit" class="auth-button" id="signin-button">Sign In</button>
+        <div class="loading" id="signin-loading">Signing in...</div>
+        <div class="error-message" id="signin-error"></div>
+        <div class="success-message" id="signin-success"></div>
+      </form>
+    </div>
+
+    <!-- Sign Up Form -->
+    <div id="signup-form" class="auth-form">
+      <!-- Google Sign-Up Button -->
+      <button class="google-signin-btn" id="googleSignUpBtn">
+        <svg class="google-icon" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        Sign up with Google
+      </button>
+
+      <div class="divider">
+        <span>or</span>
+      </div>
+
+      <!-- Email/Password Sign Up -->
+      <form id="signup-form-element">
+        <div class="form-group">
+          <label for="signup-username">Username</label>
+          <input type="text" id="signup-username" name="username" required minlength="3" maxlength="20">
+        </div>
+        <div class="form-group">
+          <label for="signup-email">Email</label>
+          <input type="email" id="signup-email" name="email" required>
+        </div>
+        <div class="form-group">
+          <label for="signup-password">Password</label>
+          <input type="password" id="signup-password" name="password" minlength="6" required>
+        </div>
+        <button type="submit" class="auth-button" id="signup-button">Sign Up</button>
+        <div class="loading" id="signup-loading">Creating account...</div>
+        <div class="error-message" id="signup-error"></div>
+        <div class="success-message" id="signup-success"></div>
+      </form>
+    </div>
 
     <!-- User Info Display (after Google auth) -->
     <div class="user-info" id="userInfo">
@@ -226,7 +338,7 @@
         <input type="text" id="username" name="username" required minlength="3" maxlength="20">
       </div>
       
-      <button class="continue-btn" id="continueBtn">Continue</button>
+      <button class="auth-button" id="continueBtn">Continue</button>
       <div class="loading" id="usernameLoading">Setting up your account...</div>
       <div class="error-message" id="usernameError"></div>
     </div>
@@ -299,13 +411,119 @@
     // Initialize when page loads
     document.addEventListener('DOMContentLoaded', initializeAuthPage);
 
-    // Google Sign-In button click handler
-    document.getElementById('googleSignInBtn').addEventListener('click', function() {
+    // Tab switching
+    document.getElementById('signin-tab').addEventListener('click', () => switchTab('signin'));
+    document.getElementById('signup-tab').addEventListener('click', () => switchTab('signup'));
+
+    function switchTab(tab) {
+      // Update tab buttons
+      document.querySelectorAll('.auth-tab').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(`${tab}-tab`).classList.add('active');
+
+      // Update forms
+      document.querySelectorAll('.auth-form').forEach(form => form.classList.remove('active'));
+      document.getElementById(`${tab}-form`).classList.add('active');
+    }
+
+    // Google Sign-In/Sign-Up button click handlers
+    document.getElementById('googleSignInBtn').addEventListener('click', () => {
       window.location.href = '/api/auth/google';
     });
 
+    document.getElementById('googleSignUpBtn').addEventListener('click', () => {
+      window.location.href = '/api/auth/google';
+    });
+
+    // Email/Password Sign In
+    document.getElementById('signin-form-element').addEventListener('submit', handleSignIn);
+
+    // Email/Password Sign Up
+    document.getElementById('signup-form-element').addEventListener('submit', handleSignUp);
+
     // Username setup form handler
-    document.getElementById('continueBtn').addEventListener('click', function() {
+    document.getElementById('continueBtn').addEventListener('click', handleUsernameSetup);
+
+    // Handle email/password sign in
+    async function handleSignIn(event) {
+      event.preventDefault();
+      showLoading('signin');
+
+      const formData = new FormData(event.target);
+      const signInData = {
+        login: formData.get('email'),
+        password: formData.get('password')
+      };
+
+      try {
+        const response = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(signInData)
+        });
+
+        const result = await response.json();
+        hideLoading('signin');
+
+        if (result.token) {
+          localStorage.setItem('authToken', result.token);
+          showSuccess('signin', 'Sign in successful! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+        } else {
+          showError('signin', result.error || 'Sign in failed');
+        }
+      } catch (error) {
+        hideLoading('signin');
+        showError('signin', 'Network error. Please try again.');
+        console.error('Sign in error:', error);
+      }
+    }
+
+    // Handle email/password sign up
+    async function handleSignUp(event) {
+      event.preventDefault();
+      showLoading('signup');
+
+      const formData = new FormData(event.target);
+      const signUpData = {
+        username: formData.get('username'),
+        email: formData.get('email'),
+        password: formData.get('password')
+      };
+
+      try {
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(signUpData)
+        });
+
+        const result = await response.json();
+        hideLoading('signup');
+
+        if (result.token) {
+          localStorage.setItem('authToken', result.token);
+          showSuccess('signup', 'Account created successfully! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+        } else {
+          showError('signup', result.error || 'Sign up failed');
+        }
+      } catch (error) {
+        hideLoading('signup');
+        showError('signup', 'Network error. Please try again.');
+        console.error('Sign up error:', error);
+      }
+    }
+
+    // Handle username setup
+    async function handleUsernameSetup() {
       const username = document.getElementById('username').value.trim();
       
       if (!username || username.length < 3) {
@@ -315,16 +533,17 @@
 
       showUsernameLoading();
       
-      fetch('/api/auth/update-username', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-        },
-        body: JSON.stringify({ username: username })
-      })
-      .then(response => response.json())
-      .then(data => {
+      try {
+        const response = await fetch('/api/auth/update-username', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({ username: username })
+        });
+
+        const data = await response.json();
         hideUsernameLoading();
         
         if (data.message) {
@@ -335,13 +554,12 @@
         } else {
           showUsernameError(data.error || 'Failed to set username');
         }
-      })
-      .catch(error => {
+      } catch (error) {
         hideUsernameLoading();
         showUsernameError('Network error. Please try again.');
         console.error('Username update error:', error);
-      });
-    });
+      }
+    }
 
     // Helper functions
     function showError(message) {
@@ -350,6 +568,28 @@
       errorDiv.style.display = 'block';
       errorDiv.textContent = message;
       document.querySelector('.auth-container').insertBefore(errorDiv, document.querySelector('.back-link'));
+    }
+
+    function showError(formType, message) {
+      const errorDiv = document.getElementById(`${formType}-error`);
+      errorDiv.style.display = 'block';
+      errorDiv.textContent = message;
+    }
+
+    function showSuccess(formType, message) {
+      const successDiv = document.getElementById(`${formType}-success`);
+      successDiv.style.display = 'block';
+      successDiv.textContent = message;
+    }
+
+    function showLoading(formType) {
+      document.getElementById(`${formType}-loading`).style.display = 'block';
+      document.getElementById(`${formType}-button`).disabled = true;
+    }
+
+    function hideLoading(formType) {
+      document.getElementById(`${formType}-loading`).style.display = 'none';
+      document.getElementById(`${formType}-button`).disabled = false;
     }
 
     function showUsernameError(message) {
@@ -375,7 +615,6 @@
       document.getElementById('usernameLoading').style.display = 'none';
       document.getElementById('continueBtn').disabled = false;
     }
-
   </script>
 </body>
 </html>

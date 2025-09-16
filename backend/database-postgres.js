@@ -74,11 +74,39 @@ async function createTables() {
   }
 }
 
+// Ensure tables exist before any operation
+async function ensureTablesExist() {
+  if (!pool) {
+    throw new Error('Database not initialized');
+  }
+  
+  try {
+    // Check if users table exists
+    const result = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'users'
+      );
+    `);
+    
+    if (!result.rows[0].exists) {
+      console.log('🔧 Creating database tables...');
+      await createTables();
+      console.log('✅ Database tables created successfully');
+    }
+  } catch (error) {
+    console.error('❌ Error ensuring tables exist:', error);
+    throw error;
+  }
+}
+
 // Helper functions for database operations
 const dbHelpers = {
   // Get user by username or email
   getUserByLogin: async (login) => {
     try {
+      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE username = $1 OR email = $1',
         [login]
@@ -92,6 +120,7 @@ const dbHelpers = {
   // Create new user (traditional)
   createUser: async (userData) => {
     try {
+      await ensureTablesExist();
       const result = await pool.query(
         `INSERT INTO users (username, email, password_hash, auth_provider) 
          VALUES ($1, $2, $3, 'traditional') 
@@ -107,6 +136,7 @@ const dbHelpers = {
   // Create new Google OAuth user
   createGoogleUser: async (userData) => {
     try {
+      await ensureTablesExist();
       const result = await pool.query(
         `INSERT INTO users (google_id, username, email, profile_picture, email_verified, auth_provider) 
          VALUES ($1, $2, $3, $4, $5, 'google') 
@@ -128,6 +158,7 @@ const dbHelpers = {
   // Get user by Google ID
   getUserByGoogleId: async (googleId) => {
     try {
+      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE google_id = $1',
         [googleId]
@@ -141,6 +172,7 @@ const dbHelpers = {
   // Get user by ID
   getUserById: async (id) => {
     try {
+      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE id = $1',
         [id]

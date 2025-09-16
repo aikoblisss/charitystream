@@ -520,7 +520,7 @@
           <a href="#" class="nav-link">Account</a>
           <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
-        <button id="loginButton" class="login-btn" onclick="goToAuth()">Sign in with Google</button>
+        <button id="loginButton" class="login-btn" onclick="goToAuth()">Sign In / Sign Up</button>
       </nav>
     </div>
   </header>
@@ -558,8 +558,8 @@
           <div class="login-overlay" id="loginOverlay">
             <div class="login-prompt">
               <h3>Sign In Required</h3>
-              <p>Please sign in with your Google account to start watching ads for charity and track your impact!</p>
-              <button class="watch-ads-btn" onclick="goToAuth()">Sign in with Google</button>
+              <p>Please sign in to start watching ads for charity and track your impact!</p>
+              <button class="watch-ads-btn" onclick="goToAuth()">Sign In / Sign Up</button>
             </div>
           </div>
         </div>
@@ -741,8 +741,9 @@
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
           
           // Update UI with user data
-          document.getElementById('usernameDisplay').textContent = currentUser.username;
-          document.getElementById('userLeaderboardName').textContent = currentUser.username;
+          const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+          document.getElementById('usernameDisplay').textContent = displayName;
+          document.getElementById('userLeaderboardName').textContent = displayName;
           document.getElementById('totalAdsWatched').textContent = currentUser.totalMinutesWatched || 0;
           document.getElementById('userMinutesDisplay').textContent = (currentUser.currentMonthMinutes || 0) + ' mins';
           
