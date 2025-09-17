@@ -519,38 +519,9 @@ app.get('/api/auth/google/callback',
         auth_provider: user.auth_provider
       });
       
-      // Generate verification token if email not verified and email service is available
-      // Skip verification for Google users since they're already verified by Google
-      const isGoogleUser = user.auth_provider === 'google' || user.auth_provider === 'email_google';
-      
-      if (!isGoogleUser && !user.verified && emailService) {
-        console.log('📧 Generating verification token for manual user:', user.email);
-        const verificationToken = tokenService ? tokenService.generateVerificationToken() : generateFallbackToken();
-        
-        // Update user with verification token using PostgreSQL
-        try {
-          const { Pool } = require('pg');
-          const pool = new Pool({
-            connectionString: process.env.DATABASE_URL,
-            ssl: {
-              rejectUnauthorized: false,
-              require: true
-            }
-          });
-          
-          await pool.query('UPDATE users SET verification_token = $1 WHERE id = $2', [verificationToken, user.id]);
-          await pool.end();
-          
-          // Send verification email
-          await emailService.sendVerificationEmail(user.email, user.username, verificationToken);
-        } catch (err) {
-          console.error('Error setting verification token:', err);
-        }
-      } else if (isGoogleUser) {
-        console.log('✅ Google user - skipping email verification:', user.email);
-      } else if (user.verified) {
-        console.log('✅ User email already verified:', user.email);
-      }
+      // Google OAuth callback - NO verification emails should be sent
+      // All users coming through this callback are Google users and already verified by Google
+      console.log('✅ Google OAuth callback - skipping email verification for:', user.email);
 
       // Generate JWT token
       console.log('🔑 Generating JWT token for user:', user.id);
