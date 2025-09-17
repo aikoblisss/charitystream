@@ -140,13 +140,18 @@ const authenticateToken = (req, res, next) => {
 // Register new user
 app.post('/api/auth/register', async (req, res) => {
   try {
-    console.log('📝 Registration attempt:', { username: req.body.username, email: req.body.email });
-    const { username, email, password } = req.body;
+    console.log('📝 Registration attempt:', { email: req.body.email });
+    const { email, password, confirmPassword } = req.body;
 
     // Basic validation
-    if (!username || !email || !password) {
+    if (!email || !password || !confirmPassword) {
       console.log('❌ Missing required fields');
-      return res.status(400).json({ error: 'Username, email, and password are required' });
+      return res.status(400).json({ error: 'Email, password, and password confirmation are required' });
+    }
+
+    if (password !== confirmPassword) {
+      console.log('❌ Passwords do not match');
+      return res.status(400).json({ error: 'Passwords do not match' });
     }
 
     if (password.length < 6) {
@@ -156,7 +161,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Check if user already exists
     console.log('🔍 Checking if user exists...');
-    const [err, existingUser] = await dbHelpers.getUserByLogin(username);
+    const [err, existingUser] = await dbHelpers.getUserByEmail(email);
     if (err) {
       console.error('❌ Database error during registration:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -164,7 +169,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     if (existingUser) {
       console.log('❌ User already exists');
-      return res.status(409).json({ error: 'Username or email already exists' });
+      return res.status(409).json({ error: 'Email already exists' });
     }
 
     // Hash password
@@ -189,10 +194,9 @@ app.post('/api/auth/register', async (req, res) => {
       tokenPackage = await tokenService.generateVerificationPackage();
     }
 
-    // Create user with verification token
+    // Create user with verification token (no username yet - will be set later)
     console.log('👤 Creating user...');
     const userData = { 
-      username, 
       email, 
       password_hash, 
       auth_provider: 'email',
@@ -213,13 +217,12 @@ app.post('/api/auth/register', async (req, res) => {
       // Don't fail registration if email fails, but log it
     }
 
-    console.log(`✅ New user registered: ${username}`);
+    console.log(`✅ New user registered: ${email}`);
     res.status(201).json({
       message: 'User created successfully. Please check your email to verify your account.',
       requiresVerification: true,
       user: {
         id: newUserId,
-        username: username,
         email: email,
         verified: false
       }
@@ -235,7 +238,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   try {
     console.log('🔑 Login attempt:', { login: req.body.login });
-    const { login, password } = req.body; // login can be username or email
+    const { login, password, rememberMe } = req.body; // login can be username or email
 
     if (!login || !password) {
       console.log('❌ Missing login credentials');
@@ -299,11 +302,12 @@ app.post('/api/auth/login', async (req, res) => {
       console.error('Error updating last login:', updateErr);
     }
 
-    // Generate JWT token
+    // Generate JWT token with extended expiry for remember me
+    const tokenExpiry = rememberMe ? '30d' : '7d'; // 30 days if remember me, 7 days otherwise
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: tokenExpiry }
     );
 
     console.log(`✅ User logged in: ${user.username}`);
@@ -648,6 +652,15 @@ const resendVerificationLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Forgot password rate limiting
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // Maximum 5 requests per hour per IP
+  message: { error: 'Too many password reset requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req, res) => {
   try {
     const { email } = req.body;
@@ -721,6 +734,255 @@ app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req,
 
   } catch (error) {
     console.error('❌ Resend verification error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Forgot password endpoint
+app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    console.log('🔐 Password reset request for:', email);
+
+    // Find user by email
+    const [err, user] = await dbHelpers.getUserByEmail(email);
+    if (err) {
+      console.error('❌ Database error during forgot password:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    // Always return success message for security (don't reveal if email exists)
+    const successMessage = 'If an account exists for this email, a reset link has been sent.';
+
+    if (!user) {
+      console.log('📧 Email not found, but returning success message for security');
+      return res.json({ success: true, message: successMessage });
+    }
+
+    // Don't allow Google users to reset password via email
+    if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
+      console.log('📧 Google user attempted password reset, returning success message');
+      return res.json({ success: true, message: successMessage });
+    }
+
+    // Generate reset token package
+    let tokenPackage;
+    
+    if (!tokenService) {
+      console.log('⚠️ Using fallback token generation for password reset');
+      const token = generateFallbackToken();
+      const expiresAt = new Date(Date.now() + (30 * 60 * 1000)); // 30 minutes
+      tokenPackage = {
+        token: token,
+        hashedToken: token, // Store plain token for now (less secure but functional)
+        expiresAt: expiresAt
+      };
+    } else {
+      tokenPackage = await tokenService.generateVerificationPackage();
+    }
+
+    // Update user with reset token
+    const [updateErr] = await dbHelpers.setPasswordResetToken(
+      user.id, 
+      tokenPackage.hashedToken, 
+      tokenPackage.expiresAt
+    );
+    if (updateErr) {
+      console.error('❌ Error setting password reset token:', updateErr);
+      return res.status(500).json({ error: 'Failed to generate reset token' });
+    }
+
+    // Send password reset email
+    const emailResult = await emailService.sendPasswordResetEmail(
+      user.email, 
+      user.username || user.email.split('@')[0], 
+      tokenPackage.token
+    );
+    if (!emailResult.success) {
+      console.error('❌ Failed to send password reset email:', emailResult.error);
+      // Don't fail the request if email fails, but log it
+    }
+
+    console.log('✅ Password reset email sent to:', user.email);
+    res.json({ success: true, message: successMessage });
+
+  } catch (error) {
+    console.error('❌ Forgot password error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset password endpoint (GET - show form)
+app.get('/api/auth/reset-password', async (req, res) => {
+  try {
+    const token = req.query.token;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Reset token is required' });
+    }
+
+    console.log('🔐 Password reset form request for token:', token.substring(0, 10) + '...');
+
+    // Validate token format
+    if (!tokenService) {
+      console.log('⚠️ Using fallback token validation');
+      if (!token || typeof token !== 'string' || token.length !== 64) {
+        console.log('❌ Invalid token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
+    } else {
+      if (!tokenService.isValidTokenFormat(token)) {
+        console.log('❌ Invalid token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
+    }
+
+    // Find user by reset token
+    const [err, user] = await dbHelpers.getUserByResetToken(token);
+    if (err) {
+      console.error('❌ Database error during token validation:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!user) {
+      console.log('❌ Invalid or expired reset token');
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    console.log('✅ Reset token validated for user:', user.email);
+    res.json({ 
+      success: true, 
+      message: 'Token is valid',
+      user: {
+        email: user.email,
+        username: user.username
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Reset password validation error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Reset password endpoint (POST - submit new password)
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+    
+    if (!token || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'Token, password, and password confirmation are required' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    console.log('🔐 Password reset submission for token:', token.substring(0, 10) + '...');
+
+    // Validate token format
+    if (!tokenService) {
+      console.log('⚠️ Using fallback token validation');
+      if (!token || typeof token !== 'string' || token.length !== 64) {
+        console.log('❌ Invalid token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
+    } else {
+      if (!tokenService.isValidTokenFormat(token)) {
+        console.log('❌ Invalid token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
+    }
+
+    // Find user by reset token
+    const [err, user] = await dbHelpers.getUserByResetToken(token);
+    if (err) {
+      console.error('❌ Database error during password reset:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!user) {
+      console.log('❌ Invalid or expired reset token');
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    console.log('✅ Reset token validated for user:', user.email);
+
+    // Hash new password
+    const saltRounds = 10;
+    const newPasswordHash = await bcrypt.hash(password, saltRounds);
+
+    // Update user password and clear reset token
+    const [updateErr] = await dbHelpers.resetUserPassword(user.id, newPasswordHash);
+    if (updateErr) {
+      console.error('❌ Error updating password:', updateErr);
+      return res.status(500).json({ error: 'Failed to update password' });
+    }
+
+    console.log(`✅ Password reset successful for user: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password has been reset successfully. You can now log in with your new password.'
+    });
+
+  } catch (error) {
+    console.error('❌ Password reset error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Check username availability endpoint
+app.post('/api/auth/check-username', async (req, res) => {
+  try {
+    const { username } = req.body;
+    
+    if (!username) {
+      return res.status(400).json({ error: 'Username is required' });
+    }
+
+    // Basic validation
+    if (username.length < 3) {
+      return res.status(400).json({ error: 'Username must be at least 3 characters' });
+    }
+
+    if (username.length > 20) {
+      return res.status(400).json({ error: 'Username must be no more than 20 characters' });
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and hyphens' });
+    }
+
+    if (username.includes(' ')) {
+      return res.status(400).json({ error: 'Username cannot contain spaces' });
+    }
+
+    console.log('🔍 Checking username availability:', username);
+
+    // Check availability
+    const [err, available] = await dbHelpers.checkUsernameAvailability(username);
+    if (err) {
+      console.error('❌ Database error during username check:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    res.json({ 
+      available: available,
+      username: username
+    });
+
+  } catch (error) {
+    console.error('❌ Username check error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -170,6 +170,76 @@ class EmailService {
   }
 
   /**
+   * Send password reset email
+   * @param {string} email - Recipient email
+   * @param {string} username - Recipient username
+   * @param {string} token - Reset token
+   * @returns {Promise<Object>} - {success: boolean, messageId?: string, error?: string}
+   */
+  async sendPasswordResetEmail(email, username, token) {
+    if (!this.isConfigured || !this.transporter) {
+      console.log('⚠️ Email service not configured, skipping password reset email');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
+      const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
+      
+      const mailOptions = {
+        from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Reset Your Password - Charity Stream',
+        html: this.getPasswordResetEmailTemplate(username, resetUrl)
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Error sending password reset email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Get password reset email HTML template
+   * @param {string} username - Username
+   * @param {string} resetUrl - Reset URL
+   * @returns {string} - HTML email template
+   */
+  getPasswordResetEmailTemplate(username, resetUrl) {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #2F7D31; color: white; padding: 20px; text-align: center;">
+          <h1>Password Reset Request</h1>
+        </div>
+        <div style="padding: 20px; background-color: #f9fafb;">
+          <h2>Hi ${username}!</h2>
+          <p>We received a request to reset your password for your Charity Stream account.</p>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetUrl}" 
+               style="background-color: #2F7D31; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Reset Password
+            </a>
+          </div>
+          
+          <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+          
+          <p><strong>This link will expire in 30 minutes for security reasons.</strong></p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 14px;">
+            If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Check if email service is configured
    * @returns {boolean} - True if configured
    */

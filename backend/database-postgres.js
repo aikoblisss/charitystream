@@ -46,6 +46,8 @@ async function createTables() {
       verified BOOLEAN DEFAULT FALSE,
       verification_token VARCHAR(255),
       token_expires_at TIMESTAMP,
+      reset_password_token VARCHAR(255),
+      reset_password_expires TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       last_login TIMESTAMP,
       is_active BOOLEAN DEFAULT TRUE,
@@ -373,10 +375,10 @@ const dbHelpers = {
     try {
       await ensureTablesExist();
       const result = await pool.query(
-        `INSERT INTO users (username, email, password_hash, auth_provider, verification_token, token_expires_at) 
-         VALUES ($1, $2, $3, $4, $5, $6) 
+        `INSERT INTO users (email, password_hash, auth_provider, verification_token, token_expires_at) 
+         VALUES ($1, $2, $3, $4, $5) 
          RETURNING id`,
-        [userData.username, userData.email, userData.password_hash, userData.auth_provider, userData.verification_token, userData.token_expires_at]
+        [userData.email, userData.password_hash, userData.auth_provider, userData.verification_token, userData.token_expires_at]
       );
       return [null, result.rows[0].id];
     } catch (error) {
@@ -422,6 +424,70 @@ const dbHelpers = {
       return [null, result.rows[0]];
     } catch (error) {
       return [error, null];
+    }
+  },
+
+  // Password reset functions
+  setPasswordResetToken: async (userId, hashedToken, expiresAt) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET reset_password_token = $2, reset_password_expires = $3 WHERE id = $1 RETURNING *',
+        [userId, hashedToken, expiresAt]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  getUserByResetToken: async (plainToken) => {
+    try {
+      await ensureTablesExist();
+      // Get all users with non-expired reset tokens
+      const result = await pool.query(
+        'SELECT * FROM users WHERE reset_password_token IS NOT NULL AND reset_password_expires > NOW()'
+      );
+      
+      // Check each user's hashed token against the plain token
+      for (const user of result.rows) {
+        const bcrypt = require('bcryptjs');
+        const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
+        if (isValid) {
+          return [null, user];
+        }
+      }
+      
+      return [null, null]; // No matching token found
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  resetUserPassword: async (userId, newPasswordHash) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET password_hash = $2, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $1 RETURNING *',
+        [userId, newPasswordHash]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Check username availability
+  checkUsernameAvailability: async (username) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT id FROM users WHERE username = $1',
+        [username]
+      );
+      return [null, result.rows.length === 0]; // true if available
+    } catch (error) {
+      return [error, false];
     }
   }
 };
