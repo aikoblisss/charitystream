@@ -318,14 +318,26 @@ const dbHelpers = {
   },
 
   // Email verification functions
-  getUserByVerificationToken: async (token) => {
+  getUserByVerificationToken: async (plainToken) => {
     try {
       await ensureTablesExist();
+      // Get all users with non-expired verification tokens
       const result = await pool.query(
-        'SELECT * FROM users WHERE verification_token = $1 AND token_expires_at > NOW()',
-        [token]
+        'SELECT * FROM users WHERE verification_token IS NOT NULL AND token_expires_at > NOW()'
       );
-      return [null, result.rows[0] || null];
+      
+      // We need to check each user's hashed token against the plain token
+      // This is because we store hashed tokens but receive plain tokens
+      for (const user of result.rows) {
+        // Import bcrypt for token comparison
+        const bcrypt = require('bcryptjs');
+        const isValid = await bcrypt.compare(plainToken, user.verification_token);
+        if (isValid) {
+          return [null, user];
+        }
+      }
+      
+      return [null, null]; // No matching token found
     } catch (error) {
       return [error, null];
     }
