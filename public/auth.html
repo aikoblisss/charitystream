@@ -43,6 +43,87 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
+    /* Header */
+    .header {
+      border-bottom: 1px solid var(--gray-200);
+      width: 100%;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: white;
+      z-index: 100;
+    }
+
+    .header .container {
+      height: 4rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    .header .logo {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    .header .nav {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--gray-700);
+    }
+
+    .header .nav-hidden-mobile {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .header .welcome {
+      color: var(--gray-900);
+    }
+
+    .header .welcome-bold {
+      font-weight: 500;
+    }
+
+    .header .nav-link {
+      text-decoration: none;
+      color: var(--gray-700);
+    }
+
+    .header .nav-link:hover {
+      color: var(--gray-900);
+    }
+
+    .header .nav-link.active {
+      color: var(--brand-600);
+      font-weight: 600;
+    }
+
+    .header .watch-ads-btn {
+      display: inline-flex;
+      align-items: center;
+      background: var(--brand-600);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border: 0;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .header .watch-ads-btn:hover {
+      background: var(--brand-700);
+    }
+
     .container {
       height: 100vh;
       display: flex;
@@ -51,6 +132,7 @@
       padding: 1rem;
       position: relative;
       max-width: 100%;
+      margin-top: 4rem; /* Account for fixed header */
     }
 
     /* Back to Home Button */
@@ -562,6 +644,14 @@
         max-width: 100%;
       }
 
+      .header .nav-hidden-mobile {
+        display: none;
+      }
+
+      .header .container {
+        padding: 0 1rem;
+      }
+
       .logo {
         font-size: 1.75rem;
       }
@@ -600,6 +690,22 @@
   </style>
 </head>
 <body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">Charity Stream</div>
+      <nav class="nav">
+        <div class="nav-hidden-mobile">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="userDisplayName">Guest</span></span>
+          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+        </div>
+        <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
+      </nav>
+    </div>
+  </header>
+
   <div class="container">
     <!-- Back to Home -->
     <a href="/" class="back-home">
@@ -809,6 +915,66 @@
   </div>
 
   <script>
+    // Check authentication status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuthStatus();
+    });
+
+    function checkAuthStatus() {
+      const token = localStorage.getItem('authToken');
+      const currentUser = localStorage.getItem('currentUser');
+      
+      if (token && currentUser) {
+        try {
+          const user = JSON.parse(currentUser);
+          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          document.getElementById('userDisplayName').textContent = 'Guest';
+        }
+      } else {
+        document.getElementById('userDisplayName').textContent = 'Guest';
+      }
+    }
+
+    function handleNavClick(action) {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Already on auth page, just show alert for other actions
+        switch (action) {
+          case 'about':
+            alert('About page coming soon!');
+            break;
+          case 'advertise':
+            alert('Please sign in to access the advertiser portal!');
+            break;
+          case 'impact':
+            alert('Impact page coming soon!');
+            break;
+          case 'watch':
+            window.location.href = '/';
+            break;
+        }
+        return;
+      }
+
+      switch (action) {
+        case 'about':
+          alert('About page coming soon!');
+          break;
+        case 'advertise':
+          window.location.href = '/advertiser.html';
+          break;
+        case 'impact':
+          alert('Impact page coming soon!');
+          break;
+        case 'watch':
+          window.location.href = '/';
+          break;
+      }
+    }
+
     // Initialize the page
     function initializeAuthPage() {
       // Check for URL parameters (token from Google OAuth callback)

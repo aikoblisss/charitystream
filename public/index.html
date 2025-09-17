@@ -515,9 +515,9 @@
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-          <a href="#" class="nav-link">About</a>
-          <a href="#" class="nav-link">Advertise</a>
-          <a href="#" class="nav-link">Account</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
           <button class="logout-btn" onclick="logout()">Logout</button>
         </div>
         <button id="loginButton" class="login-btn" onclick="goToAuth()">Sign In / Sign Up</button>
@@ -750,6 +750,31 @@
         player = null;
       }
       setTimeout(initializeVideoPlayerForGuests, 100);
+    }
+
+    function handleNavClick(action) {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Redirect to login if not authenticated
+        window.location.href = '/auth.html';
+        return;
+      }
+
+      switch (action) {
+        case 'about':
+          alert('About page coming soon!');
+          break;
+        case 'advertise':
+          window.location.href = '/advertiser.html';
+          break;
+        case 'impact':
+          alert('Impact page coming soon!');
+          break;
+        case 'watch':
+          // Already on main page
+          break;
+      }
     }
 
     // Load fresh user info from server

@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Join as an Advertiser - Charity Stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand-primary: #2F7D31;
+      --brand-600: #2F7D31;
+      --brand-700: #276629;
+      --gray-50:#f9fafb; --gray-75:#FAFAFA; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+      --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-900:#111827;
+    }
+
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      font-family:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      font-feature-settings:'liga' 1,'calt' 1,'tnum' 1;
+      background:#ffffff;color:var(--gray-900);line-height:1.5;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
+
+    .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+
+    /* Header */
+    .header{border-bottom:1px solid var(--gray-200);width:100%}
+    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em}
+    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
+    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
+    .welcome{color:var(--gray-900)}
+    .welcome-bold{font-weight:500}
+    .nav-link{text-decoration:none}
+    .nav-link:hover{color:var(--gray-900)}
+    .nav-link.active{color:var(--brand-600);font-weight:600}
+    .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer}
+    .watch-ads-btn:hover{background:var(--brand-700)}
+
+    /* Main layout */
+    .main{display:grid;grid-template-columns:1fr 400px;gap:3rem;padding:3rem 0;max-width:1200px;margin:0 auto}
+    
+    /* Form section */
+    .form-section{background:#fff}
+    .form-title{font-size:2.25rem;font-weight:800;color:var(--gray-900);margin-bottom:.5rem}
+    .form-subtitle{font-size:1rem;color:var(--gray-600);margin-bottom:2rem}
+
+    .form-group{margin-bottom:2rem}
+    .section-header{font-size:1.125rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem;border-bottom:2px solid var(--gray-200);padding-bottom:.5rem}
+
+    .input-group{margin-bottom:1rem}
+    .input-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+    .input-label{display:block;font-size:.875rem;font-weight:600;color:var(--gray-700);margin-bottom:.5rem}
+    .input-field{width:100%;padding:.75rem;border:1px solid var(--gray-200);border-radius:.5rem;font-size:.875rem;transition:.2s;background:#fbfcfd;box-shadow:inset 0 0.5px 1px rgba(0,0,0,.03)}
+    .input-field:focus{outline:none;border-color:var(--brand-600);box-shadow:0 0 0 3px rgba(47,125,49,.1);background:#fff}
+    .input-field::placeholder{color:var(--gray-500);opacity:.7}
+
+    /* CPM Selection */
+    .cpm-options{display:grid;gap:.75rem}
+    .cpm-option{border:2px solid var(--gray-200);border-radius:.75rem;padding:1rem;cursor:pointer;transition:.2s;position:relative}
+    .cpm-option:hover{border-color:var(--brand-600)}
+    .cpm-option.selected{border-color:var(--brand-600);background:rgba(47,125,49,.05)}
+    
+    .cpm-radio{position:absolute;opacity:0}
+    .cpm-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.25rem}
+    .cpm-name{font-weight:600;color:var(--gray-900)}
+    .cpm-badge{background:var(--brand-primary);color:#fff;font-size:.75rem;font-weight:600;padding:.25rem .5rem;border-radius:9999px}
+    .cpm-price{font-size:1.25rem;font-weight:800;color:var(--brand-600)}
+    .cmp-description{font-size:.875rem;color:var(--gray-600)}
+
+    /* Custom slider (hidden by default) */
+    .custom-slider{display:none;margin-top:.75rem;padding:1rem;background:var(--gray-50);border-radius:.5rem}
+    .custom-slider.active{display:block}
+    .slider-container{margin:1rem 0}
+    .slider{width:100%;height:6px;border-radius:3px;background:var(--gray-200);outline:none;-webkit-appearance:none}
+    .slider::-webkit-slider-thumb{appearance:none;width:20px;height:20px;border-radius:50%;background:var(--brand-600);cursor:pointer}
+    .slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--brand-600);cursor:pointer;border:none}
+    .slider-value{text-align:center;font-weight:700;color:var(--brand-600);margin-top:.5rem}
+
+    /* File upload */
+    .upload-area{border:2px dashed var(--gray-300);border-radius:.75rem;padding:2rem;text-align:center;background:var(--gray-50);transition:.2s;cursor:pointer}
+    .upload-area:hover{border-color:var(--brand-600);background:rgba(47,125,49,.05)}
+    .upload-icon{font-size:2rem;margin-bottom:.5rem}
+    .upload-text{font-weight:600;color:var(--gray-700);margin-bottom:.25rem}
+    .upload-subtext{font-size:.875rem;color:var(--gray-600)}
+
+    /* Checkbox */
+    .checkbox-group{display:flex;align-items:center;gap:.75rem;margin:1rem 0}
+    .checkbox{width:18px;height:18px;accent-color:var(--brand-600)}
+    .checkbox-label{font-size:.875rem;color:var(--gray-700)}
+
+    /* Submit button */
+    .submit-btn{width:100%;background:var(--brand-600);color:#fff;padding:1rem 2rem;border:none;border-radius:.75rem;font-size:1rem;font-weight:700;cursor:pointer;transition:.2s}
+    .submit-btn:hover{background:var(--brand-700);transform:translateY(-1px)}
+
+    /* Sidebar */
+    .sidebar{background:var(--gray-50);border-radius:1rem;padding:2rem;height:fit-content;position:sticky;top:2rem;display:flex;flex-direction:column}
+    .sidebar-title{font-size:1.25rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem}
+    .benefit-list{list-style:none;flex:1}
+    .benefit-item{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:1rem;font-size:.875rem;color:var(--gray-700);line-height:1.5}
+    .benefit-icon{color:var(--brand-600);font-weight:700;margin-top:.1rem}
+
+    .stats-box{background:#fff;border-radius:.75rem;padding:1.5rem;margin-top:auto;border:1px solid var(--gray-200)}
+    .stats-title{font-size:1rem;font-weight:600;color:var(--gray-900);margin-bottom:1rem}
+    .stat-item{display:flex;justify-content:space-between;margin-bottom:.5rem;font-size:.875rem}
+    .stat-label{color:var(--gray-600)}
+    .stat-value{font-weight:600;color:var(--brand-600)}
+
+    /* Responsive */
+    @media (max-width:1024px){
+      .main{grid-template-columns:1fr;gap:2rem}
+      .sidebar{position:static}
+    }
+    @media (max-width:768px){
+      .input-row{grid-template-columns:1fr}
+      .nav-hidden-mobile{display:none}
+      .container{padding:0 1rem}
+      .header .container{padding:0 1rem}
+    }
+
+    /* Modal styles */
+    .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
+    .modal-overlay.active{display:flex}
+    .modal{background:#fff;border-radius:1rem;padding:2rem;max-width:720px;width:90%;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
+    .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;color:var(--gray-500);cursor:pointer;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border-radius:50%}
+    .modal-close:hover{background:var(--gray-100);color:var(--gray-700)}
+    .modal-title{font-size:1.25rem;font-weight:700;color:var(--gray-900);margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
+    .enhancement-option{border:1px solid #ccc;background-color:#fdfdfd;border-radius:8px;padding:1.25rem;margin-bottom:1rem;cursor:pointer;transition:.2s}
+    .enhancement-option:hover{border-color:var(--brand-600)}
+    .enhancement-option.selected{border-color:var(--brand-600);background:rgba(47,125,49,.05)}
+    .enhancement-header{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.5rem}
+    .enhancement-checkbox{margin-top:.2rem}
+    .enhancement-title{font-weight:600;color:var(--gray-900)}
+    .enhancement-description{color:var(--gray-600);font-size:.875rem;line-height:1.4}
+    .enhancement-pricing{color:var(--brand-600);font-weight:600;font-size:.875rem;margin-top:.25rem}
+    .url-input{width:100%;padding:.75rem;border:1px solid var(--gray-200);border-radius:.5rem;font-size:.875rem;margin-top:.75rem;background:#fbfcfd;box-shadow:inset 0 0.5px 1px rgba(0,0,0,.03);display:none}
+    .url-input.active{display:block}
+    .url-label{font-size:.875rem;color:var(--gray-700);margin-top:.5rem;display:none}
+    .url-label.active{display:block}
+    .modal-buttons{display:flex;gap:1rem;margin-top:2rem}
+    .modal-btn{flex:1;padding:.875rem 1.5rem;border-radius:.75rem;border:none;font-weight:600;font-size:.875rem;cursor:pointer;transition:.2s;white-space:nowrap;min-width:200px}
+    .modal-btn-primary{background:var(--brand-600);color:#fff}
+    .modal-btn-primary:hover{background:var(--brand-700)}
+    .modal-btn-secondary{background:#fff;color:var(--gray-700);border:2px solid #333}
+    .modal-btn-secondary:hover{background:var(--gray-50)}
+    
+    /* Success modal */
+    .success-content{text-align:center}
+    .success-icon{font-size:3rem;margin-bottom:1rem}
+    .success-title{font-size:1.5rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem}
+    .success-message{color:var(--gray-600);margin-bottom:2rem;line-height:1.5}
+    .campaign-details{background:var(--gray-50);border-radius:.75rem;padding:1.5rem;margin:1.5rem 0;text-align:left}
+    .detail-title{font-weight:600;color:var(--gray-900);margin-bottom:.75rem}
+    .detail-item{display:flex;justify-content:space-between;margin-bottom:.5rem;font-size:.875rem}
+    .detail-label{color:var(--gray-600)}
+    .detail-value{font-weight:600;color:var(--gray-900)}
+    .next-steps{text-align:left;margin:1.5rem 0}
+    .next-steps-title{font-weight:600;color:var(--gray-900);margin-bottom:.75rem}
+    .next-steps ol{margin-left:1.5rem;color:var(--gray-700);font-size:.875rem;line-height:1.6}
+    .next-steps li{margin-bottom:.5rem}
+    .footer{background:var(--brand-600);color:#eaf3ef}
+    .footer .container{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem}
+    .footer p{font-style:italic;font-weight:600}
+    .social-icons{display:flex;gap:.5rem}
+    .social-icon{width:2rem;height:2rem;border-radius:9999px;background:rgba(255,255,255,.15);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:#eaf3ef;font-size:.85rem}
+    .social-icon:hover{background:rgba(255,255,255,.25)}
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">Charity Stream</div>
+      <nav class="nav">
+        <div class="nav-hidden-mobile">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="userDisplayName">Guest</span></span>
+          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
+          <a href="#" class="nav-link active" onclick="handleNavClick('advertise')">Advertise</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+        </div>
+        <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
+      </nav>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="main">
+      <!-- Form Section -->
+      <div class="form-section">
+        <h1 class="form-title">Join as an Advertiser</h1>
+        <p class="form-subtitle">Make every dollar count twice—build your brand and a better world.</p>
+
+        <form id="advertiserForm">
+          <!-- Company Information -->
+          <div class="form-group">
+            <h2 class="section-header">Advertiser Information</h2>
+            
+            <div class="input-group">
+              <label class="input-label" for="companyName">Company/Organization Name *</label>
+              <input type="text" id="companyName" class="input-field" placeholder="Enter your business, nonprofit, or personal brand name" required>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="websiteUrl">Website or Social Media URL</label>
+              <input type="url" id="websiteUrl" class="input-field" placeholder="https://yourwebsite.com or @yourhandle">
+            </div>
+
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label" for="firstName">First Name *</label>
+                <input type="text" id="firstName" class="input-field" placeholder="First name" required>
+              </div>
+              <div class="input-group">
+                <label class="input-label" for="lastName">Last Name *</label>
+                <input type="text" id="lastName" class="input-field" placeholder="Last name" required>
+              </div>
+            </div>
+
+            <div class="input-row">
+              <div class="input-group">
+                <label class="input-label" for="email">Email *</label>
+                <input type="email" id="email" class="input-field" placeholder="your@email.com" required>
+              </div>
+              <div class="input-group">
+                <label class="input-label" for="jobTitle">Title/Role</label>
+                <input type="text" id="jobTitle" class="input-field" placeholder="CEO, Founder, Content Creator, etc.">
+              </div>
+            </div>
+          </div>
+
+          <!-- Campaign Setup -->
+          <div class="form-group">
+            <h2 class="section-header">Campaign Setup</h2>
+
+            <div class="input-group">
+              <label class="input-label">Ad Format *</label>
+              <div style="display:flex;gap:1rem">
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                  <input type="radio" name="adFormat" value="video" required>
+                  <span>Video (MP4, max 15 seconds)</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                  <input type="radio" name="adFormat" value="static" required>
+                  <span>Static Image</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label" for="budget">Weekly Budget Cap *</label>
+              <input type="number" id="budget" class="input-field" placeholder="$100" min="1" required>
+              <small style="color:var(--gray-600);font-size:.75rem">Campaigns automatically pause when this amount is reached</small>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">CPM Rate Selection *</label>
+              <div class="cpm-options">
+                <label class="cpm-option" for="starter">
+                  <input type="radio" name="cpmRate" value="0.50" id="starter" class="cpm-radio" required>
+                  <div class="cpm-header">
+                    <span class="cpm-name">Starter</span>
+                  </div>
+                  <div class="cpm-price">$0.50 per 1,000 views</div>
+                  <div class="cmp-description">Perfect for small businesses and nonprofits</div>
+                </label>
+
+                <label class="cpm-option selected" for="standard">
+                  <input type="radio" name="cpmRate" value="3.00" id="standard" class="cpm-radio" checked required>
+                  <div class="cpm-header">
+                    <span class="cpm-name">Standard</span>
+                    <span class="cpm-badge">Recommended</span>
+                  </div>
+                  <div class="cpm-price">$3.00 per 1,000 views</div>
+                  <div class="cmp-description">Optimal balance of reach and charitable impact</div>
+                </label>
+
+                <label class="cpm-option" for="impact">
+                  <input type="radio" name="cpmRate" value="10.00" id="impact" class="cpm-radio" required>
+                  <div class="cpm-header">
+                    <span class="cpm-name">Impact</span>
+                  </div>
+                  <div class="cpm-price">$10.00 per 1,000 views</div>
+                  <div class="cmp-description">Maximum charitable impact for premium brands</div>
+                </label>
+
+                <label class="cpm-option" for="custom">
+                  <input type="radio" name="cpmRate" value="custom" id="custom" class="cpm-radio" required>
+                  <div class="cpm-header">
+                    <span class="cpm-name">Custom Rate</span>
+                  </div>
+                  <div class="cmp-description">Set your own rate between $0.10 - $100.00</div>
+                  
+                  <div class="custom-slider" id="customSlider">
+                    <div class="slider-container">
+                      <input type="range" min="0.10" max="100" value="2.00" step="0.10" class="slider" id="cpmSlider">
+                      <div class="slider-value">$<span id="sliderValue">2.00</span> per 1,000 views</div>
+                    </div>
+                  </div>
+                </label>
+              </div>
+            </div>
+
+            <div class="input-group">
+              <label class="input-label">Upload Creative *</label>
+              <div class="upload-area" onclick="document.getElementById('fileUpload').click()">
+                <div class="upload-icon">📎</div>
+                <div class="upload-text">Click to upload your ad creative</div>
+                <div class="upload-subtext">MP4 video (max 15s) or PNG/JPG image</div>
+              </div>
+              <input type="file" id="fileUpload" accept="video/mp4,image/png,image/jpeg" style="display:none" required>
+            </div>
+          </div>
+
+          <!-- Legal -->
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input type="checkbox" id="recurringSpend" class="checkbox">
+              <label for="recurringSpend" class="checkbox-label">Make this a recurring weekly campaign (auto-renew with same budget and creative)</label>
+            </div>
+            
+            <div class="checkbox-group">
+              <input type="checkbox" id="terms" class="checkbox" required>
+              <label for="terms" class="checkbox-label">I agree to the <a href="#" style="color:var(--brand-600)">Terms and Conditions</a> *</label>
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn">Submit Campaign</button>
+
+          <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:.75rem;padding:1rem;margin-top:1.5rem">
+            <div style="font-size:.875rem;color:var(--gray-700);line-height:1.5">
+              <strong>Important:</strong> All advertisers receive equal ad rotation regardless of CPM rate. Higher donation amounts do not purchase more visibility - they simply increase your charitable impact.
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <h3 class="sidebar-title">Why Advertise With Us?</h3>
+        <ul class="benefit-list">
+          <li class="benefit-item">
+            <span class="benefit-icon">✓</span>
+            <span>100% view-through rate (no skipping allowed)</span>
+          </li>
+          <li class="benefit-item">
+            <span class="benefit-icon">✓</span>
+            <span>CPM as low as $0.10 - way below industry rates</span>
+          </li>
+          <li class="benefit-item">
+            <span class="benefit-icon">✓</span>
+            <span>Tax-deductible charitable giving while reaching engaged audiences</span>
+          </li>
+          <li class="benefit-item">
+            <span class="benefit-icon">✓</span>
+            <span>Transparent budget controls with automatic spending caps</span>
+          </li>
+          <li class="benefit-item">
+            <span class="benefit-icon">✓</span>
+            <span>Detailed reporting on charitable impact and audience reach</span>
+          </li>
+        </ul>
+
+        <div class="stats-box">
+          <h4 class="stats-title">Platform Stats</h4>
+          <div class="stat-item">
+            <span class="stat-label">Total Raised</span>
+            <span class="stat-value">$832.11</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Active Users</span>
+            <span class="stat-value">241</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">View-Through Rate</span>
+            <span class="stat-value">100%</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">Company Advertisers</span>
+            <span class="stat-value">27</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Enhancement Modal -->
+  <div class="modal-overlay" id="enhancementModal">
+    <div class="modal">
+      <button class="modal-close" onclick="closeModal()">&times;</button>
+      <h3 class="modal-title">Boost Your Campaign Before Submitting</h3>
+      
+      <div class="enhancement-option">
+        <div class="enhancement-header" onclick="toggleEnhancement('clickableLink')">
+          <input type="checkbox" id="clickableLinkEnhancement" class="enhancement-checkbox">
+          <div>
+            <div class="enhancement-title">Add a clickable link</div>
+            <div class="enhancement-description">Drive traffic straight to your site or store</div>
+            <div class="enhancement-pricing">+$0.25 per click — convert viewers into customers</div>
+          </div>
+        </div>
+        <div class="url-label" id="urlLabel">Enter your destination URL:</div>
+        <input type="url" id="destinationUrl" name="destinationUrl" class="url-input" placeholder="https://yourwebsite.com/landing-page" onclick="event.stopPropagation()">
+      </div>
+
+      <div class="enhancement-option" onclick="toggleEnhancement('expedited')">
+        <div class="enhancement-header">
+          <input type="checkbox" id="expeditedEnhancement" class="enhancement-checkbox">
+          <div>
+            <div class="enhancement-title">Get expedited approval</div>
+            <div class="enhancement-description">Within 24 hours to join this week's ad cycle</div>
+            <div class="enhancement-pricing">+$5 flat fee — skip the wait, start generating impact faster</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-buttons">
+        <button class="modal-btn modal-btn-primary" onclick="submitWithEnhancements()">Add Enhancements & Submit</button>
+        <button class="modal-btn modal-btn-secondary" onclick="submitBasicCampaign()">Submit Basic Campaign Only</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success Modal -->
+  <div class="modal-overlay" id="successModal">
+    <div class="modal">
+      <div class="success-content">
+        <div class="success-icon">✅</div>
+        <h3 class="success-title">Campaign Submitted Successfully!</h3>
+        <p class="success-message">We'll review your ad and notify you by email shortly.</p>
+        
+        <div class="campaign-details">
+          <div class="detail-title">Campaign details:</div>
+          <div class="detail-item">
+            <span class="detail-label">Budget:</span>
+            <span class="detail-value" id="finalBudget">$0</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-label">CPM Rate:</span>
+            <span class="detail-value" id="finalCPM">$0</span>
+          </div>
+          <div class="detail-item" id="enhancementsDetail" style="display:none">
+            <span class="detail-label">Enhancements:</span>
+            <span class="detail-value" id="finalEnhancements">None</span>
+          </div>
+        </div>
+
+        <div class="next-steps">
+          <div class="next-steps-title">What happens next:</div>
+          <ol>
+            <li>Review begins immediately</li>
+            <li>Email with approval decision</li>
+            <li>Campaign goes live once approved</li>
+          </ol>
+        </div>
+
+        <button class="modal-btn modal-btn-primary" onclick="submitAnother()" style="width:auto;margin:0 auto">Submit Another Campaign</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Stream ads, fuel impact, compete for good.</p>
+      <div class="social-icons">
+        <a href="#" class="social-icon">✉</a>
+        <a href="#" class="social-icon">in</a>
+        <a href="#" class="social-icon">X</a>
+        <a href="#" class="social-icon">●</a>
+        <a href="#" class="social-icon">◉</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Check authentication status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuthStatus();
+    });
+
+    function checkAuthStatus() {
+      const token = localStorage.getItem('authToken');
+      const currentUser = localStorage.getItem('currentUser');
+      
+      if (token && currentUser) {
+        try {
+          const user = JSON.parse(currentUser);
+          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          document.getElementById('userDisplayName').textContent = 'Guest';
+        }
+      } else {
+        document.getElementById('userDisplayName').textContent = 'Guest';
+      }
+    }
+
+    function handleNavClick(action) {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Redirect to login if not authenticated
+        window.location.href = '/auth.html';
+        return;
+      }
+
+      switch (action) {
+        case 'about':
+          // About page - placeholder for now
+          alert('About page coming soon!');
+          break;
+        case 'advertise':
+          // Already on advertise page
+          break;
+        case 'impact':
+          // Impact page - placeholder for now
+          alert('Impact page coming soon!');
+          break;
+        case 'watch':
+          // Go to main landing page
+          window.location.href = '/';
+          break;
+      }
+    }
+
+    // Handle CPM option selection
+    document.querySelectorAll('input[name="cpmRate"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        // Update visual selection
+        document.querySelectorAll('.cpm-option').forEach(option => option.classList.remove('selected'));
+        this.closest('.cpm-option').classList.add('selected');
+        
+        // Show/hide custom slider
+        const customSlider = document.getElementById('customSlider');
+        if (this.value === 'custom') {
+          customSlider.classList.add('active');
+        } else {
+          customSlider.classList.remove('active');
+        }
+      }); 
+    });
+
+    // Handle custom slider
+    const slider = document.getElementById('cpmSlider');
+    const sliderValue = document.getElementById('sliderValue');
+    
+    slider.addEventListener('input', function() {
+      sliderValue.textContent = parseFloat(this.value).toFixed(2);
+    });
+
+    // Handle file upload
+    document.getElementById('fileUpload').addEventListener('change', function() {
+      const uploadArea = document.querySelector('.upload-area');
+      if (this.files.length > 0) {
+        uploadArea.style.borderColor = 'var(--brand-600)';
+        uploadArea.style.background = 'rgba(47,125,49,.05)';
+        document.querySelector('.upload-text').textContent = this.files[0].name;
+        document.querySelector('.upload-subtext').textContent = 'File selected successfully';
+      }
+    });
+
+    // Handle form submission
+    document.getElementById('advertiserForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      showEnhancementModal();
+    });
+
+    // Modal functions
+    function showEnhancementModal() {
+      document.getElementById('enhancementModal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('enhancementModal').classList.remove('active');
+      document.getElementById('successModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+
+    function toggleEnhancement(type) {
+      const checkbox = document.getElementById(type + 'Enhancement');
+      const option = checkbox.closest('.enhancement-option');
+      
+      checkbox.checked = !checkbox.checked;
+      
+      if (checkbox.checked) {
+        option.classList.add('selected');
+      } else {
+        option.classList.remove('selected');
+      }
+
+      // Show/hide URL input for clickable link
+      if (type === 'clickableLink') {
+        const urlInput = document.getElementById('destinationUrl');
+        const urlLabel = document.getElementById('urlLabel');
+        
+        if (checkbox.checked) {
+          urlInput.classList.add('active');
+          urlLabel.classList.add('active');
+        } else {
+          urlInput.classList.remove('active');
+          urlLabel.classList.remove('active');
+          urlInput.value = '';
+        }
+      }
+    }
+
+    function submitWithEnhancements() {
+      // Validate URL if clickable link is selected
+      const clickableLink = document.getElementById('clickableLinkEnhancement').checked;
+      const urlInput = document.getElementById('destinationUrl');
+      
+      if (clickableLink && !urlInput.value) {
+        alert('Please enter a destination URL for your clickable link.');
+        return;
+      }
+      
+      processSubmission(true);
+    }
+
+    function submitBasicCampaign() {
+      processSubmission(false);
+    }
+
+    function processSubmission(withEnhancements) {
+      // Get form data
+      const budget = document.getElementById('budget').value;
+      const cpmRate = document.querySelector('input[name="cpmRate"]:checked').value;
+      const recurring = document.getElementById('recurringSpend').checked;
+      
+      let finalCPM = cpmRate;
+      if (cpmRate === 'custom') {
+        finalCPM = document.getElementById('sliderValue').textContent;
+      }
+
+      // Process enhancements
+      let enhancements = [];
+      if (withEnhancements) {
+        if (document.getElementById('clickableLinkEnhancement').checked) {
+          enhancements.push('Clickable link (+$0.25/click)');
+        }
+        if (document.getElementById('expeditedEnhancement').checked) {
+          enhancements.push('24-hour approval (+$5)');
+        }
+      }
+
+      // Show success modal
+      showSuccessModal(budget, finalCPM, enhancements, recurring);
+    }
+
+    function showSuccessModal(budget, cpm, enhancements, recurring) {
+      // Hide enhancement modal
+      document.getElementById('enhancementModal').classList.remove('active');
+      
+      // Update success modal content
+      document.getElementById('finalBudget').textContent = '$' + budget;
+      document.getElementById('finalCPM').textContent = '$' + cpm;
+      
+      if (recurring) {
+        document.getElementById('finalBudget').textContent += ' (weekly recurring)';
+      }
+      
+      const enhancementDetail = document.getElementById('enhancementsDetail');
+      const enhancementValue = document.getElementById('finalEnhancements');
+      
+      if (enhancements.length > 0) {
+        enhancementDetail.style.display = 'flex';
+        enhancementValue.textContent = enhancements.join(', ');
+      } else {
+        enhancementDetail.style.display = 'none';
+      }
+      
+      // Show success modal
+      document.getElementById('successModal').classList.add('active');
+    }
+
+    function submitAnother() {
+      // Reset form
+      document.getElementById('advertiserForm').reset();
+      
+      // Reset CPM selection
+      document.querySelectorAll('.cpm-option').forEach(option => option.classList.remove('selected'));
+      document.querySelector('label[for="standard"]').classList.add('selected');
+      
+      // Reset custom slider
+      document.getElementById('customSlider').classList.remove('active');
+      document.getElementById('sliderValue').textContent = '2.00';
+      
+      // Close modal
+      closeModal();
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+      if (e.target.classList.contains('modal-overlay')) {
+        closeModal();
+      }
+    });
+  </script>
+</body>
+</html>
