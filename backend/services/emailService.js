@@ -48,9 +48,9 @@ class EmailService {
       const verificationUrl = `${frontendUrl}/verify-email.html?token=${token}`;
       
       const mailOptions = {
-        from: `"LetsWatchAds" <${process.env.EMAIL_USER}>`,
+        from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Verify Your Email - LetsWatchAds',
+        subject: 'Verify Your Email - Charity Stream',
         html: this.getVerificationEmailTemplate(username, verificationUrl)
       };
 
@@ -78,9 +78,9 @@ class EmailService {
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
       const mailOptions = {
-        from: `"LetsWatchAds" <${process.env.EMAIL_USER}>`,
+        from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Welcome to LetsWatchAds - Start Watching Ads for Charity!',
+        subject: 'Welcome to Charity Stream - Start Watching Ads for Charity!',
         html: this.getWelcomeEmailTemplate(username, frontendUrl)
       };
 
@@ -103,7 +103,7 @@ class EmailService {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #3f9d5e; color: white; padding: 20px; text-align: center;">
-          <h1>Welcome to LetsWatchAds!</h1>
+          <h1>Welcome to Charity Stream!</h1>
         </div>
         <div style="padding: 20px; background-color: #f9fafb;">
           <h2>Hi ${username}!</h2>
@@ -123,7 +123,7 @@ class EmailService {
           
           <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
           <p style="color: #666; font-size: 14px;">
-            If you didn't create an account with LetsWatchAds, you can safely ignore this email.
+            If you didn't create an account with Charity Stream, you can safely ignore this email.
           </p>
         </div>
       </div>
@@ -140,7 +140,7 @@ class EmailService {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #3f9d5e; color: white; padding: 20px; text-align: center;">
-          <h1>🎉 Welcome to LetsWatchAds!</h1>
+          <h1>🎉 Welcome to Charity Stream!</h1>
         </div>
         <div style="padding: 20px; background-color: #f9fafb;">
           <h2>Hi ${username}!</h2>
