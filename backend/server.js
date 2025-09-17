@@ -658,6 +658,54 @@ app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req,
   }
 });
 
+// Database test endpoint
+app.get('/api/test/db', async (req, res) => {
+  try {
+    console.log('🧪 Testing database connectivity...');
+    
+    const { Pool } = require('pg');
+    const databaseUrl = process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      return res.status(500).json({ error: 'DATABASE_URL not configured' });
+    }
+    
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      ssl: {
+        rejectUnauthorized: false,
+        require: true
+      }
+    });
+    
+    // Test connection
+    const result = await pool.query('SELECT NOW()');
+    console.log('✅ Connected to PostgreSQL database');
+    console.log('📅 Database time:', result.rows[0].now);
+    
+    // Test verification token query
+    const tokenTest = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      AND column_name IN ('verified', 'verification_token', 'token_expires_at')
+    `);
+    
+    console.log('📋 Verification columns:', tokenTest.rows.map(row => row.column_name));
+    
+    await pool.end();
+    
+    res.json({
+      message: 'Database test successful',
+      databaseTime: result.rows[0].now,
+      verificationColumns: tokenTest.rows.map(row => row.column_name)
+    });
+  } catch (error) {
+    console.error('❌ Database test failed:', error);
+    res.status(500).json({ error: 'Database test failed', details: error.message });
+  }
+});
+
 // Migration endpoint (remove after running once)
 app.post('/api/admin/migrate-verification', async (req, res) => {
   try {
@@ -724,6 +772,51 @@ app.post('/api/admin/migrate-verification', async (req, res) => {
   } catch (error) {
     console.error('❌ Migration error:', error);
     res.status(500).json({ error: 'Migration failed', details: error.message });
+  }
+});
+
+// Database reset endpoint (remove after use)
+app.post('/api/admin/reset-database', async (req, res) => {
+  try {
+    console.log('🗑️ Starting database reset...');
+    
+    const { Pool } = require('pg');
+    const databaseUrl = process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      return res.status(500).json({ error: 'DATABASE_URL not configured' });
+    }
+    
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      ssl: {
+        rejectUnauthorized: false,
+        require: true
+      }
+    });
+    
+    // Delete all data from tables (in correct order due to foreign keys)
+    console.log('🗑️ Clearing watch_sessions table...');
+    await pool.query('DELETE FROM watch_sessions');
+    
+    console.log('🗑️ Clearing users table...');
+    await pool.query('DELETE FROM users');
+    
+    // Reset auto-increment sequences
+    console.log('🔄 Resetting sequences...');
+    await pool.query('ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE IF EXISTS watch_sessions_id_seq RESTART WITH 1');
+    
+    await pool.end();
+    
+    res.json({ 
+      message: 'Database reset completed successfully',
+      clearedTables: ['watch_sessions', 'users'],
+      resetSequences: ['users_id_seq', 'watch_sessions_id_seq']
+    });
+  } catch (error) {
+    console.error('❌ Reset error:', error);
+    res.status(500).json({ error: 'Reset failed', details: error.message });
   }
 });
 
