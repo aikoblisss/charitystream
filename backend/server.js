@@ -663,8 +663,21 @@ app.post('/api/admin/migrate-verification', async (req, res) => {
   try {
     console.log('🔧 Starting database migration for email verification...');
     
-    // Get the database pool from dbHelpers
-    const { pool } = require('./database-postgres');
+    // Import the database module to get access to the pool
+    const { Pool } = require('pg');
+    const databaseUrl = process.env.DATABASE_URL;
+    
+    if (!databaseUrl) {
+      return res.status(500).json({ error: 'DATABASE_URL not configured' });
+    }
+    
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      ssl: {
+        rejectUnauthorized: false,
+        require: true
+      }
+    });
     
     // Check if verification columns already exist
     const checkColumns = await pool.query(`
@@ -700,6 +713,8 @@ app.post('/api/admin/migrate-verification', async (req, res) => {
     console.log('🔄 Updating existing users to verified status...');
     const updateResult = await pool.query('UPDATE users SET verified = TRUE WHERE verified IS NULL');
     console.log(`✅ Updated ${updateResult.rowCount} existing users to verified`);
+
+    await pool.end();
 
     res.json({ 
       message: 'Migration completed successfully',
