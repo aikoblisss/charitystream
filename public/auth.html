@@ -124,6 +124,55 @@
       background: var(--brand-700);
     }
 
+    .user-menu {
+      position: relative;
+    }
+
+    .user-menu-btn {
+      background: none;
+      border: none;
+      color: var(--gray-600);
+      font-size: 0.875rem;
+      cursor: pointer;
+      padding: 0.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .user-menu-btn:hover {
+      color: var(--gray-900);
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: 0.5rem 0;
+      min-width: 120px;
+      z-index: 1000;
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      color: var(--gray-600);
+      font-size: 0.875rem;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      width: 100%;
+      text-align: left;
+    }
+
+    .logout-btn:hover {
+      background: var(--gray-50);
+      color: var(--gray-900);
+    }
+
     .container {
       height: 100vh;
       display: flex;
@@ -132,13 +181,13 @@
       padding: 1rem;
       position: relative;
       max-width: 100%;
-      margin-top: 4rem; /* Account for fixed header */
+      margin-top: 5rem; /* Account for fixed header + extra space */
     }
 
     /* Back to Home Button */
     .back-home {
       position: fixed;
-      top: 1.5rem;
+      top: 5.5rem;
       left: 1.5rem;
       display: flex;
       align-items: center;
@@ -696,10 +745,17 @@
       <div class="logo">Charity Stream</div>
       <nav class="nav">
         <div class="nav-hidden-mobile">
-          <span class="welcome">Welcome, <span class="welcome-bold" id="userDisplayName">Guest</span></span>
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+          <div class="user-menu">
+            <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
+              <span id="userDisplayName">Guest</span> ▼
+            </button>
+            <div class="user-dropdown" id="userDropdown" style="display: none;">
+              <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+          </div>
         </div>
         <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
       </nav>
@@ -974,6 +1030,27 @@
           break;
       }
     }
+
+    function toggleUserMenu() {
+      const dropdown = document.getElementById('userDropdown');
+      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function logout() {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      window.location.href = '/auth.html';
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const userMenu = document.querySelector('.user-menu');
+      const dropdown = document.getElementById('userDropdown');
+      
+      if (userMenu && !userMenu.contains(event.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
 
     // Initialize the page
     function initializeAuthPage() {

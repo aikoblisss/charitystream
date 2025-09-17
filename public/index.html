@@ -119,18 +119,53 @@
       background-color: var(--brand-700);
     }
 
-    .logout-btn {
+    .user-menu {
+      position: relative;
+    }
+
+    .user-menu-btn {
       background: none;
-      border: 1px solid var(--gray-300);
-      color: var(--gray-700);
-      padding: 0.25rem 0.75rem;
-      border-radius: 0.375rem;
+      border: none;
+      color: var(--gray-600);
       font-size: 0.875rem;
       cursor: pointer;
+      padding: 0.5rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .user-menu-btn:hover {
+      color: var(--gray-900);
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.5rem;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      padding: 0.5rem 0;
+      min-width: 120px;
+      z-index: 1000;
+    }
+
+    .logout-btn {
+      background: none;
+      border: none;
+      color: var(--gray-600);
+      font-size: 0.875rem;
+      cursor: pointer;
+      padding: 0.5rem 1rem;
+      width: 100%;
+      text-align: left;
     }
 
     .logout-btn:hover {
-      background-color: var(--gray-50);
+      background: var(--gray-50);
+      color: var(--gray-900);
     }
 
     /* Hero section */
@@ -514,11 +549,23 @@
       <div class="logo">Charity Stream</div>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
-          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
-          <button class="logout-btn" onclick="logout()">Logout</button>
+          <div class="user-menu">
+            <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
+              <span id="usernameDisplay">User</span> ▼
+            </button>
+            <div class="user-dropdown" id="userDropdown" style="display: none;">
+              <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+          </div>
+        </div>
+        <div class="nav-hidden-mobile" id="guestNav">
+          <a href="#" class="nav-link" onclick="handleGuestNavClick('about')">About</a>
+          <a href="#" class="nav-link" onclick="handleGuestNavClick('advertise')">Advertise</a>
+          <a href="#" class="nav-link" onclick="handleGuestNavClick('impact')">Impact</a>
+          <a href="#" class="nav-link" onclick="handleGuestNavClick('watch')">Watch Ads</a>
         </div>
         <button id="loginButton" class="login-btn" onclick="goToAuth()">Sign In / Sign Up</button>
       </nav>
@@ -717,6 +764,7 @@
 
     function showAuthenticatedUI() {
       document.getElementById('loggedInNav').style.display = 'flex';
+      document.getElementById('guestNav').style.display = 'none';
       document.getElementById('loginButton').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('currentUserRow').style.display = 'flex';
@@ -728,6 +776,7 @@
 
     function showUnauthenticatedUI() {
       document.getElementById('loggedInNav').style.display = 'none';
+      document.getElementById('guestNav').style.display = 'flex';
       document.getElementById('loginButton').style.display = 'inline-flex';
       document.getElementById('loginOverlay').style.display = 'flex';
       document.getElementById('currentUserRow').style.display = 'none';
@@ -776,6 +825,38 @@
           break;
       }
     }
+
+    function handleGuestNavClick(action) {
+      switch (action) {
+        case 'about':
+          window.location.href = '/about.html';
+          break;
+        case 'advertise':
+          window.location.href = '/advertiser.html';
+          break;
+        case 'impact':
+          alert('Please sign in to view your impact and leaderboards!');
+          break;
+        case 'watch':
+          alert('Please sign in to watch ads and start making a difference!');
+          break;
+      }
+    }
+
+    function toggleUserMenu() {
+      const dropdown = document.getElementById('userDropdown');
+      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(event) {
+      const userMenu = document.querySelector('.user-menu');
+      const dropdown = document.getElementById('userDropdown');
+      
+      if (userMenu && !userMenu.contains(event.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
 
     // Load fresh user info from server
     async function loadUserInfo() {
