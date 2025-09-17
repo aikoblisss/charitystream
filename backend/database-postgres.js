@@ -156,7 +156,7 @@ const dbHelpers = {
     try {
       await ensureTablesExist();
       const result = await pool.query(
-        `INSERT INTO users (google_id, username, email, profile_picture, email_verified, auth_provider) 
+        `INSERT INTO users (google_id, username, email, profile_picture, verified, auth_provider) 
          VALUES ($1, $2, $3, $4, $5, 'google') 
          RETURNING id`,
         [
@@ -164,7 +164,7 @@ const dbHelpers = {
           userData.username,
           userData.email,
           userData.profilePicture || 'default.png',
-          userData.emailVerified || false
+          true // Google users are always verified by Google
         ]
       );
       return [null, result.rows[0].id];
@@ -402,7 +402,7 @@ const dbHelpers = {
     try {
       await ensureTablesExist();
       const result = await pool.query(
-        'UPDATE users SET google_id = $2, profile_picture = COALESCE($3, profile_picture), auth_provider = CASE WHEN auth_provider = \'email\' THEN \'email_google\' ELSE \'google\' END WHERE id = $1 RETURNING *',
+        'UPDATE users SET google_id = $2, profile_picture = COALESCE($3, profile_picture), verified = true, auth_provider = CASE WHEN auth_provider = \'email\' THEN \'email_google\' ELSE \'google\' END WHERE id = $1 RETURNING *',
         [userId, googleId, profilePicture]
       );
       return [null, result.rows[0]];

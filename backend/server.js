@@ -518,7 +518,8 @@ app.get('/api/auth/google/callback',
       });
       
       // Generate verification token if email not verified and email service is available
-      if (!user.verified && emailService) {
+      // Skip verification for Google users since they're already verified by Google
+      if (!user.verified && user.auth_provider !== 'google' && user.auth_provider !== 'email_google' && emailService) {
         console.log('📧 Generating verification token for:', user.email);
         const verificationToken = tokenService ? tokenService.generateVerificationToken() : generateFallbackToken();
         
@@ -543,6 +544,8 @@ app.get('/api/auth/google/callback',
         }
       } else if (user.verified) {
         console.log('✅ User email already verified:', user.email);
+      } else if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
+        console.log('✅ Google user - email already verified by Google:', user.email);
       }
 
       // Generate JWT token
