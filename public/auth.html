@@ -499,7 +499,21 @@
         const result = await response.json();
         hideLoading('signin');
 
-        if (result.token) {
+        if (result.requiresVerification) {
+          // User needs to verify email
+          showError('signin', 'Please verify your email before logging in. Check your inbox for a verification link.');
+          
+          // Show resend verification option
+          const resendDiv = document.createElement('div');
+          resendDiv.innerHTML = `
+            <div style="margin-top: 10px;">
+              <button onclick="resendVerificationForLogin('${result.email}')" class="btn btn-secondary">
+                Resend Verification Email
+              </button>
+            </div>
+          `;
+          document.getElementById('signin-form').appendChild(resendDiv);
+        } else if (result.token) {
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
           
@@ -554,7 +568,15 @@
         const result = await response.json();
         hideLoading('signup');
 
-        if (result.token) {
+        if (result.requiresVerification) {
+          // Manual signup requires email verification
+          showSuccess('signup', 'Account created! Please check your email to verify your account.');
+          
+          // Show verification message
+          document.getElementById('signup-form').style.display = 'none';
+          document.getElementById('verification-message').style.display = 'block';
+          document.getElementById('verification-email').textContent = result.user.email;
+        } else if (result.token) {
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
           
@@ -672,6 +694,30 @@
     function hideUsernameLoading() {
       document.getElementById('usernameLoading').style.display = 'none';
       document.getElementById('continueBtn').disabled = false;
+    }
+
+    // Resend verification for login
+    async function resendVerificationForLogin(email) {
+      try {
+        const response = await fetch('/api/auth/resend-verification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: email })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          showSuccess('signin', 'Verification email sent! Please check your inbox.');
+        } else {
+          showError('signin', result.error || 'Failed to send verification email');
+        }
+      } catch (error) {
+        console.error('Resend verification error:', error);
+        showError('signin', 'Failed to send verification email');
+      }
     }
   </script>
 </body>

@@ -15,8 +15,10 @@ const passportConfig = require('./config/google-oauth');
 
 // Email service - handle missing config gracefully
 let emailService = null;
+let tokenService = null;
 try {
   emailService = require('./services/emailService');
+  tokenService = require('./services/tokenService');
 } catch (error) {
   console.log('⚠️ Email service not available (config file missing)');
 }
@@ -150,30 +152,43 @@ app.post('/api/auth/register', async (req, res) => {
     const saltRounds = 10;
     const password_hash = await bcrypt.hash(password, saltRounds);
 
-    // Create user
+    // Generate verification token package
+    console.log('🔐 Generating verification token...');
+    const tokenPackage = await tokenService.generateVerificationPackage();
+
+    // Create user with verification token
     console.log('👤 Creating user...');
-    const userData = { username, email, password_hash };
-    const [createErr, newUser] = await dbHelpers.createUser(userData);
+    const userData = { 
+      username, 
+      email, 
+      password_hash, 
+      auth_provider: 'email',
+      verification_token: tokenPackage.hashedToken,
+      token_expires_at: tokenPackage.expiresAt
+    };
+    const [createErr, newUserId] = await dbHelpers.createUserWithVerification(userData);
     if (createErr) {
       console.error('❌ Registration error:', createErr);
       return res.status(500).json({ error: 'Failed to create user' });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: newUser.id, username: username },
-      JWT_SECRET,
-      { expiresIn: '7d' }
-    );
+    // Send verification email
+    console.log('📧 Sending verification email...');
+    const emailResult = await emailService.sendVerificationEmail(email, username, tokenPackage.token);
+    if (!emailResult.success) {
+      console.error('❌ Failed to send verification email:', emailResult.error);
+      // Don't fail registration if email fails, but log it
+    }
 
     console.log(`✅ New user registered: ${username}`);
     res.status(201).json({
-      message: 'User created successfully',
-      token: token,
+      message: 'User created successfully. Please check your email to verify your account.',
+      requiresVerification: true,
       user: {
-        id: newUser.id,
+        id: newUserId,
         username: username,
-        email: email
+        email: email,
+        verified: false
       }
     });
 
@@ -205,6 +220,16 @@ app.post('/api/auth/login', async (req, res) => {
     if (!user) {
       console.log('❌ User not found');
       return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    // Check if email is verified
+    if (!user.verified) {
+      console.log('❌ Email not verified');
+      return res.status(401).json({ 
+        error: 'Please verify your email before logging in. Check your inbox for a verification link.',
+        requiresVerification: true,
+        email: user.email
+      });
     }
 
     // Check password
@@ -444,76 +469,129 @@ app.get('/api/auth/google/callback',
 );
 
 // Email verification endpoint
-app.get('/api/auth/verify-email/:token', (req, res) => {
-  const token = req.params.token;
-  
-  dbHelpers.getUserByVerificationToken(token, (err, user) => {
-    if (err || !user) {
+app.get('/api/auth/verify-email/:token', async (req, res) => {
+  try {
+    const token = req.params.token;
+    console.log('📧 Email verification attempt for token:', token.substring(0, 10) + '...');
+    
+    // Validate token format
+    if (!tokenService.isValidTokenFormat(token)) {
+      console.log('❌ Invalid token format');
+      return res.status(400).json({ error: 'Invalid token format' });
+    }
+
+    // Find user by verification token (database handles expiry check)
+    const [err, user] = await dbHelpers.getUserByVerificationToken(token);
+    if (err) {
+      console.error('❌ Database error during email verification:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!user) {
+      console.log('❌ Invalid or expired verification token');
       return res.status(400).json({ error: 'Invalid or expired verification token' });
     }
 
-    // Verify the email
-    dbHelpers.verifyEmail(user.id, async (err) => {
-      if (err) {
-        console.error('Error verifying email:', err);
-        return res.status(500).json({ error: 'Failed to verify email' });
+    // Verify the token against the stored hash
+    const isValidToken = await tokenService.verifyToken(token, user.verification_token);
+    if (!isValidToken) {
+      console.log('❌ Token verification failed');
+      return res.status(400).json({ error: 'Invalid verification token' });
+    }
+
+    // Update user as verified and clear token
+    const [updateErr] = await dbHelpers.verifyUserEmail(user.id);
+    if (updateErr) {
+      console.error('❌ Error updating user verification status:', updateErr);
+      return res.status(500).json({ error: 'Failed to verify email' });
+    }
+
+    console.log(`✅ Email verified for user: ${user.email}`);
+
+    // Send welcome email
+    if (emailService && emailService.isEmailConfigured()) {
+      await emailService.sendWelcomeEmail(user.email, user.username);
+    }
+
+    res.json({
+      message: 'Email verified successfully!',
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        verified: true
       }
-
-      console.log(`✅ Email verified for user: ${user.email}`);
-      
-      // Send welcome email
-      await sendWelcomeEmail(user.email, user.username);
-
-      res.json({
-        message: 'Email verified successfully!',
-        user: {
-          id: user.id,
-          username: user.username,
-          email: user.email,
-          emailVerified: true
-        }
-      });
-    });
-  });
-});
-
-// Resend verification email
-app.post('/api/auth/resend-verification', authenticateToken, async (req, res) => {
-  try {
-    const userId = req.user.userId;
-    
-    dbHelpers.getUserById(userId, async (err, user) => {
-      if (err || !user) {
-        return res.status(404).json({ error: 'User not found' });
-      }
-
-      if (user.email_verified) {
-        return res.status(400).json({ error: 'Email already verified' });
-      }
-
-      // Generate new verification token
-      const verificationToken = generateVerificationToken();
-      
-      // Update user with new verification token
-      const updateQuery = `UPDATE users SET email_verification_token = ? WHERE id = ?`;
-      dbHelpers.db.run(updateQuery, [verificationToken, userId], async (err) => {
-        if (err) {
-          console.error('Error setting verification token:', err);
-          return res.status(500).json({ error: 'Failed to generate verification token' });
-        }
-
-        // Send verification email
-        const emailResult = await sendVerificationEmail(user.email, user.username, verificationToken);
-        
-        if (emailResult.success) {
-          res.json({ message: 'Verification email sent successfully' });
-        } else {
-          res.status(500).json({ error: 'Failed to send verification email' });
-        }
-      });
     });
   } catch (error) {
-    console.error('Resend verification error:', error);
+    console.error('❌ Email verification error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Resend verification email endpoint (with rate limiting)
+const resendVerificationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3, // Maximum 3 requests per hour per IP
+  message: { error: 'Too many verification email requests. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    console.log('📧 Resend verification request for:', email);
+
+    // Find user by email
+    const [err, user] = await dbHelpers.getUserByEmail(email);
+    if (err) {
+      console.error('❌ Database error during resend verification:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    if (user.verified) {
+      return res.status(400).json({ error: 'Email already verified' });
+    }
+
+    // Generate new verification token package
+    const tokenPackage = await tokenService.generateVerificationPackage();
+    
+    // Update user with new token
+    const [updateErr] = await dbHelpers.updateVerificationToken(
+      user.id, 
+      tokenPackage.hashedToken, 
+      tokenPackage.expiresAt
+    );
+    if (updateErr) {
+      console.error('❌ Error updating verification token:', updateErr);
+      return res.status(500).json({ error: 'Failed to generate verification token' });
+    }
+
+    // Send verification email
+    const emailResult = await emailService.sendVerificationEmail(
+      user.email, 
+      user.username, 
+      tokenPackage.token
+    );
+    if (!emailResult.success) {
+      console.error('❌ Failed to send verification email:', emailResult.error);
+      return res.status(500).json({ error: 'Failed to send verification email' });
+    }
+
+    console.log('✅ Verification email resent to:', user.email);
+    res.json({ message: 'Verification email sent successfully' });
+
+  } catch (error) {
+    console.error('❌ Resend verification error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

@@ -43,8 +43,9 @@ async function createTables() {
       email VARCHAR(255) UNIQUE NOT NULL,
       password_hash VARCHAR(255),
       profile_picture VARCHAR(255) DEFAULT 'default.png',
-      email_verified BOOLEAN DEFAULT FALSE,
-      email_verification_token VARCHAR(255),
+      verified BOOLEAN DEFAULT FALSE,
+      verification_token VARCHAR(255),
+      token_expires_at TIMESTAMP,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       last_login TIMESTAMP,
       is_active BOOLEAN DEFAULT TRUE,
@@ -311,6 +312,74 @@ const dbHelpers = {
         WHERE u.id = $1
       `, [userId]);
       return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Email verification functions
+  getUserByVerificationToken: async (token) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT * FROM users WHERE verification_token = $1 AND token_expires_at > NOW()',
+        [token]
+      );
+      return [null, result.rows[0] || null];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  verifyUserEmail: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET verified = true, verification_token = NULL, token_expires_at = NULL WHERE id = $1 RETURNING *',
+        [userId]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  updateVerificationToken: async (userId, token, expiresAt) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET verification_token = $2, token_expires_at = $3 WHERE id = $1 RETURNING *',
+        [userId, token, expiresAt]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  createUserWithVerification: async (userData) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        `INSERT INTO users (username, email, password_hash, auth_provider, verification_token, token_expires_at) 
+         VALUES ($1, $2, $3, $4, $5, $6) 
+         RETURNING id`,
+        [userData.username, userData.email, userData.password_hash, userData.auth_provider, userData.verification_token, userData.token_expires_at]
+      );
+      return [null, result.rows[0].id];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  getUserByEmail: async (email) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT * FROM users WHERE email = $1',
+        [email]
+      );
+      return [null, result.rows[0] || null];
     } catch (error) {
       return [error, null];
     }

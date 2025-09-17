@@ -128,9 +128,13 @@
         There was an error verifying your email address.
       </div>
       <div class="message">
-        The verification link may be invalid or expired. Please try logging in again.
+        The verification link may be invalid or expired. You can request a new verification email.
       </div>
-      <a href="/auth.html" class="redirect-button">Back to Login</a>
+      <div style="margin: 20px 0;">
+        <input type="email" id="resend-email" placeholder="Enter your email address" style="padding: 10px; margin-right: 10px; border-radius: 4px; border: 1px solid #ccc;">
+        <button onclick="resendVerificationEmail()" class="redirect-button" style="margin-right: 10px;">Resend Verification</button>
+        <a href="/auth.html" class="redirect-button">Back to Login</a>
+      </div>
     </div>
   </div>
 
@@ -151,6 +155,8 @@
 
     async function verifyEmail(token) {
       try {
+        console.log('📧 Verifying email with token:', token.substring(0, 10) + '...');
+        
         const response = await fetch(`/api/auth/verify-email/${token}`, {
           method: 'GET',
           headers: {
@@ -159,6 +165,7 @@
         });
 
         const result = await response.json();
+        console.log('📧 Verification response:', result);
 
         if (response.ok) {
           showSuccess();
@@ -166,6 +173,7 @@
           // Store user data if provided
           if (result.user) {
             localStorage.setItem('currentUser', JSON.stringify(result.user));
+            console.log('👤 User data stored:', result.user);
           }
           
           // Redirect after 3 seconds
@@ -173,10 +181,11 @@
             window.location.href = '/';
           }, 3000);
         } else {
+          console.error('❌ Verification failed:', result.error);
           showError(result.error || 'Verification failed');
         }
       } catch (error) {
-        console.error('Verification error:', error);
+        console.error('❌ Verification error:', error);
         showError('Network error. Please check your connection.');
       }
     }
@@ -192,6 +201,35 @@
       document.getElementById('success-state').style.display = 'none';
       document.getElementById('error-state').style.display = 'block';
       document.getElementById('error-details').textContent = message;
+    }
+
+    async function resendVerificationEmail() {
+      const email = document.getElementById('resend-email').value;
+      if (!email) {
+        alert('Please enter your email address');
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/auth/resend-verification', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: email })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+          alert('Verification email sent! Please check your inbox.');
+        } else {
+          alert(result.error || 'Failed to send verification email');
+        }
+      } catch (error) {
+        console.error('Resend verification error:', error);
+        alert('Failed to send verification email. Please try again.');
+      }
     }
   </script>
 </body>
