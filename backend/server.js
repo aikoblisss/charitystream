@@ -658,6 +658,60 @@ app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req,
   }
 });
 
+// Migration endpoint (remove after running once)
+app.post('/api/admin/migrate-verification', async (req, res) => {
+  try {
+    console.log('🔧 Starting database migration for email verification...');
+    
+    // Get the database pool from dbHelpers
+    const { pool } = require('./database-postgres');
+    
+    // Check if verification columns already exist
+    const checkColumns = await pool.query(`
+      SELECT column_name 
+      FROM information_schema.columns 
+      WHERE table_name = 'users' 
+      AND column_name IN ('verified', 'verification_token', 'token_expires_at')
+    `);
+
+    const existingColumns = checkColumns.rows.map(row => row.column_name);
+    console.log('📋 Existing verification columns:', existingColumns);
+
+    // Add missing columns
+    if (!existingColumns.includes('verified')) {
+      console.log('➕ Adding verified column...');
+      await pool.query('ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT FALSE');
+      console.log('✅ verified column added');
+    }
+
+    if (!existingColumns.includes('verification_token')) {
+      console.log('➕ Adding verification_token column...');
+      await pool.query('ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)');
+      console.log('✅ verification_token column added');
+    }
+
+    if (!existingColumns.includes('token_expires_at')) {
+      console.log('➕ Adding token_expires_at column...');
+      await pool.query('ALTER TABLE users ADD COLUMN token_expires_at TIMESTAMP');
+      console.log('✅ token_expires_at column added');
+    }
+
+    // Update existing users to be verified
+    console.log('🔄 Updating existing users to verified status...');
+    const updateResult = await pool.query('UPDATE users SET verified = TRUE WHERE verified IS NULL');
+    console.log(`✅ Updated ${updateResult.rowCount} existing users to verified`);
+
+    res.json({ 
+      message: 'Migration completed successfully',
+      addedColumns: existingColumns.length === 0 ? ['verified', 'verification_token', 'token_expires_at'] : [],
+      updatedUsers: updateResult.rowCount
+    });
+  } catch (error) {
+    console.error('❌ Migration error:', error);
+    res.status(500).json({ error: 'Migration failed', details: error.message });
+  }
+});
+
 // ===== TRACKING ROUTES (Ready for your video player) =====
 
 // Start watching session

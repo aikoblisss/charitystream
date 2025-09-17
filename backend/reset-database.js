@@ -41,8 +41,8 @@ async function resetDatabase() {
     
     // Reset auto-increment sequences
     console.log('🔄 Resetting sequences...');
-    await pool.query('ALTER SEQUENCE users_id_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE watch_sessions_id_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE IF EXISTS watch_sessions_id_seq RESTART WITH 1');
     
     console.log('✅ Database reset complete!');
     console.log('📊 All user accounts and data have been removed.');

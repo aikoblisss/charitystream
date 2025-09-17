@@ -23,7 +23,7 @@ class EmailService {
     this.isConfigured = emailConfig.host && emailConfig.auth.user && emailConfig.auth.pass;
 
     if (this.isConfigured) {
-      this.transporter = nodemailer.createTransporter(emailConfig);
+      this.transporter = nodemailer.createTransport(emailConfig);
       console.log('✅ Email service configured');
     } else {
       console.log('⚠️ Email service not configured - set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS environment variables');
