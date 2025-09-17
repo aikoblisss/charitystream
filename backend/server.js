@@ -16,12 +16,32 @@ const passportConfig = require('./config/google-oauth');
 // Email service - handle missing config gracefully
 let emailService = null;
 let tokenService = null;
+
 try {
   emailService = require('./services/emailService');
-  tokenService = require('./services/tokenService');
+  console.log('✅ Email service loaded');
 } catch (error) {
-  console.log('⚠️ Email service not available (config file missing)');
+  console.log('⚠️ Email service not available:', error.message);
 }
+
+try {
+  tokenService = require('./services/tokenService');
+  console.log('✅ Token service loaded');
+} catch (error) {
+  console.log('❌ Token service failed to load:', error.message);
+  console.log('❌ This will cause registration to fail!');
+}
+
+// Fallback token generation if tokenService fails to load
+const crypto = require('crypto');
+const generateFallbackToken = () => {
+  return crypto.randomBytes(32).toString('hex');
+};
+
+const getTokenExpiry = () => {
+  const now = new Date();
+  return new Date(now.getTime() + (30 * 60 * 1000)); // 30 minutes
+};
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -154,7 +174,20 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Generate verification token package
     console.log('🔐 Generating verification token...');
-    const tokenPackage = await tokenService.generateVerificationPackage();
+    let tokenPackage;
+    
+    if (!tokenService) {
+      console.log('⚠️ Using fallback token generation');
+      const token = generateFallbackToken();
+      const expiresAt = getTokenExpiry();
+      tokenPackage = {
+        token: token,
+        hashedToken: token, // Store plain token for now (less secure but functional)
+        expiresAt: expiresAt
+      };
+    } else {
+      tokenPackage = await tokenService.generateVerificationPackage();
+    }
 
     // Create user with verification token
     console.log('👤 Creating user...');
@@ -475,9 +508,18 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
     console.log('📧 Email verification attempt for token:', token.substring(0, 10) + '...');
     
     // Validate token format
-    if (!tokenService.isValidTokenFormat(token)) {
-      console.log('❌ Invalid token format');
-      return res.status(400).json({ error: 'Invalid token format' });
+    if (!tokenService) {
+      console.log('⚠️ Using fallback token validation');
+      // Basic format check for fallback tokens
+      if (!token || typeof token !== 'string' || token.length !== 64) {
+        console.log('❌ Invalid token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
+    } else {
+      if (!tokenService.isValidTokenFormat(token)) {
+        console.log('❌ Invalid token format');
+        return res.status(400).json({ error: 'Invalid token format' });
+      }
     }
 
     // Find user by verification token (database handles expiry check)
@@ -493,7 +535,14 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
     }
 
     // Verify the token against the stored hash
-    const isValidToken = await tokenService.verifyToken(token, user.verification_token);
+    let isValidToken = true;
+    if (tokenService) {
+      isValidToken = await tokenService.verifyToken(token, user.verification_token);
+    } else {
+      // For fallback tokens, do direct comparison (less secure but functional)
+      isValidToken = token === user.verification_token;
+    }
+    
     if (!isValidToken) {
       console.log('❌ Token verification failed');
       return res.status(400).json({ error: 'Invalid verification token' });
@@ -563,7 +612,20 @@ app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req,
     }
 
     // Generate new verification token package
-    const tokenPackage = await tokenService.generateVerificationPackage();
+    let tokenPackage;
+    
+    if (!tokenService) {
+      console.log('⚠️ Using fallback token generation for resend');
+      const token = generateFallbackToken();
+      const expiresAt = getTokenExpiry();
+      tokenPackage = {
+        token: token,
+        hashedToken: token, // Store plain token for now (less secure but functional)
+        expiresAt: expiresAt
+      };
+    } else {
+      tokenPackage = await tokenService.generateVerificationPackage();
+    }
     
     // Update user with new token
     const [updateErr] = await dbHelpers.updateVerificationToken(
