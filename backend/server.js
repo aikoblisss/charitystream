@@ -514,13 +514,17 @@ app.get('/api/auth/google/callback',
         id: user.id,
         email: user.email,
         username: user.username,
-        googleId: user.google_id
+        googleId: user.google_id,
+        verified: user.verified,
+        auth_provider: user.auth_provider
       });
       
       // Generate verification token if email not verified and email service is available
       // Skip verification for Google users since they're already verified by Google
-      if (!user.verified && user.auth_provider !== 'google' && user.auth_provider !== 'email_google' && emailService) {
-        console.log('📧 Generating verification token for:', user.email);
+      const isGoogleUser = user.auth_provider === 'google' || user.auth_provider === 'email_google';
+      
+      if (!isGoogleUser && !user.verified && emailService) {
+        console.log('📧 Generating verification token for manual user:', user.email);
         const verificationToken = tokenService ? tokenService.generateVerificationToken() : generateFallbackToken();
         
         // Update user with verification token using PostgreSQL
@@ -542,10 +546,10 @@ app.get('/api/auth/google/callback',
         } catch (err) {
           console.error('Error setting verification token:', err);
         }
+      } else if (isGoogleUser) {
+        console.log('✅ Google user - skipping email verification:', user.email);
       } else if (user.verified) {
         console.log('✅ User email already verified:', user.email);
-      } else if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
-        console.log('✅ Google user - email already verified by Google:', user.email);
       }
 
       // Generate JWT token
@@ -696,6 +700,11 @@ app.post('/api/auth/resend-verification', resendVerificationLimiter, async (req,
 
     if (user.verified) {
       return res.status(400).json({ error: 'Email already verified' });
+    }
+
+    // Don't allow Google users to resend verification emails
+    if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
+      return res.status(400).json({ error: 'Google users do not need email verification' });
     }
 
     // Generate new verification token package
