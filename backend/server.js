@@ -382,22 +382,6 @@ app.post('/api/auth/update-username', authenticateToken, async (req, res) => {
 // ===== GOOGLE OAUTH ROUTES =====
 // Enabled for production
 
-// Test endpoint to verify database connectivity
-app.get('/api/test/db', async (req, res) => {
-  console.log('🧪 Testing database connectivity...');
-  try {
-    const [err, user] = await dbHelpers.getUserById(1);
-    if (err) {
-      console.error('❌ Database test failed:', err);
-      return res.status(500).json({ error: 'Database connection failed', details: err.message });
-    }
-    console.log('✅ Database test successful');
-    res.json({ message: 'Database connected successfully', user: user || 'No user with ID 1' });
-  } catch (error) {
-    console.error('❌ Database test error:', error);
-    res.status(500).json({ error: 'Database test failed', details: error.message });
-  }
-});
 
 // Google OAuth login
 app.get('/api/auth/google', (req, res, next) => {
