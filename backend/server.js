@@ -1136,6 +1136,9 @@ app.post('/api/admin/reset-database', async (req, res) => {
     console.log('🗑️ Clearing users table...');
     await pool.query('DELETE FROM users');
     
+    console.log('🗑️ Clearing password reset tokens...');
+    // Note: This is handled by the DELETE FROM users above, but good to be explicit
+    
     // Reset auto-increment sequences
     console.log('🔄 Resetting sequences...');
     await pool.query('ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1');
@@ -1146,6 +1149,7 @@ app.post('/api/admin/reset-database', async (req, res) => {
     res.json({ 
       message: 'Database reset completed successfully',
       clearedTables: ['watch_sessions', 'users'],
+      clearedData: ['user accounts', 'watch sessions', 'password reset tokens', 'verification tokens'],
       resetSequences: ['users_id_seq', 'watch_sessions_id_seq']
     });
   } catch (error) {
