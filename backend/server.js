@@ -624,6 +624,10 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
       await emailService.sendWelcomeEmail(user.email, user.username);
     }
 
+    // Check if user needs to set username (manual signup users)
+    const emailPrefix = user.email.split('@')[0];
+    const needsUsernameSetup = !user.username || user.username === emailPrefix;
+    
     res.json({
       message: 'Email verified successfully!',
       token: jwtToken,
@@ -635,7 +639,8 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
         totalMinutesWatched: user.total_minutes_watched,
         currentMonthMinutes: user.current_month_minutes,
         subscriptionTier: user.subscription_tier
-      }
+      },
+      needsUsernameSetup: needsUsernameSetup
     });
   } catch (error) {
     console.error('❌ Email verification error:', error);

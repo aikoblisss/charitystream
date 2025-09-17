@@ -1012,6 +1012,7 @@
 
         if (result.requiresVerification) {
           showMessage('Account created! Please check your email to verify your account.', 'success');
+          // Don't show username popup for manual signups - they need to verify email first
         } else if (result.token) {
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
