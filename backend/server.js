@@ -530,7 +530,7 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
     console.log(`✅ Email verified for user: ${user.email}`);
 
     // Generate JWT token for immediate login
-    const token = jwt.sign(
+    const jwtToken = jwt.sign(
       { userId: user.id, username: user.username },
       JWT_SECRET,
       { expiresIn: '7d' }
@@ -543,7 +543,7 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
 
     res.json({
       message: 'Email verified successfully!',
-      token: token,
+      token: jwtToken,
       user: {
         id: user.id,
         username: user.username,
