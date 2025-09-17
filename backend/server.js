@@ -211,7 +211,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     // Send verification email
     console.log('📧 Sending verification email...');
-    const emailResult = await emailService.sendVerificationEmail(email, username, tokenPackage.token);
+    const emailResult = await emailService.sendVerificationEmail(email, email.split('@')[0], tokenPackage.token);
     if (!emailResult.success) {
       console.error('❌ Failed to send verification email:', emailResult.error);
       // Don't fail registration if email fails, but log it
