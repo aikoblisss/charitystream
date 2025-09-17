@@ -343,6 +343,31 @@
       <div class="error-message" id="usernameError"></div>
     </div>
 
+    <!-- Password Setup for Google Users -->
+    <div class="username-setup" id="passwordSetup">
+      <h3>Set Up Your Password</h3>
+      <p style="color: #aaa; margin-bottom: 20px;">Create a password to enable manual login for your Google account</p>
+      
+      <div class="form-group">
+        <label for="passwordSetupEmail">Email</label>
+        <input type="email" id="passwordSetupEmail" name="email" readonly>
+      </div>
+      
+      <div class="form-group">
+        <label for="passwordSetupPassword">Password</label>
+        <input type="password" id="passwordSetupPassword" name="password" required minlength="6">
+      </div>
+      
+      <div class="form-group">
+        <label for="passwordSetupConfirm">Confirm Password</label>
+        <input type="password" id="passwordSetupConfirm" name="confirmPassword" required minlength="6">
+      </div>
+      
+      <button class="auth-button" id="setupPasswordBtn">Set Up Password</button>
+      <div class="loading" id="passwordSetupLoading">Setting up your password...</div>
+      <div class="error-message" id="passwordSetupError"></div>
+    </div>
+
     <div class="back-link">
       <a href="/">← Back to Video Player</a>
     </div>
@@ -470,6 +495,9 @@
     // Username setup form handler
     document.getElementById('continueBtn').addEventListener('click', handleUsernameSetup);
 
+    // Password setup form handler
+    document.getElementById('setupPasswordBtn').addEventListener('click', handlePasswordSetup);
+
     // Handle email/password sign in
     async function handleSignIn(event) {
       event.preventDefault();
@@ -513,6 +541,9 @@
             </div>
           `;
           document.getElementById('signin-form').appendChild(resendDiv);
+        } else if (result.requiresPasswordSetup) {
+          // Google user needs to set up password
+          showPasswordSetupForm(result.email, result.username);
         } else if (result.token) {
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
@@ -641,6 +672,58 @@
       }
     }
 
+    // Handle password setup for Google users
+    async function handlePasswordSetup() {
+      const email = document.getElementById('passwordSetupEmail').value;
+      const password = document.getElementById('passwordSetupPassword').value;
+      const confirmPassword = document.getElementById('passwordSetupConfirm').value;
+      
+      if (!password || password.length < 6) {
+        showPasswordSetupError('Password must be at least 6 characters long');
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        showPasswordSetupError('Passwords do not match');
+        return;
+      }
+
+      showPasswordSetupLoading();
+      
+      try {
+        const response = await fetch('/api/auth/setup-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ 
+            email: email,
+            password: password,
+            confirmPassword: confirmPassword
+          })
+        });
+
+        const data = await response.json();
+        hidePasswordSetupLoading();
+        
+        if (data.token) {
+          localStorage.setItem('authToken', data.token);
+          localStorage.setItem('currentUser', JSON.stringify(data.user));
+          
+          showPasswordSetupSuccess('Password set up successfully! Redirecting...');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
+        } else {
+          showPasswordSetupError(data.error || 'Failed to set up password');
+        }
+      } catch (error) {
+        hidePasswordSetupLoading();
+        showPasswordSetupError('Network error. Please try again.');
+        console.error('Password setup error:', error);
+      }
+    }
+
     // Helper functions
     function showError(message) {
       const errorDiv = document.createElement('div');
@@ -694,6 +777,49 @@
     function hideUsernameLoading() {
       document.getElementById('usernameLoading').style.display = 'none';
       document.getElementById('continueBtn').disabled = false;
+    }
+
+    // Password setup helper functions
+    function showPasswordSetupForm(email, username) {
+      // Hide sign-in form
+      document.getElementById('signin-form').style.display = 'none';
+      
+      // Show password setup form
+      document.getElementById('passwordSetup').style.display = 'block';
+      
+      // Pre-fill email
+      document.getElementById('passwordSetupEmail').value = email;
+      
+      // Clear any previous errors
+      hidePasswordSetupError();
+    }
+
+    function showPasswordSetupError(message) {
+      const errorDiv = document.getElementById('passwordSetupError');
+      errorDiv.style.display = 'block';
+      errorDiv.textContent = message;
+    }
+
+    function hidePasswordSetupError() {
+      document.getElementById('passwordSetupError').style.display = 'none';
+    }
+
+    function showPasswordSetupSuccess(message) {
+      const successDiv = document.createElement('div');
+      successDiv.className = 'success-message';
+      successDiv.style.display = 'block';
+      successDiv.textContent = message;
+      document.getElementById('passwordSetup').appendChild(successDiv);
+    }
+
+    function showPasswordSetupLoading() {
+      document.getElementById('passwordSetupLoading').style.display = 'block';
+      document.getElementById('setupPasswordBtn').disabled = true;
+    }
+
+    function hidePasswordSetupLoading() {
+      document.getElementById('passwordSetupLoading').style.display = 'none';
+      document.getElementById('setupPasswordBtn').disabled = false;
     }
 
     // Resend verification for login

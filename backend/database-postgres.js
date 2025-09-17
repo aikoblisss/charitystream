@@ -409,6 +409,20 @@ const dbHelpers = {
     } catch (error) {
       return [error, null];
     }
+  },
+
+  // Set up password for Google users
+  setupPassword: async (userId, passwordHash) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET password_hash = $2, auth_provider = CASE WHEN auth_provider = \'google\' THEN \'email_google\' ELSE auth_provider END WHERE id = $1 RETURNING *',
+        [userId, passwordHash]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
   }
 };
 

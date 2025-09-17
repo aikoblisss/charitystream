@@ -255,8 +255,8 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // Check if email is verified
-    if (!user.verified) {
+    // Check if email is verified (skip for Google users)
+    if (!user.verified && user.auth_provider !== 'google' && user.auth_provider !== 'email_google') {
       console.log('❌ Email not verified');
       return res.status(401).json({ 
         error: 'Please verify your email before logging in. Check your inbox for a verification link.',
@@ -265,14 +265,26 @@ app.post('/api/auth/login', async (req, res) => {
       });
     }
 
-    // Check password
+    // Check if user has a password (Google users might not have one)
     console.log('🔐 Checking password...');
     console.log('🔍 Password hash type:', typeof user.password_hash);
     console.log('🔍 Password hash value:', user.password_hash);
+    console.log('🔍 Auth provider:', user.auth_provider);
     
     if (!user.password_hash || typeof user.password_hash !== 'string') {
-      console.log('❌ Invalid password hash in database');
-      return res.status(401).json({ error: 'Invalid credentials' });
+      // User doesn't have a password - check if they're a Google user
+      if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
+        console.log('🔑 Google user without password - redirecting to password setup');
+        return res.status(401).json({ 
+          error: 'Please set up a password for your account to enable manual login.',
+          requiresPasswordSetup: true,
+          email: user.email,
+          username: user.username
+        });
+      } else {
+        console.log('❌ Invalid password hash in database');
+        return res.status(401).json({ error: 'Invalid credentials' });
+      }
     }
     
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
@@ -375,6 +387,84 @@ app.post('/api/auth/update-username', authenticateToken, async (req, res) => {
     res.json({ message: 'Username updated successfully', username: username });
   } catch (error) {
     console.error('Update username error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Set up password for Google users
+app.post('/api/auth/setup-password', async (req, res) => {
+  try {
+    const { email, password, confirmPassword } = req.body;
+
+    // Basic validation
+    if (!email || !password || !confirmPassword) {
+      return res.status(400).json({ error: 'Email, password, and password confirmation are required' });
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).json({ error: 'Passwords do not match' });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters' });
+    }
+
+    // Find user by email
+    const [err, user] = await dbHelpers.getUserByEmail(email);
+    if (err) {
+      console.error('❌ Database error during password setup:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Check if user is a Google user
+    if (user.auth_provider !== 'google' && user.auth_provider !== 'email_google') {
+      return res.status(400).json({ error: 'This account is not eligible for password setup' });
+    }
+
+    // Check if user already has a password
+    if (user.password_hash) {
+      return res.status(400).json({ error: 'Password already set for this account' });
+    }
+
+    // Hash password
+    const saltRounds = 10;
+    const password_hash = await bcrypt.hash(password, saltRounds);
+
+    // Update user with password
+    const [updateErr, updatedUser] = await dbHelpers.setupPassword(user.id, password_hash);
+    if (updateErr) {
+      console.error('❌ Error setting up password:', updateErr);
+      return res.status(500).json({ error: 'Failed to set up password' });
+    }
+
+    console.log(`✅ Password set up for Google user: ${user.email}`);
+
+    // Generate JWT token for immediate login
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      message: 'Password set up successfully! You are now logged in.',
+      token: token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        totalMinutesWatched: user.total_minutes_watched,
+        currentMonthMinutes: user.current_month_minutes,
+        subscriptionTier: user.subscription_tier
+      }
+    });
+
+  } catch (error) {
+    console.error('Setup password error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
