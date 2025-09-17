@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Impact & Leaderboards — Charity Stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --brand-primary:#2F7D31;
+      --brand-600:#2F7D31;
+      --brand-700:#276629;
+      --gray-50:#f9fafb; --gray-75:#FAFAFA; --gray-100:#f3f4f6; --gray-200:#e5e7eb; --gray-300:#d1d5db;
+      --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-900:#111827;
+      --fs-xs:.9rem; --fs-sm:.95rem; --fs-md:1.05rem; --fs-1:1.25rem; --fs-2:1.5rem; --fs-3:2rem; --fs-4:2.5rem; --fs-5:3.25rem;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',sans-serif;color:var(--gray-900);background:#fff;line-height:1.5}
+    .container{max-width:980px;margin:0 auto;padding:0 1rem}
+    /* Hero */
+    .hero{text-align:center;padding:3rem 1rem 2.5rem;border-bottom:1px solid var(--gray-200);background:var(--gray-75)}
+    .eyebrow{font-weight:700;color:var(--brand-600);letter-spacing:.02em;margin-bottom:.25rem}
+    .hero .title{font-size:2.9rem;font-weight:800;margin-bottom:.3rem;letter-spacing:-.01em}
+    .hero .subtitle{font-size:1.05rem;color:var(--gray-600);white-space:nowrap}
+    /* Your Impact */
+    .your-impact{padding:2.25rem 0 2rem;text-align:center}
+    .section-h{text-align:center;font-size:var(--fs-3);font-weight:800;margin-bottom:1rem}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+    .stat{border:1px solid var(--gray-200);border-radius:.75rem;padding:1.25rem;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center}
+    .stat-label{color:var(--gray-600);font-size:.9rem;margin-bottom:.5rem;font-weight:600}
+    .stat-value{font-size:1.85rem;font-weight:800;color:var(--brand-600);font-variant-numeric:tabular-nums}
+    /* Tabs + boards */
+    .tabs{padding:2.25rem 0 2.25rem;background:var(--gray-75);border-top:1px solid var(--gray-200);border-bottom:1px solid var(--gray-200)}
+    .intro{text-align:center;color:var(--gray-600);margin-bottom:2rem}
+    .tabbar{display:flex;justify-content:center;gap:.75rem;margin-bottom:1.5rem}
+    .tab{padding:.5rem 1rem;border:1px solid var(--gray-300);border-radius:.5rem;background:#fff;font-weight:600;color:var(--gray-600);cursor:pointer}
+    .tab.active{border-color:var(--brand-600);color:var(--brand-600);background:rgba(47,125,49,.10);font-weight:700;box-shadow:0 1px 2px rgba(0,0,0,.06), 0 0 0 2px rgba(47,125,49,.10) inset}
+    .board{display:none}
+    .board.active{display:block}
+    .board-card{max-width:980px;margin:0 auto;background:#fff;border:1px solid var(--gray-200);border-radius:.75rem;overflow:hidden;box-shadow:0 2px 10px rgba(0,0,0,.06)}
+    .board-head{padding:1.25rem 1.75rem;background:var(--gray-50);border-bottom:1px solid var(--gray-200);font-weight:700;color:var(--brand-600)}
+    .row{display:grid;grid-template-columns:1fr auto;align-items:center;padding:.85rem 1.5rem;border-bottom:1px solid var(--gray-100);column-gap:1rem}
+    .row:last-child{border-bottom:none}
+    .left{display:flex;gap:.55rem;align-items:center;min-width:0}
+    .rank{color:var(--gray-900);font-weight:700;font-size:1rem;line-height:1.2;width:2.6ch;text-align:right;display:inline-block;font-variant-numeric:tabular-nums;margin-right:.5rem}
+    
+    .title-sm{font-weight:700;color:var(--gray-900);margin-bottom:.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.005em}
+    .meta{font-size:.85rem;color:var(--gray-600)}
+    .value{font-weight:700;color:var(--brand-700);font-variant-numeric:tabular-nums;text-align:right;min-width:12ch}
+    .me{background:#f0fdf4;border-left:4px solid var(--brand-600)}
+    .me .title-sm{color:var(--brand-700)}
+    /* Reports rail */
+    .reports{padding:3rem 0}
+    .reports .section-h u{ text-decoration-color: var(--brand-primary); text-decoration-thickness:5px; text-underline-offset:10px }
+    .reports .sub{ text-align:center; color:var(--gray-600); margin-top:-.25rem; margin-bottom:2.5rem }
+    .rail{position:relative;max-width:1200px;margin:0 auto}
+    .scroller{display:flex;gap:1.25rem;overflow-x:auto;padding:0 .5rem 1rem;scroll-behavior:smooth}
+    .scroller::-webkit-scrollbar{height:8px}
+    .scroller::-webkit-scrollbar-track{background:var(--gray-100);border-radius:4px}
+    .scroller::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:4px}
+    .card{min-width:420px;max-width:420px;background:#fff;border:1px solid var(--gray-200);border-radius:.75rem;padding:1.25rem;box-shadow:0 2px 10px rgba(0,0,0,.06);transition:.2s}
+    .card:hover{transform:translateY(-2px);border-color:var(--brand-600);box-shadow:0 8px 24px rgba(47,125,49,.15)}
+    .c-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem}
+    .c-ico{width:2.25rem;height:2.25rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center}
+    .i-blue{background:#dbeafe}.i-green{background:#f0fdf4}.i-amber{background:#fef3c7}.i-cyan{background:#ecfeff}
+    .c-title{font-weight:700;font-size:1.1rem}
+    .c-date{font-size:.9rem;color:var(--gray-600)}
+    .c-body{font-size:1rem;color:var(--gray-700);margin:.5rem 0 1rem;line-height:1.55}
+    .c-link{color:var(--brand-600);font-weight:700;text-decoration:none}
+    .arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:9999px;background:#fff;border:1px solid var(--gray-200);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.08)}
+    .arrow:hover{background:var(--gray-50);border-color:var(--brand-600);color:var(--brand-600)}
+    .arrow.l{left:-20px}.arrow.r{right:-20px}
+    @media (max-width:768px){ .card{min-width:320px;max-width:320px} }
+  
+    .section--green{background:var(--brand-primary);color:#fff}
+    .cta{padding:3rem 0;text-align:center}
+    .cta-title{font-size:1.75rem;font-weight:600;margin-bottom:.5rem}
+    .cta-subtitle{font-size:1rem;margin-bottom:2rem;font-weight:400}
+    .cta-buttons{display:flex;gap:1rem;justify-content:center}
+    .cta-btn{padding:.75rem 1.5rem;border-radius:.5rem;text-decoration:none;font-weight:600;font-size:.875rem;transition:.2s}
+    .btn-primary{background:#fff;color:var(--brand-primary)}
+    .btn-primary:hover{background:#f1f5f9}
+    .btn-secondary{background:transparent;color:#fff;border:1px solid #fff}
+    .btn-secondary:hover{background:rgba(255,255,255,.1)}
+    .footer{background:var(--brand-700);color:#d7e7de}
+    .footer .container{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem}
+    .footer p{font-style:italic;font-weight:600}
+    .social-icons{display:flex;gap:.5rem}
+    .social-icon{width:2rem;height:2rem;border-radius:9999px;background:rgba(255,255,255,.15);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:#eaf3ef;font-size:.85rem}
+    .social-icon:hover{background:rgba(255,255,255,.25)}
+
+  
+    .header{border-bottom:1px solid var(--gray-200);width:100%}
+    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em}
+    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
+    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
+    .welcome{color:var(--gray-900)}
+    .welcome-bold{font-weight:500}
+    .nav-link{text-decoration:none}
+    .nav-link:hover{color:var(--gray-900)}
+    .nav-link.active{color:var(--brand-600);font-weight:600}
+    .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer}
+    .watch-ads-btn:hover{background:var(--brand-700)}
+
+  
+    /* ---- Professional rhythm & spacing ---- */
+    html, body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+    .container{max-width:1120px}
+    .hero{padding:3rem 1rem}
+    .your-impact{padding:2.5rem 0}
+    .tabs{padding:2.5rem 0}
+    .section-h{margin-bottom:0.75rem}
+    .intro{margin-top:0.25rem;margin-bottom:1.5rem}
+    .stats{gap:1.25rem}
+    .stat{padding:1.25rem 1.5rem}
+    .stat-value{font-variant-numeric: tabular-nums}
+    .board-card{border-radius:.625rem}
+    .board-head{padding:1rem 1.5rem}
+    .row{padding:.85rem 1.5rem}
+    .title-sm{letter-spacing:-.005em}
+    .nav .nav-link{color:var(--gray-700)}
+    .nav .nav-link.active, .board-head{color:var(--brand-600)}
+
+  
+  @media (max-width: 768px){
+    .tabbar{gap:.5rem;flex-wrap:wrap}
+    .board-card{margin:0 .5rem}
+    .row{padding:.75rem 1rem}
+    .cta-buttons{flex-direction:column}
+    .header .nav-hidden-mobile{display:none}
+    .header .container{padding:0 1rem}
+  }
+
+  
+  .me .value{color:var(--brand-600)}
+
+  
+    .highlight{
+      text-decoration: underline;
+      text-decoration-color: var(--brand-primary);
+      text-decoration-thickness: 4px;
+      text-underline-offset: 6px;
+    }
+
+  
+  @media (max-width: 820px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+  }
+  @media (max-width: 520px){
+    .stats{grid-template-columns:1fr}
+    .tabbar{flex-wrap:wrap}
+  }
+
+  
+.me{
+  background: linear-gradient(90deg, rgba(47,125,49,0.08) 0%, rgba(47,125,49,0.15) 100%);
+  border-left: 4px solid var(--brand-600);
+  border-radius: .5rem;
+  box-shadow: 0 2px 6px rgba(47,125,49,0.15);
+}
+.me .title-sm{
+  font-weight: 800;
+  color: var(--brand-700);
+}
+.me .meta{
+  font-weight: 600;
+  color: var(--brand-600);
+}
+.me .value{
+  font-weight: 800;
+  color: var(--brand-700);
+}
+
+  
+.section-h{ text-align:center; font-size:2rem; font-weight:800; margin-bottom:.75rem; }
+
+  
+@media (max-width: 820px){ .stats{grid-template-columns:repeat(2,1fr)} }
+@media (max-width: 520px){ .stats{grid-template-columns:1fr} .tabbar{flex-wrap:wrap} }
+
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">Charity Stream</div>
+      <nav class="nav">
+        <div class="nav-hidden-mobile">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="userDisplayName">Guest</span></span>
+          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
+          <a href="#" class="nav-link active" onclick="handleNavClick('impact')">Impact</a>
+        </div>
+        <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="eyebrow">Real-Time Impact Tracking</div>
+      <h1 class="title">Every Ad Watched <span class="highlight">Matters</span></h1>
+      <p class="subtitle">Track your progress, compete with purpose, and see exactly where your contributions make a difference.</p>
+    </div>
+  </section>
+
+  <!-- Your Impact -->
+  <section class="your-impact">
+    <div class="container">
+      <h2 class="section-h"><span>Your Impact</span></h2>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Current Rank</div>
+          <div class="stat-value">#53</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Watch Time</div>
+          <div class="stat-value">554 mins</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Ads Watched</div>
+          <div class="stat-value">615</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Donations Generated</div>
+          <div class="stat-value">$6.15</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Leaderboards -->
+  <section class="tabs">
+    <div class="container">
+      <h2 class="section-h"><span>Global Impact Leaderboards</span></h2>
+      <p class="intro">Discover the most engaged supporters, active sponsors, and impactful charities worldwide.</p>
+      <div class="tabbar">
+        <button class="tab active" onclick="showTab('watchers', this)">Top Supporters</button>
+        <button class="tab" onclick="showTab('sponsors', this)">Active Sponsors</button>
+        <button class="tab" onclick="showTab('charities', this)">Funded Charities</button>
+      </div>
+
+      <!-- Watchers -->
+      <div id="watchers" class="board active">
+        <div class="board-card">
+          <div class="board-head">Top Watchers — Worldwide</div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">1</div>
+              <div>
+                <div class="title-sm">Branden4Good</div>
+                <div class="meta">12-day streak • Active 4 months</div>
+              </div>
+            </div>
+            <div class="value">2,517 mins</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">2</div>
+              <div>
+                <div class="title-sm">HiMom11</div>
+                <div class="meta">8-day streak • Active 2 months</div>
+              </div>
+            </div>
+            <div class="value">2,142 mins</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">3</div>
+              <div>
+                <div class="title-sm">AdsAreAwesome</div>
+                <div class="meta">5-day streak • Active 6 months</div>
+              </div>
+            </div>
+            <div class="value">1,894 mins</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">4</div>
+              <div>
+                <div class="title-sm">Payit4Ward</div>
+                <div class="meta">2-day streak • Active 3 months</div>
+              </div>
+            </div>
+            <div class="value">1,563 mins</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">5</div>
+              <div>
+                <div class="title-sm">DrakeFan32</div>
+                <div class="meta">1-day streak • Active 1 month</div>
+              </div>
+            </div>
+            <div class="value">1,244 mins</div>
+          </div>
+          <!-- You -->
+          <div class="row me">
+            <div class="left">
+              <div class="rank">53</div>
+              <div>
+                <div class="title-sm">StickyHenry (You)</div>
+                <div class="meta">3-day streak • Active 3 weeks • #53 of 847</div>
+              </div>
+            </div>
+            <div class="value">554 mins</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sponsors -->
+      <div id="sponsors" class="board">
+        <div class="board-card">
+          <div class="board-head">Top Sponsors — Worldwide</div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">1</div>
+              <div>
+                <div class="title-sm">Taco Bell</div>
+                <div class="meta">Quick‑service restaurant • 2,431 views</div>
+              </div>
+            </div>
+            <div class="value">$12,430 donated</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">2</div>
+              <div>
+                <div class="title-sm">Patagonia</div>
+                <div class="meta">Outdoor apparel • 1,904 views</div>
+              </div>
+            </div>
+            <div class="value">$8,320 donated</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">3</div>
+              <div>
+                <div class="title-sm">Acme Bank</div>
+                <div class="meta">Fintech savings app • 1,256 views</div>
+              </div>
+            </div>
+            <div class="value">$5,210 donated</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">4</div>
+              <div>
+                <div class="title-sm">Education Matters</div>
+                <div class="meta">Nonprofit education initiative • 2 views</div>
+              </div>
+            </div>
+            <div class="value">$0.16 donated</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">5</div>
+              <div>
+                <div class="title-sm">Clean Water Awareness</div>
+                <div class="meta">Global water crisis education • 0 views</div>
+              </div>
+            </div>
+            <div class="value">$0.00 donated</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charities -->
+      <div id="charities" class="board">
+        <div class="board-card">
+          <div class="board-head">Top Charities — Worldwide</div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">1</div>
+              <div>
+                <div class="title-sm">World Wildlife Fund</div>
+                <div class="meta">Environmental • Wildlife Protection</div>
+                <div class="meta">Protecting animals & habitats worldwide</div>
+                <div class="meta">1,247 votes</div>
+              </div>
+            </div>
+            <div class="value">$487 received</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">2</div>
+              <div>
+                <div class="title-sm">Education for All</div>
+                <div class="meta">Education • Global Access</div>
+                <div class="meta">Expanding learning opportunities</div>
+                <div class="meta">934 votes</div>
+              </div>
+            </div>
+            <div class="value">$343 received</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">3</div>
+              <div>
+                <div class="title-sm">Clean Water Initiative</div>
+                <div class="meta">Water & Sanitation • Sustainable wells</div>
+                <div class="meta">756 votes</div>
+              </div>
+            </div>
+            <div class="value">$298 received</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">4</div>
+              <div>
+                <div class="title-sm">Doctors Without Borders</div>
+                <div class="meta">Healthcare • Emergency Relief</div>
+                <div class="meta">612 votes</div>
+              </div>
+            </div>
+            <div class="value">$235 received</div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank">5</div>
+              <div>
+                <div class="title-sm">Local Food Bank Network</div>
+                <div class="meta">Hunger Relief • 98% Direct Impact</div>
+                <div class="meta">445 votes</div>
+              </div>
+            </div>
+            <div class="value">$187 received</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Recent Impact Reports (side scroll) -->
+  <section class="reports">
+    <div class="container">
+      <h2 class="section-h"><u>Recent Impact Reports</u></h2>
+      <p class="sub">Transparent reporting on where your donations make a difference</p>
+      <div class="rail">
+        <button class="arrow l" aria-label="Scroll left" onclick="scrollReports('left')">‹</button>
+        <button class="arrow r" aria-label="Scroll right" onclick="scrollReports('right')">›</button>
+        <div id="reportRail" class="scroller">
+          <article class="card">
+            <div class="c-head">
+              <div class="c-ico i-blue">📊</div>
+              <div>
+                <div class="c-title">September Transparency Report</div>
+                <div class="c-date">Published 3 days ago</div>
+              </div>
+            </div>
+            <div class="c-body">Last month we donated $2,847 across 8 charities. See the complete breakdown of where every dollar went, including administrative costs and charity verification.</div>
+            <a class="c-link" href="#">View full report →</a>
+          </article>
+
+          <article class="card">
+            <div class="c-head">
+              <div class="c-ico i-green">🌍</div>
+              <div>
+                <div class="c-title">WWF Impact Update</div>
+                <div class="c-date">Published 1 week ago</div>
+              </div>
+            </div>
+            <div class="c-body">Your collective $487 donation helped protect 2.3 acres of rainforest and supported anti‑poaching efforts for endangered tigers in Southeast Asia.</div>
+            <a class="c-link" href="#">Read impact story →</a>
+          </article>
+
+          <article class="card">
+            <div class="c-head">
+              <div class="c-ico i-amber">🎓</div>
+              <div>
+                <div class="c-title">Education for All — Results</div>
+                <div class="c-date">Published 2 weeks ago</div>
+              </div>
+            </div>
+            <div class="c-body">The $342 raised provided school supplies for 28 children and funded teacher training in three rural villages.</div>
+            <a class="c-link" href="#">See photos & updates →</a>
+          </article>
+
+          <article class="card">
+            <div class="c-head">
+              <div class="c-ico i-cyan">💧</div>
+              <div>
+                <div class="c-title">Clean Water — Project Progress</div>
+                <div class="c-date">Published 3 weeks ago</div>
+              </div>
+            </div>
+            <div class="c-body">Your $298 contribution finished 3 new water pumps, providing clean water for 500+ families this year.</div>
+            <a class="c-link" href="#">View project photos →</a>
+          </article>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Check authentication status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuthStatus();
+    });
+
+    function checkAuthStatus() {
+      const token = localStorage.getItem('authToken');
+      const currentUser = localStorage.getItem('currentUser');
+      
+      if (token && currentUser) {
+        try {
+          const user = JSON.parse(currentUser);
+          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          document.getElementById('userDisplayName').textContent = 'Guest';
+        }
+      } else {
+        document.getElementById('userDisplayName').textContent = 'Guest';
+      }
+    }
+
+    function handleNavClick(action) {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Redirect to login if not authenticated
+        window.location.href = '/auth.html';
+        return;
+      }
+
+      switch (action) {
+        case 'about':
+          alert('About page coming soon!');
+          break;
+        case 'advertise':
+          window.location.href = '/advertiser.html';
+          break;
+        case 'impact':
+          // Already on impact page
+          break;
+        case 'watch':
+          window.location.href = '/';
+          break;
+      }
+    }
+
+    function showTab(id, el){
+      document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+      document.querySelectorAll('.board').forEach(b=>b.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById(id).classList.add('active');
+    }
+    function scrollReports(dir){
+      const rail = document.getElementById('reportRail');
+      const delta = Math.min(rail.clientWidth, 600);
+      rail.scrollBy({left: dir==='left' ? -delta : delta, behavior:'smooth'});
+    }
+  </script>
+
+  <!-- CTA (full green) -->
+  <section class="section--green cta">
+    <div class="container">
+      <h2 class="cta-title">Together, Every View Counts.</h2>
+      <p class="cta-subtitle">Climb the board. Drive the change.</p>
+      <div class="cta-buttons">
+        <a href="#" class="cta-btn btn-primary" onclick="handleNavClick('watch')">Watch Another Ad</a>
+        <a href="#" class="cta-btn btn-secondary">Share Platform</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer (dark green bar) -->
+  <footer class="footer">
+    <div class="container">
+      <p>Stream ads, fuel impact, compete for good.</p>
+      <div class="social-icons">
+        <a href="#" class="social-icon">✉</a>
+        <a href="#" class="social-icon">in</a>
+        <a href="#" class="social-icon">X</a>
+        <a href="#" class="social-icon">◎</a>
+        <a href="#" class="social-icon">◉</a>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>
