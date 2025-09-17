@@ -430,7 +430,7 @@ app.get('/api/auth/google/callback',
       // Generate verification token if email not verified and email service is available
       if (!user.verified && emailService) {
         console.log('📧 Generating verification token for:', user.email);
-        const verificationToken = emailService.generateVerificationToken();
+        const verificationToken = tokenService ? tokenService.generateVerificationToken() : generateFallbackToken();
         
         // Update user with verification token using PostgreSQL
         try {
@@ -451,6 +451,8 @@ app.get('/api/auth/google/callback',
         } catch (err) {
           console.error('Error setting verification token:', err);
         }
+      } else if (user.verified) {
+        console.log('✅ User email already verified:', user.email);
       }
 
       // Generate JWT token
