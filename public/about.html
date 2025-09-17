@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>About - Charity Stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --brand-primary: #2F7D31;
+      --brand-600: #2F7D31;
+      --brand-700: #276629;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-900: #111827;
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-feature-settings: 'liga' 1, 'calt' 1, 'tnum' 1;
+      background: #ffffff;
+      color: var(--gray-900);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Header */
+    .header {
+      border-bottom: 1px solid var(--gray-200);
+      width: 100%;
+    }
+
+    .header .container {
+      height: 4rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
+    .logo {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: -0.025em;
+    }
+
+    .nav {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      font-size: 0.875rem;
+      color: var(--gray-700);
+    }
+
+    .nav-hidden-mobile {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .welcome {
+      color: var(--gray-900);
+    }
+
+    .welcome-bold {
+      font-weight: 500;
+    }
+
+    .nav-link {
+      text-decoration: none;
+      color: var(--gray-700);
+    }
+
+    .nav-link:hover {
+      color: var(--gray-900);
+    }
+
+    .nav-link.active {
+      color: var(--brand-600);
+      font-weight: 600;
+    }
+
+    .watch-ads-btn {
+      display: inline-flex;
+      align-items: center;
+      background: var(--brand-600);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border: 0;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .watch-ads-btn:hover {
+      background: var(--brand-700);
+    }
+
+    /* Main content */
+    .main {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 4rem);
+      padding: 2rem 1rem;
+    }
+
+    .coming-soon-card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      padding: 3rem 2rem;
+      text-align: center;
+      max-width: 500px;
+      width: 100%;
+      border: 2px solid var(--gray-200);
+    }
+
+    .coming-soon-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    .coming-soon-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--gray-900);
+      margin-bottom: 1rem;
+      letter-spacing: -0.025em;
+    }
+
+    .coming-soon-subtitle {
+      font-size: 1.125rem;
+      color: var(--gray-600);
+      margin-bottom: 2rem;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      background: var(--brand-600);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .back-btn:hover {
+      background: var(--brand-700);
+      transform: translateY(-1px);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .nav-hidden-mobile {
+        display: none;
+      }
+
+      .header .container {
+        padding: 0 1rem;
+      }
+
+      .coming-soon-card {
+        padding: 2rem 1.5rem;
+      }
+
+      .coming-soon-title {
+        font-size: 1.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">Charity Stream</div>
+      <nav class="nav">
+        <div class="nav-hidden-mobile">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="userDisplayName">Guest</span></span>
+          <a href="#" class="nav-link active" onclick="handleNavClick('about')">About</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+        </div>
+        <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="coming-soon-card">
+      <div class="coming-soon-icon">🚧</div>
+      <h1 class="coming-soon-title">About Coming Soon!</h1>
+      <p class="coming-soon-subtitle">
+        We're working hard to bring you more information about Charity Stream. 
+        Check back soon for our story, mission, and team details.
+      </p>
+      <a href="#" class="back-btn" onclick="handleNavClick('watch')">Back to Watch Ads</a>
+    </div>
+  </main>
+
+  <script>
+    // Check authentication status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+      checkAuthStatus();
+    });
+
+    function checkAuthStatus() {
+      const token = localStorage.getItem('authToken');
+      const currentUser = localStorage.getItem('currentUser');
+      
+      if (token && currentUser) {
+        try {
+          const user = JSON.parse(currentUser);
+          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
+        } catch (error) {
+          console.error('Error parsing user data:', error);
+          document.getElementById('userDisplayName').textContent = 'Guest';
+        }
+      } else {
+        document.getElementById('userDisplayName').textContent = 'Guest';
+      }
+    }
+
+    function handleNavClick(action) {
+      const token = localStorage.getItem('authToken');
+      
+      if (!token) {
+        // Redirect to login if not authenticated
+        window.location.href = '/auth.html';
+        return;
+      }
+
+      switch (action) {
+        case 'about':
+          // Already on about page
+          break;
+        case 'advertise':
+          window.location.href = '/advertiser.html';
+          break;
+        case 'impact':
+          window.location.href = '/impact.html';
+          break;
+        case 'watch':
+          window.location.href = '/';
+          break;
+      }
+    }
+  </script>
+</body>
+</html>
