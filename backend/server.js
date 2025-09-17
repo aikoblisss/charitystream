@@ -529,6 +529,13 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
 
     console.log(`✅ Email verified for user: ${user.email}`);
 
+    // Generate JWT token for immediate login
+    const token = jwt.sign(
+      { userId: user.id, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
     // Send welcome email
     if (emailService && emailService.isEmailConfigured()) {
       await emailService.sendWelcomeEmail(user.email, user.username);
@@ -536,11 +543,15 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
 
     res.json({
       message: 'Email verified successfully!',
+      token: token,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
-        verified: true
+        verified: true,
+        totalMinutesWatched: user.total_minutes_watched,
+        currentMonthMinutes: user.current_month_minutes,
+        subscriptionTier: user.subscription_tier
       }
     });
   } catch (error) {

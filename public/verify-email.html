@@ -170,16 +170,21 @@
         if (response.ok) {
           showSuccess();
           
-          // Store user data if provided
+          // Store user data and token if provided
           if (result.user) {
             localStorage.setItem('currentUser', JSON.stringify(result.user));
             console.log('👤 User data stored:', result.user);
           }
           
-          // Redirect after 3 seconds
+          if (result.token) {
+            localStorage.setItem('authToken', result.token);
+            console.log('🔑 Auth token stored for immediate login');
+          }
+          
+          // Redirect after 2 seconds (reduced from 3)
           setTimeout(() => {
             window.location.href = '/';
-          }, 3000);
+          }, 2000);
         } else {
           console.error('❌ Verification failed:', result.error);
           showError(result.error || 'Verification failed');
