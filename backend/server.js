@@ -428,20 +428,29 @@ app.get('/api/auth/google/callback',
       });
       
       // Generate verification token if email not verified and email service is available
-      if (!user.email_verified && emailService) {
+      if (!user.verified && emailService) {
         console.log('📧 Generating verification token for:', user.email);
         const verificationToken = emailService.generateVerificationToken();
         
-        // Update user with verification token
-        const updateQuery = `UPDATE users SET email_verification_token = ? WHERE id = ?`;
-        dbHelpers.db.run(updateQuery, [verificationToken, user.id], async (err) => {
-          if (err) {
-            console.error('Error setting verification token:', err);
-          } else {
-            // Send verification email
-            await emailService.sendVerificationEmail(user.email, user.username, verificationToken);
-          }
-        });
+        // Update user with verification token using PostgreSQL
+        try {
+          const { Pool } = require('pg');
+          const pool = new Pool({
+            connectionString: process.env.DATABASE_URL,
+            ssl: {
+              rejectUnauthorized: false,
+              require: true
+            }
+          });
+          
+          await pool.query('UPDATE users SET verification_token = $1 WHERE id = $2', [verificationToken, user.id]);
+          await pool.end();
+          
+          // Send verification email
+          await emailService.sendVerificationEmail(user.email, user.username, verificationToken);
+        } catch (err) {
+          console.error('Error setting verification token:', err);
+        }
       }
 
       // Generate JWT token
@@ -475,7 +484,7 @@ app.get('/api/auth/google/callback',
       
       // Redirect to frontend with token and setup flag
       const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
-      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.email_verified}&setup_username=${needsUsernameSetup}&auth_provider=google`);
+      res.redirect(`${frontendUrl}/auth.html?token=${token}&email_verified=${user.verified}&setup_username=${needsUsernameSetup}&auth_provider=google`);
     } catch (error) {
       console.error('❌ Google OAuth callback error:', error);
       console.error('Error stack:', error.stack);

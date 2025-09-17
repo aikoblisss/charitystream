@@ -395,6 +395,20 @@ const dbHelpers = {
     } catch (error) {
       return [error, null];
     }
+  },
+
+  // Link Google account to existing user
+  linkGoogleAccount: async (userId, googleId, profilePicture) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET google_id = $2, profile_picture = COALESCE($3, profile_picture), auth_provider = CASE WHEN auth_provider = \'email\' THEN \'email_google\' ELSE \'google\' END WHERE id = $1 RETURNING *',
+        [userId, googleId, profilePicture]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
   }
 };
 

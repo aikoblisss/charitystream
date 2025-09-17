@@ -53,18 +53,41 @@ passport.use(new GoogleStrategy({
     const email = profile.emails[0].value;
     const emailVerified = profile.emails[0].verified || false;
 
-    // Check if user already exists by Google ID
-    const [err, existingUser] = await dbHelpers.getUserByGoogleId(googleId);
+    // First check if user already exists by Google ID
+    const [err, existingGoogleUser] = await dbHelpers.getUserByGoogleId(googleId);
     if (err) {
       console.error('❌ Database error during Google OAuth:', err);
       return done(err, null);
     }
 
-    if (existingUser) {
-      console.log('✅ Existing Google user found:', existingUser.email);
+    if (existingGoogleUser) {
+      console.log('✅ Existing Google user found:', existingGoogleUser.email);
       // Update last login
-      await dbHelpers.updateLastLogin(existingUser.id);
-      return done(null, existingUser);
+      await dbHelpers.updateLastLogin(existingGoogleUser.id);
+      return done(null, existingGoogleUser);
+    }
+
+    // Check if user exists by email (manual signup case)
+    const [emailErr, existingEmailUser] = await dbHelpers.getUserByEmail(email);
+    if (emailErr) {
+      console.error('❌ Database error checking existing email:', emailErr);
+      return done(emailErr, null);
+    }
+
+    if (existingEmailUser) {
+      console.log('🔄 User exists with email but no Google ID, linking accounts:', email);
+      
+      // Update existing user to link Google account
+      const [updateErr, updatedUser] = await dbHelpers.linkGoogleAccount(existingEmailUser.id, googleId, profile.photos[0]?.value);
+      if (updateErr) {
+        console.error('❌ Error linking Google account:', updateErr);
+        return done(updateErr, null);
+      }
+
+      console.log('✅ Google account linked to existing user:', email);
+      // Update last login
+      await dbHelpers.updateLastLogin(updatedUser.id);
+      return done(null, updatedUser);
     }
 
     // Create new user - passwordless authentication
