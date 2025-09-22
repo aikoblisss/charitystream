@@ -388,6 +388,21 @@ app.post('/api/auth/update-username', authenticateToken, async (req, res) => {
     }
 
     console.log(`✅ Username updated for user ${userId}: ${username}`);
+
+    // Send welcome email after username is set
+    if (emailService && emailService.isEmailConfigured()) {
+      console.log('📧 Sending welcome email...');
+      const emailResult = await emailService.sendWelcomeEmail(updatedUser.email, username);
+      if (emailResult.success) {
+        console.log('✅ Welcome email sent successfully');
+      } else {
+        console.error('❌ Failed to send welcome email:', emailResult.error);
+        // Don't fail the username update if email fails
+      }
+    } else {
+      console.log('⚠️ Email service not configured, skipping welcome email');
+    }
+
     res.json({ message: 'Username updated successfully', username: username });
   } catch (error) {
     console.error('Update username error:', error);
@@ -643,11 +658,6 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
       JWT_SECRET,
       { expiresIn: '7d' }
     );
-
-    // Send welcome email
-    if (emailService && emailService.isEmailConfigured()) {
-      await emailService.sendWelcomeEmail(user.email, user.username);
-    }
 
     // Check if user needs to set username (manual signup users)
     const emailPrefix = user.email.split('@')[0];
