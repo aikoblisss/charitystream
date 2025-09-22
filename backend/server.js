@@ -395,6 +395,31 @@ app.post('/api/auth/update-username', authenticateToken, async (req, res) => {
   }
 });
 
+// Cancel incomplete Google registration
+app.post('/api/auth/cancel-google-registration', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    console.log(`🗑️ Cancelling incomplete Google registration for user: ${userId}`);
+    
+    // Delete the incomplete Google user
+    const [err, deletedUser] = await dbHelpers.deleteIncompleteGoogleUser(userId);
+    if (err) {
+      console.error('❌ Error deleting incomplete Google user:', err);
+      return res.status(500).json({ error: 'Failed to cancel registration' });
+    }
+    
+    console.log(`✅ Successfully cancelled Google registration for: ${deletedUser.email}`);
+    res.json({ 
+      message: 'Registration cancelled successfully',
+      email: deletedUser.email 
+    });
+  } catch (error) {
+    console.error('❌ Cancel Google registration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Set up password for Google users
 app.post('/api/auth/setup-password', async (req, res) => {
   try {

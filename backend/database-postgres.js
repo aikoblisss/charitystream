@@ -489,6 +489,27 @@ const dbHelpers = {
     } catch (error) {
       return [error, false];
     }
+  },
+
+  // Delete incomplete Google user (for cancelled registrations)
+  deleteIncompleteGoogleUser: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'DELETE FROM users WHERE id = $1 AND auth_provider = $2 AND username = (SELECT split_part(email, \'@\', 1) FROM users WHERE id = $1) RETURNING *',
+        [userId, 'google']
+      );
+      
+      if (result.rows.length === 0) {
+        return [new Error('User not found or not eligible for deletion'), null];
+      }
+      
+      console.log(`✅ Deleted incomplete Google user: ${result.rows[0].email}`);
+      return [null, result.rows[0]];
+    } catch (error) {
+      console.error('Error deleting incomplete Google user:', error);
+      return [error, null];
+    }
   }
 };
 

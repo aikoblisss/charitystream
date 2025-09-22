@@ -533,7 +533,6 @@
     }
 
     .username-header {
-      position: relative;
       text-align: center;
       margin-bottom: 1.25rem;
     }
@@ -552,22 +551,6 @@
       line-height: 1.5;
     }
 
-    .username-close {
-      position: absolute;
-      top: 0;
-      right: 0;
-      background: none;
-      border: none;
-      color: var(--gray-400);
-      cursor: pointer;
-      padding: 0.25rem;
-      border-radius: 0.25rem;
-      transition: color 0.2s ease;
-    }
-
-    .username-close:hover {
-      color: var(--gray-600);
-    }
 
     .username-form-group {
       margin-bottom: 1rem;
@@ -695,6 +678,27 @@
       cursor: not-allowed;
       transform: none;
       box-shadow: none;
+    }
+
+    .username-footer {
+      text-align: center;
+      margin-top: 1.5rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--gray-200);
+    }
+
+    .use-different-email-btn {
+      background: none;
+      border: none;
+      color: var(--gray-600);
+      font-size: 0.875rem;
+      cursor: pointer;
+      text-decoration: underline;
+      transition: color 0.2s ease;
+    }
+
+    .use-different-email-btn:hover {
+      color: var(--gray-800);
     }
     @media (max-width: 768px) {
       .container {
@@ -943,12 +947,6 @@
       <div class="username-header">
         <h2 class="username-title">Choose Your Username</h2>
         <p class="username-subtitle">This will be your display name on the platform</p>
-        <button type="button" class="username-close" onclick="closeUsernameModal()" aria-label="Close">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
       </div>
       
       <form id="usernameForm">
@@ -984,6 +982,12 @@
           <span class="btn-text">Start Creating Impact</span>
         </button>
       </form>
+      
+      <div class="username-footer">
+        <button type="button" class="use-different-email-btn" onclick="closeUsernameModal()">
+          Use a different email
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1531,7 +1535,31 @@
     });
 
     // Function to close username modal and clear auth data
-    function closeUsernameModal() {
+    async function closeUsernameModal() {
+      const token = localStorage.getItem('authToken');
+      
+      // If user has a token, call the backend to delete the incomplete Google user
+      if (token) {
+        try {
+          const response = await fetch('/api/auth/cancel-google-registration', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            console.log('✅ Successfully cancelled incomplete Google registration');
+          } else {
+            console.warn('⚠️ Failed to cancel registration on backend, but clearing frontend data anyway');
+          }
+        } catch (error) {
+          console.error('❌ Error cancelling registration:', error);
+          // Continue with frontend cleanup even if backend call fails
+        }
+      }
+      
       document.getElementById('usernameModal').classList.remove('show');
       // Clear authentication data since user didn't complete registration
       localStorage.removeItem('authToken');
