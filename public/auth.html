@@ -748,16 +748,9 @@
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
-          <div class="user-menu">
-            <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
-              <span id="userDisplayName">Guest</span> ▼
-            </button>
-            <div class="user-dropdown" id="userDropdown" style="display: none;">
-              <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-          </div>
+          <a href="#" class="nav-link" onclick="handleNavClick('watch')">Watch Ads</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('signin')">Sign In / Sign Up</a>
         </div>
-        <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
       </nav>
     </div>
   </header>
@@ -1011,6 +1004,9 @@
           case 'watch':
             window.location.href = '/';
             break;
+          case 'signin':
+            // Already on sign in page
+            break;
         }
         return;
       }
@@ -1026,6 +1022,10 @@
           window.location.href = '/impact.html';
           break;
         case 'watch':
+          window.location.href = '/';
+          break;
+        case 'signin':
+          // Already signed in, redirect to main page
           window.location.href = '/';
           break;
       }

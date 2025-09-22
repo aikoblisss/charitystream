@@ -105,18 +105,23 @@
     .watch-ads-btn, .login-btn {
       display: inline-flex;
       align-items: center;
-      background-color: var(--brand-600);
-      color: white;
-      padding: 0.5rem 1rem;
+      background: none;
+      color: var(--gray-700);
+      padding: 0.5rem 0;
       border: none;
-      border-radius: 0.5rem;
-      font-weight: 500;
+      border-radius: 0;
+      font-weight: 400;
       text-decoration: none;
       cursor: pointer;
     }
 
     .watch-ads-btn:hover, .login-btn:hover {
-      background-color: var(--brand-700);
+      color: var(--gray-900);
+    }
+
+    .watch-ads-btn.active, .login-btn.active {
+      color: var(--brand-600);
+      font-weight: 600;
     }
 
     .user-menu {
@@ -552,6 +557,7 @@
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+          <a href="#" class="nav-link active" onclick="handleNavClick('watch')">Watch Ads</a>
           <div class="user-menu">
             <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
               <span id="usernameDisplay">User</span> ▼
@@ -566,8 +572,8 @@
           <a href="#" class="nav-link" onclick="handleGuestNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleGuestNavClick('impact')">Impact</a>
           <a href="#" class="nav-link" onclick="handleGuestNavClick('watch')">Watch Ads</a>
+          <a href="#" class="nav-link" onclick="goToAuth()">Sign In / Sign Up</a>
         </div>
-        <button id="loginButton" class="login-btn" onclick="goToAuth()">Sign In / Sign Up</button>
       </nav>
     </div>
   </header>
@@ -765,7 +771,6 @@
     function showAuthenticatedUI() {
       document.getElementById('loggedInNav').style.display = 'flex';
       document.getElementById('guestNav').style.display = 'none';
-      document.getElementById('loginButton').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('currentUserRow').style.display = 'flex';
       
@@ -777,7 +782,6 @@
     function showUnauthenticatedUI() {
       document.getElementById('loggedInNav').style.display = 'none';
       document.getElementById('guestNav').style.display = 'flex';
-      document.getElementById('loginButton').style.display = 'inline-flex';
       document.getElementById('loginOverlay').style.display = 'flex';
       document.getElementById('currentUserRow').style.display = 'none';
     }

@@ -105,18 +105,23 @@
     .watch-ads-btn {
       display: inline-flex;
       align-items: center;
-      background: var(--brand-600);
-      color: #fff;
-      padding: 0.5rem 1rem;
-      border: 0;
-      border-radius: 0.5rem;
-      font-weight: 500;
+      background: none;
+      color: var(--gray-700);
+      padding: 0.5rem 0;
+      border: none;
+      border-radius: 0;
+      font-weight: 400;
       text-decoration: none;
       cursor: pointer;
     }
 
     .watch-ads-btn:hover {
-      background: var(--brand-700);
+      color: var(--gray-900);
+    }
+
+    .watch-ads-btn.active {
+      color: var(--brand-600);
+      font-weight: 600;
     }
 
     .user-menu {
@@ -257,6 +262,7 @@
           <a href="#" class="nav-link active" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('watch')">Watch Ads</a>
           <div class="user-menu">
             <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
               <span id="userDisplayName">Guest</span> ▼
@@ -266,7 +272,6 @@
             </div>
           </div>
         </div>
-        <a href="#" class="watch-ads-btn" onclick="handleNavClick('watch')">Watch Ads</a>
       </nav>
     </div>
   </header>
