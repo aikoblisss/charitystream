@@ -48,6 +48,12 @@
       --gray-900: #111827;
     }
 
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
+    }
+
     /* Header */
     .header {
       border-bottom: 1px solid var(--gray-200);
@@ -58,9 +64,6 @@
       display: flex;
       align-items: center;
       gap: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 1rem;
     }
 
     .logo {
@@ -514,7 +517,15 @@
     }
 
     @media (max-width: 768px) {
-      .header .container, .hero-container, .main {
+      .container {
+        padding: 0 1rem;
+      }
+      
+      .header .container {
+        padding: 0 1rem;
+      }
+      
+      .hero-container, .main {
         padding-left: 1rem;
         padding-right: 1rem;
       }
@@ -529,14 +540,22 @@
         font-size: 3.75rem;
       }
       
-      .header .container, .hero-container, .main {
+      .container {
+        padding: 0 1.5rem;
+      }
+      
+      .hero-container, .main {
         padding-left: 1.5rem;
         padding-right: 1.5rem;
       }
     }
 
     @media (min-width: 1024px) {
-      .header .container, .hero-container, .main {
+      .container {
+        padding: 0 2rem;
+      }
+      
+      .hero-container, .main {
         padding-left: 2rem;
         padding-right: 2rem;
       }
