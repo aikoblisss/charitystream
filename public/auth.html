@@ -533,6 +533,7 @@
     }
 
     .username-header {
+      position: relative;
       text-align: center;
       margin-bottom: 1.25rem;
     }
@@ -549,6 +550,23 @@
       color: var(--gray-600);
       font-size: 0.9375rem;
       line-height: 1.5;
+    }
+
+    .username-close {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: none;
+      border: none;
+      color: var(--gray-400);
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      transition: color 0.2s ease;
+    }
+
+    .username-close:hover {
+      color: var(--gray-600);
     }
 
     .username-form-group {
@@ -925,6 +943,12 @@
       <div class="username-header">
         <h2 class="username-title">Choose Your Username</h2>
         <p class="username-subtitle">This will be your display name on the platform</p>
+        <button type="button" class="username-close" onclick="closeUsernameModal()" aria-label="Close">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
       </div>
       
       <form id="usernameForm">
@@ -1506,17 +1530,26 @@
       }
     });
 
+    // Function to close username modal and clear auth data
+    function closeUsernameModal() {
+      document.getElementById('usernameModal').classList.remove('show');
+      // Clear authentication data since user didn't complete registration
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentUser');
+      // Reset the signup form
+      document.getElementById('signupForm').reset();
+      // Switch back to sign in tab
+      switchTab('signin');
+      // Clear any messages
+      hideMessages();
+      // Show message explaining what happened
+      showMessage('Registration cancelled. Please try again if you want to create an account.', 'info');
+    }
+
     // Close username modal when clicking outside
     document.getElementById('usernameModal')?.addEventListener('click', function(e) {
       if (e.target === this) {
-        // Close modal and return to login
-        this.classList.remove('show');
-        // Reset the signup form
-        document.getElementById('signupForm').reset();
-        // Switch back to sign in tab
-        switchTab('signin');
-        // Clear any messages
-        hideMessages();
+        closeUsernameModal();
       }
     });
   </script>
