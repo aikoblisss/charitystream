@@ -775,6 +775,13 @@
     authToken = localStorage.getItem('authToken');
     const userStr = localStorage.getItem('currentUser');
     
+    // If no auth token, redirect immediately to prevent any flash
+    if (!authToken) {
+      console.log('❌ No auth token found, redirecting to lander immediately');
+      window.location.href = '/lander.html';
+      return; // Stop execution to prevent any further processing
+    }
+    
     if (authToken && userStr) {
       try {
         currentUser = JSON.parse(userStr);
@@ -786,20 +793,16 @@
 
     // Set initial UI state immediately to prevent flash
     function setInitialUIState() {
-      if (authToken) {
-        document.getElementById('loggedInNav').style.display = 'flex';
-        document.getElementById('guestNav').style.display = 'none';
-        document.getElementById('loginOverlay').style.display = 'none';
-        document.getElementById('currentUserRow').style.display = 'flex';
-        
-        if (currentUser) {
-          const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
-          document.getElementById('usernameDisplay').textContent = displayName;
-          document.getElementById('userLeaderboardName').textContent = displayName;
-        }
-      } else {
-        // Redirect to lander page when not authenticated
-        window.location.href = '/lander.html';
+      // At this point, we know user is authenticated (due to early redirect)
+      document.getElementById('loggedInNav').style.display = 'flex';
+      document.getElementById('guestNav').style.display = 'none';
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('currentUserRow').style.display = 'flex';
+      
+      if (currentUser) {
+        const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+        document.getElementById('usernameDisplay').textContent = displayName;
+        document.getElementById('userLeaderboardName').textContent = displayName;
       }
     }
 
@@ -835,19 +838,14 @@
       });
       
       // UI state is already set by setInitialUIState(), just handle video initialization
-      if (authToken) {
-        console.log('✅ User has token, initializing authenticated video player...');
-        
-        // Load fresh user info from server, then initialize video player
-        loadUserInfo().then(() => {
-          // Give more time for Video.js to load before initializing
-          setTimeout(initializeVideoPlayer, 500);
-        });
-      } else {
-        console.log('❌ No token found, redirecting to lander page');
-        // Redirect to lander page when not authenticated
-        window.location.href = '/lander.html';
-      }
+      // At this point, we know user is authenticated (due to early redirect)
+      console.log('✅ User has token, initializing authenticated video player...');
+      
+      // Load fresh user info from server, then initialize video player
+      loadUserInfo().then(() => {
+        // Give more time for Video.js to load before initializing
+        setTimeout(initializeVideoPlayer, 500);
+      });
     };
 
     function showAuthenticatedUI() {
