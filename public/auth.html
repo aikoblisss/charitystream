@@ -43,135 +43,7 @@
       -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Header */
-    .header {
-      border-bottom: 1px solid var(--gray-200);
-      width: 100%;
-      position: fixed;
-      top: 0;
-      left: 0;
-      background: white;
-      z-index: 100;
-    }
 
-    .header .container {
-      height: 4rem;
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 1rem;
-    }
-
-    .header .logo {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.025em;
-    }
-
-    .header .nav {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      font-size: 0.875rem;
-      color: var(--gray-700);
-    }
-
-    .header .nav-hidden-mobile {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-    }
-
-    .header .welcome {
-      color: var(--gray-900);
-    }
-
-    .header .welcome-bold {
-      font-weight: 500;
-    }
-
-    .header .nav-link {
-      text-decoration: none;
-      color: var(--gray-700);
-    }
-
-    .header .nav-link:hover {
-      color: var(--gray-900);
-    }
-
-    .header .nav-link.active {
-      color: var(--brand-600);
-      font-weight: 600;
-    }
-
-    .header .watch-ads-btn {
-      display: inline-flex;
-      align-items: center;
-      background: var(--brand-600);
-      color: #fff;
-      padding: 0.5rem 1rem;
-      border: 0;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      text-decoration: none;
-      cursor: pointer;
-    }
-
-    .header .watch-ads-btn:hover {
-      background: var(--brand-700);
-    }
-
-    .user-menu {
-      position: relative;
-    }
-
-    .user-menu-btn {
-      background: none;
-      border: none;
-      color: var(--gray-600);
-      font-size: 0.875rem;
-      cursor: pointer;
-      padding: 0.5rem 0;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    .user-menu-btn:hover {
-      color: var(--gray-900);
-    }
-
-    .user-dropdown {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      background: white;
-      border: 1px solid var(--gray-200);
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      padding: 0.5rem 0;
-      min-width: 120px;
-      z-index: 1000;
-    }
-
-    .logout-btn {
-      background: none;
-      border: none;
-      color: var(--gray-600);
-      font-size: 0.875rem;
-      cursor: pointer;
-      padding: 0.5rem 1rem;
-      width: 100%;
-      text-align: left;
-    }
-
-    .logout-btn:hover {
-      background: var(--gray-50);
-      color: var(--gray-900);
-    }
 
     .container {
       height: 100vh;
@@ -181,13 +53,13 @@
       padding: 1rem;
       position: relative;
       max-width: 100%;
-      margin-top: 5rem; /* Account for fixed header + extra space */
+      overflow: hidden; /* Prevent scrolling */
     }
 
     /* Back to Home Button */
     .back-home {
       position: fixed;
-      top: 5.5rem;
+      top: 1rem;
       left: 1.5rem;
       display: flex;
       align-items: center;
@@ -714,18 +586,6 @@
         padding: 2rem 1.5rem;
         max-width: 100%;
       }
-
-      .header .nav-hidden-mobile {
-        display: none;
-      }
-
-      .header .container {
-        padding: 0 1rem;
-      }
-
-      .logo {
-        font-size: 1.75rem;
-      }
     }
 
     /* Floating Elements */
@@ -761,21 +621,6 @@
   </style>
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="container">
-      <div class="logo">Charity Stream</div>
-      <nav class="nav">
-        <div class="nav-hidden-mobile">
-          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('watch')">Watch Ads</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('signin')">Sign In / Sign Up</a>
-        </div>
-      </nav>
-    </div>
-  </header>
 
   <div class="container">
     <!-- Back to Home -->
@@ -1014,55 +859,7 @@
       }
     }
 
-    function handleNavClick(action) {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        // Already on auth page, just show alert for other actions
-        switch (action) {
-          case 'about':
-            alert('About page coming soon!');
-            break;
-          case 'advertise':
-            alert('Please sign in to access the advertiser portal!');
-            break;
-          case 'impact':
-            window.location.href = '/impact.html';
-            break;
-          case 'watch':
-            window.location.href = '/';
-            break;
-          case 'signin':
-            // Already on sign in page
-            break;
-        }
-        return;
-      }
 
-      switch (action) {
-        case 'about':
-          window.location.href = '/about.html';
-          break;
-        case 'advertise':
-          window.location.href = '/advertiser.html';
-          break;
-        case 'impact':
-          window.location.href = '/impact.html';
-          break;
-        case 'watch':
-          window.location.href = '/';
-          break;
-        case 'signin':
-          // Already signed in, redirect to main page
-          window.location.href = '/';
-          break;
-      }
-    }
-
-    function toggleUserMenu() {
-      const dropdown = document.getElementById('userDropdown');
-      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-    }
 
     function logout() {
       localStorage.removeItem('authToken');
