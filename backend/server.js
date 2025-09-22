@@ -957,6 +957,13 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     console.log('✅ Reset token validated for user:', user.email);
 
+    // Check if new password is different from old password
+    const isSamePassword = await bcrypt.compare(password, user.password_hash);
+    if (isSamePassword) {
+      console.log('❌ New password cannot be the same as the current password');
+      return res.status(400).json({ error: 'New password must be different from your current password' });
+    }
+
     // Hash new password
     const saltRounds = 10;
     const newPasswordHash = await bcrypt.hash(password, saltRounds);

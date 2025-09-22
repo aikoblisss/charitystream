@@ -836,6 +836,44 @@
     </div>
   </div>
 
+  <!-- Forgot Password Modal -->
+  <div id="forgotPasswordModal" class="username-modal">
+    <div class="username-card">
+      <div class="username-header">
+        <h2 class="username-title">Reset Your Password</h2>
+        <p class="username-subtitle">Enter your email address and we'll send you a reset link</p>
+      </div>
+      
+      <form id="forgotPasswordForm">
+        <div class="username-form-group">
+          <label for="forgotEmailInput" class="username-label">Email Address</label>
+          <input 
+            type="email" 
+            id="forgotEmailInput" 
+            name="email" 
+            class="username-input" 
+            placeholder="Enter your email address"
+            required
+          >
+          <div id="forgotEmailValidation" class="username-validation">
+            We'll send a password reset link to this email address
+          </div>
+        </div>
+
+        <button type="submit" class="username-submit">
+          <span class="loading-spinner"></span>
+          <span class="btn-text">Send Reset Link</span>
+        </button>
+      </form>
+      
+      <div class="username-footer">
+        <button type="button" class="use-different-email-btn" onclick="closeForgotPasswordModal()">
+          Cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Check authentication status on page load
     document.addEventListener('DOMContentLoaded', function() {
@@ -1134,29 +1172,9 @@
     }
 
     function showForgotPassword() {
-      const email = prompt('Enter your email address to reset your password:');
-      if (email) {
-        // Call forgot password API
-        fetch('/api/auth/forgot-password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email: email })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            showMessage('If an account exists for this email, a reset link has been sent.', 'success');
-        } else {
-            showMessage(data.error || 'Failed to send reset email', 'error');
-          }
-        })
-        .catch(error => {
-          console.error('Forgot password error:', error);
-          showMessage('Failed to send reset email', 'error');
-        });
-      }
+      document.getElementById('forgotPasswordModal').classList.add('show');
+      document.getElementById('forgotEmailInput').value = '';
+      document.getElementById('forgotEmailInput').focus();
     }
 
     // Real-time password matching validation
@@ -1375,6 +1393,70 @@
     document.getElementById('usernameModal')?.addEventListener('click', function(e) {
       if (e.target === this) {
         closeUsernameModal();
+      }
+    });
+
+    // Forgot password form submission
+    document.getElementById('forgotPasswordForm')?.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('forgotEmailInput').value.trim();
+      
+      if (!email) {
+        showMessage('Please enter your email address.', 'error');
+        return;
+      }
+      
+      // Show loading
+      const submitBtn = this.querySelector('.username-submit');
+      submitBtn.classList.add('loading');
+      submitBtn.disabled = true;
+      submitBtn.querySelector('.btn-text').textContent = 'Sending...';
+      
+      try {
+        const response = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email: email })
+        });
+
+        const data = await response.json();
+        
+        // Hide loading
+        submitBtn.classList.remove('loading');
+        submitBtn.disabled = false;
+        submitBtn.querySelector('.btn-text').textContent = 'Send Reset Link';
+        
+        if (data.success) {
+          showMessage('If an account exists for this email, a reset link has been sent.', 'success');
+          closeForgotPasswordModal();
+        } else {
+          showMessage(data.error || 'Failed to send reset email', 'error');
+        }
+      } catch (error) {
+        // Hide loading
+        submitBtn.classList.remove('loading');
+        submitBtn.disabled = false;
+        submitBtn.querySelector('.btn-text').textContent = 'Send Reset Link';
+        
+        console.error('Forgot password error:', error);
+        showMessage('Failed to send reset email', 'error');
+      }
+    });
+
+    // Function to close forgot password modal
+    function closeForgotPasswordModal() {
+      document.getElementById('forgotPasswordModal').classList.remove('show');
+      document.getElementById('forgotPasswordForm').reset();
+      hideMessages();
+    }
+
+    // Close forgot password modal when clicking outside
+    document.getElementById('forgotPasswordModal')?.addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeForgotPasswordModal();
       }
     });
   </script>
