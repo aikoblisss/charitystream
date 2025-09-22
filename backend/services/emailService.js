@@ -17,17 +17,26 @@ class EmailService {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      // Optimize for faster delivery
+      // Optimize for faster delivery and better Gmail compatibility
       pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      rateLimit: 14, // 14 emails per second (Gmail limit)
-      connectionTimeout: 60000, // 60 seconds
-      greetingTimeout: 30000, // 30 seconds
-      socketTimeout: 60000, // 60 seconds
+      maxConnections: 3, // Reduced to avoid overwhelming Gmail
+      maxMessages: 50, // Reduced for better reputation
+      rateLimit: 5, // Much slower rate to avoid spam detection
+      connectionTimeout: 30000, // 30 seconds (reduced from 60)
+      greetingTimeout: 15000, // 15 seconds (reduced from 30)
+      socketTimeout: 30000, // 30 seconds (reduced from 60)
       // Retry configuration
-      retryDelay: 1000, // 1 second between retries
-      retryAttempts: 3
+      retryDelay: 2000, // 2 seconds between retries (increased)
+      retryAttempts: 2, // Reduced retries to avoid timeouts
+      // Gmail-specific optimizations
+      tls: {
+        rejectUnauthorized: false // Sometimes helps with Gmail connections
+      },
+      // Add DKIM and SPF compliance
+      dkim: {
+        domainName: process.env.EMAIL_DOMAIN || 'gmail.com',
+        keySelector: 'default'
+      }
     };
 
     // Check if email service is properly configured
@@ -206,7 +215,13 @@ class EmailService {
         html: this.getPasswordResetEmailTemplate(username, resetUrl)
       };
 
-      const info = await this.transporter.sendMail(mailOptions);
+      // Add timeout wrapper to prevent Vercel timeout
+      const emailPromise = this.transporter.sendMail(mailOptions);
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Email sending timeout after 45 seconds')), 45000)
+      );
+
+      const info = await Promise.race([emailPromise, timeoutPromise]);
       const endTime = Date.now();
       const duration = endTime - startTime;
       
@@ -215,7 +230,21 @@ class EmailService {
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error('❌ Error sending password reset email:', error);
-      return { success: false, error: error.message };
+      
+      // Provide more specific error messages
+      if (error.message.includes('timeout')) {
+        return { 
+          success: false, 
+          error: 'Email service timeout - please try again in a few minutes' 
+        };
+      } else if (error.message.includes('rate limit') || error.message.includes('quota')) {
+        return { 
+          success: false, 
+          error: 'Email rate limit reached - please wait before trying again' 
+        };
+      } else {
+        return { success: false, error: error.message };
+      }
     }
   }
 

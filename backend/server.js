@@ -838,6 +838,9 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
     }
 
     // Send password reset email
+    let emailSent = false;
+    let emailError = null;
+    
     if (emailService && emailService.isEmailConfigured()) {
       console.log('📧 Sending password reset email...');
       const emailResult = await emailService.sendPasswordResetEmail(
@@ -847,20 +850,33 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
       );
       if (emailResult.success) {
         console.log('✅ Password reset email sent successfully');
+        emailSent = true;
       } else {
         console.error('❌ Failed to send password reset email:', emailResult.error);
-        // Don't fail the request if email fails, but log it
+        emailError = emailResult.error;
       }
     } else {
       console.log('⚠️ Email service not configured, skipping password reset email');
+      emailError = 'Email service not configured';
     }
 
-    console.log('✅ Password reset email sent to:', user.email);
-    res.json({ 
-      success: true, 
-      message: successMessage,
-      note: 'Email delivery may take 1-3 minutes depending on email provider processing time'
-    });
+    // Always respond with success for the token creation, but note email status
+    if (emailSent) {
+      console.log('✅ Password reset email sent to:', user.email);
+      res.json({ 
+        success: true, 
+        message: successMessage,
+        note: 'Email sent! Delivery may take 1-5 minutes for new email addresses.'
+      });
+    } else {
+      console.log('⚠️ Password reset token created but email failed to send:', user.email);
+      res.json({ 
+        success: true, 
+        message: 'Password reset token created successfully. Email delivery failed - please try again.',
+        error: emailError,
+        note: 'You can try requesting another reset email in a few minutes.'
+      });
+    }
 
   } catch (error) {
     console.error('❌ Forgot password error:', error);
