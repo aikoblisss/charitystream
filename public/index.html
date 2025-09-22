@@ -53,14 +53,14 @@
       border-bottom: 1px solid var(--gray-200);
     }
 
-    .header-container {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 1rem;
+    .header .container {
       height: 4rem;
       display: flex;
       align-items: center;
       gap: 1.5rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 1rem;
     }
 
     .logo {
@@ -514,7 +514,7 @@
     }
 
     @media (max-width: 768px) {
-      .header-container, .hero-container, .main {
+      .header .container, .hero-container, .main {
         padding-left: 1rem;
         padding-right: 1rem;
       }
@@ -529,14 +529,14 @@
         font-size: 3.75rem;
       }
       
-      .header-container, .hero-container, .main {
+      .header .container, .hero-container, .main {
         padding-left: 1.5rem;
         padding-right: 1.5rem;
       }
     }
 
     @media (min-width: 1024px) {
-      .header-container, .hero-container, .main {
+      .header .container, .hero-container, .main {
         padding-left: 2rem;
         padding-right: 2rem;
       }
@@ -550,7 +550,7 @@
 <body>
   <!-- Top Nav -->
   <header class="header">
-    <div class="header-container">
+    <div class="container">
       <div class="logo">Charity Stream</div>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
