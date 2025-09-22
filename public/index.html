@@ -240,17 +240,34 @@
       padding-bottom: 56.25%; /* 16:9 aspect ratio */
     }
 
-    /* Video.js player styling */
     .video-js {
-      position: absolute;
+      position: absolute !important;
       top: 0;
       left: 0;
       width: 100% !important;
       height: 100% !important;
-      border-radius: 0.75rem 0.75rem 0 0;
-      background-color: #000;
+    }
+
+    .video-js video {
+      width: 100% !important;
+      height: 100% !important;
       object-fit: cover;
     }
+
+    /* Hide play button when video is playing */
+    .video-js.vjs-playing .vjs-big-play-button {
+      display: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+    }
+
+    /* Show play button when video is paused */
+    .video-js.vjs-paused .vjs-big-play-button {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+    }
+
 
     .video-js .vjs-tech {
       border-radius: 0.75rem 0.75rem 0 0;
@@ -1594,6 +1611,7 @@
               bigPlayButton.style.display = 'none';
               bigPlayButton.style.visibility = 'hidden';
               bigPlayButton.style.opacity = '0';
+              bigPlayButton.style.pointerEvents = 'none';
             }
           };
           
@@ -1602,6 +1620,7 @@
           setTimeout(hidePlayButton, 50);
           setTimeout(hidePlayButton, 100);
           setTimeout(hidePlayButton, 200);
+          setTimeout(hidePlayButton, 500);
         });
 
         player.on('pause', () => {
@@ -1617,11 +1636,13 @@
               bigPlayButton.style.display = 'flex';
               bigPlayButton.style.visibility = 'visible';
               bigPlayButton.style.opacity = '1';
+              bigPlayButton.style.pointerEvents = 'auto';
             }
           };
           
           showPlayButton();
           setTimeout(showPlayButton, 50);
+          setTimeout(showPlayButton, 100);
         });
 
         // Show play button when clicking anywhere on the video while playing
@@ -1633,6 +1654,7 @@
               bigPlayButton.style.display = 'flex';
               bigPlayButton.style.visibility = 'visible';
               bigPlayButton.style.opacity = '1';
+              bigPlayButton.style.pointerEvents = 'auto';
             }
           }
         });
