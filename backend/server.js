@@ -807,7 +807,6 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
     // Allow Google users to set their first password via forgot password flow
     if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
       console.log('📧 Google user setting up password for manual login');
-      // Continue with password reset flow for Google users
     }
 
     // Generate reset token package

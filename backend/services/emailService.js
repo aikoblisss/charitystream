@@ -17,25 +17,17 @@ class EmailService {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
       },
-      // Optimize for faster delivery and better Gmail compatibility
-      pool: true,
-      maxConnections: 3, // Reduced to avoid overwhelming Gmail
-      maxMessages: 50, // Reduced for better reputation
-      rateLimit: 5, // Much slower rate to avoid spam detection
-      connectionTimeout: 30000, // 30 seconds (reduced from 60)
-      greetingTimeout: 15000, // 15 seconds (reduced from 30)
-      socketTimeout: 30000, // 30 seconds (reduced from 60)
-      // Retry configuration
-      retryDelay: 2000, // 2 seconds between retries (increased)
-      retryAttempts: 2, // Reduced retries to avoid timeouts
-      // Gmail-specific optimizations
+      // Optimize for faster delivery
+      pool: false, // Disable pooling for faster individual sends
+      connectionTimeout: 20000, // 20 seconds
+      greetingTimeout: 10000, // 10 seconds
+      socketTimeout: 20000, // 20 seconds
+      // Simplified retry configuration
+      retryDelay: 1000, // 1 second between retries
+      retryAttempts: 1, // Single retry attempt for speed
+      // Remove potentially problematic settings
       tls: {
-        rejectUnauthorized: false // Sometimes helps with Gmail connections
-      },
-      // Add DKIM and SPF compliance
-      dkim: {
-        domainName: process.env.EMAIL_DOMAIN || 'gmail.com',
-        keySelector: 'default'
+        rejectUnauthorized: true // Use secure connections
       }
     };
 
@@ -222,15 +214,34 @@ class EmailService {
           : this.getPasswordResetEmailTemplate(username, resetUrl)
       };
 
-      // Add timeout wrapper to prevent Vercel timeout
-      const emailPromise = this.transporter.sendMail(mailOptions);
+      // Create a fresh transporter for faster delivery
+      const emailConfig = {
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT) || 587,
+        secure: false,
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS
+        },
+        connectionTimeout: 15000, // 15 seconds
+        greetingTimeout: 8000, // 8 seconds
+        socketTimeout: 15000 // 15 seconds
+      };
+      
+      const freshTransporter = nodemailer.createTransporter(emailConfig);
+
+      // Add timeout wrapper to prevent long waits
+      const emailPromise = freshTransporter.sendMail(mailOptions);
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout after 45 seconds')), 45000)
+        setTimeout(() => reject(new Error('Email sending timeout after 25 seconds')), 25000)
       );
 
       const info = await Promise.race([emailPromise, timeoutPromise]);
       const endTime = Date.now();
       const duration = endTime - startTime;
+      
+      // Close the fresh transporter
+      freshTransporter.close();
       
       console.log(`✅ Password reset email sent to ${email} in ${duration}ms:`, info.messageId);
       console.log(`📧 Email sent at: ${new Date().toISOString()}`);
