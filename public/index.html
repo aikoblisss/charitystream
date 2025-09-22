@@ -1145,9 +1145,10 @@
         function loadVideoWithQuality(index) {
           if (index >= playlist.length) return;
           
+          console.log(`🎬 loadVideoWithQuality called with index: ${index}`);
           currentIndex = index;
           const source = getCurrentVideoSource();
-          console.log(`Loading video ${index + 1}: ${source.src}`);
+          console.log(`🎬 Loading video ${index + 1}: ${source.src}`);
           
           // Add error handling for video loading
           player.src(source);
@@ -1163,7 +1164,7 @@
           
           player.one('loadeddata', () => {
             clearTimeout(loadTimeout);
-            console.log('Video loaded successfully');
+            console.log('✅ Video loaded successfully');
             
             // Auto-play on initial load
             if (isInitialLoad) {
@@ -1176,13 +1177,14 @@
             }
           });
           
-          if (typeof startWatchSession === 'function') {
+          if (typeof startWatchSession === 'function' && authToken) {
             startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
               if (sessionId) {
                 currentSessionId = sessionId;
                 currentVideoStartTime = Date.now();
                 sessionStartTime = null;
                 pausedCount = 0;
+                console.log('📊 Watch session started:', sessionId);
               }
             });
           }
@@ -1206,6 +1208,7 @@
 
         player.on('play', () => {
           isPlaying = true;
+          console.log('▶️ Video started playing');
           
           if (!sessionStartTime && currentSessionId) {
             sessionStartTime = Date.now();
@@ -1213,10 +1216,13 @@
           }
           
           // Hide the big play button when playing
-          const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
-          if (bigPlayButton) {
-            bigPlayButton.style.display = 'none';
-          }
+          setTimeout(() => {
+            const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
+            if (bigPlayButton) {
+              console.log('🎯 Hiding play button');
+              bigPlayButton.style.display = 'none';
+            }
+          }, 100);
         });
 
         player.on('pause', () => {
@@ -1242,6 +1248,9 @@
         });
 
         player.on("ended", function () {
+          console.log(`Video ${currentIndex + 1} ended, switching to next video...`);
+          
+          // Complete current session if exists
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
             const durationSeconds = Math.floor((Date.now() - currentVideoStartTime) / 1000);
             if (typeof completeWatchSession === 'function') {
@@ -1255,41 +1264,35 @@
           }
           
           if (!isQualitySwitching) {
-            console.log(`Video ${currentIndex + 1} ended, loading next video...`);
+            // Move to next video in playlist
             currentIndex = (currentIndex + 1) % playlist.length;
+            console.log(`Switching to video ${currentIndex + 1}: ${playlist[currentIndex]}`);
+            
+            // Load the next video
+            const source = getCurrentVideoSource();
+            console.log(`Loading next video: ${source.src}`);
+            
+            // Set the new video source
+            player.src(source);
             
             // Start new session for the next video
             if (authToken) {
               startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
                 currentSessionId = sessionId;
                 currentVideoStartTime = Date.now();
-                loadVideoWithQuality(currentIndex);
-                
-                player.one('loadeddata', () => {
-                  console.log('Next video loaded, starting playback');
-                  
-                  // Small delay to ensure video is ready, then auto-play
-                  setTimeout(() => {
-                    player.play().catch(error => {
-                      console.log('Auto-play prevented:', error);
-                    });
-                  }, 200);
-                });
-              });
-            } else {
-              loadVideoWithQuality(currentIndex);
-              
-              player.one('loadeddata', () => {
-                console.log('Next video loaded, starting playback');
-                
-                // Small delay to ensure video is ready, then auto-play
-                setTimeout(() => {
-                  player.play().catch(error => {
-                    console.log('Auto-play prevented:', error);
-                  });
-                }, 200);
+                console.log('New session started for next video');
               });
             }
+            
+            // Auto-play the next video when it's loaded
+            player.one('loadeddata', () => {
+              console.log('Next video loaded, starting playback automatically');
+              setTimeout(() => {
+                player.play().catch(error => {
+                  console.log('Auto-play prevented:', error);
+                });
+              }, 500);
+            });
           }
         });
 
@@ -1320,6 +1323,8 @@
             bigPlayButton.addEventListener('click', function(e) {
               e.preventDefault();
               e.stopPropagation();
+              
+              console.log('🎯 Play button clicked - starting video');
               
               // Ensure smooth playback
               setTimeout(() => {
