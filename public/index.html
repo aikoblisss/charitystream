@@ -1506,7 +1506,8 @@
           console.log(`🎬 loadVideoWithQuality called with index: ${index}`);
           currentIndex = index;
           const source = getCurrentVideoSource();
-          console.log(`🎬 Loading video ${index + 1}: ${source.src}`);
+          console.log(`🎬 Loading video ${index + 1} (${playlist[index]}): ${source.src}`);
+          console.log(`🎬 Full video path: videos/${playlist[index]}_${currentQuality}.mp4`);
           
           // Add error handling for video loading
           player.src(source);
@@ -1524,7 +1525,7 @@
             clearTimeout(loadTimeout);
             console.log('✅ Video loaded successfully');
             
-            // Auto-play on initial load
+            // Auto-play on initial load and when switching videos
             if (isInitialLoad) {
               setTimeout(() => {
                 player.play().catch(error => {
@@ -1532,6 +1533,13 @@
                 });
                 isInitialLoad = false;
               }, 200);
+            } else {
+              // Auto-play when switching to next video in playlist
+              setTimeout(() => {
+                player.play().catch(error => {
+                  console.log('Video switch auto-play prevented:', error);
+                });
+              }, 100);
             }
           });
           
@@ -1660,7 +1668,7 @@
         });
 
         player.on("ended", function () {
-          console.log(`🎬 Video ${currentIndex + 1} ended, switching to next video...`);
+          console.log(`🎬 Video ${currentIndex + 1} (${playlist[currentIndex]}) ended, switching to next video...`);
           
           // Complete current session if exists
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
@@ -1677,8 +1685,10 @@
           
           if (!isQualitySwitching) {
             // Move to next video in playlist
+            const oldIndex = currentIndex;
             currentIndex = (currentIndex + 1) % playlist.length;
-            console.log(`🔄 Switching to video ${currentIndex + 1}: ${playlist[currentIndex]}`);
+            console.log(`🔄 Switching from video ${oldIndex + 1} (${playlist[oldIndex]}) to video ${currentIndex + 1} (${playlist[currentIndex]})`);
+            console.log(`🔄 Next video URL: videos/${playlist[currentIndex]}_${currentQuality}.mp4`);
             
             // Load the next video using the same method as initial load
             loadVideoWithQuality(currentIndex);
