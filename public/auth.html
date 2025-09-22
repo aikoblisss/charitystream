@@ -1430,7 +1430,7 @@
         submitBtn.querySelector('.btn-text').textContent = 'Send Reset Link';
         
         if (data.success) {
-          showMessage('If an account exists for this email, a reset link has been sent.', 'success');
+          showMessage('Password reset link sent! Please check your email.', 'success');
           closeForgotPasswordModal();
         } else {
           showMessage(data.error || 'Failed to send reset email', 'error');

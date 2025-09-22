@@ -29,6 +29,18 @@ console.log('Callback URL:', GOOGLE_CALLBACK_URL);
 if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
   console.error('❌ Google OAuth credentials are missing!');
   console.error('Please set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET environment variables');
+  console.log('⚠️ Google OAuth will be disabled');
+  
+  // Export a mock passport object that doesn't break the app
+  module.exports = {
+    use: () => {},
+    initialize: () => {},
+    session: () => {},
+    authenticate: () => (req, res, next) => {
+      res.status(501).json({ error: 'Google OAuth not configured' });
+    }
+  };
+  return;
 }
 
 // Configure Google OAuth Strategy
