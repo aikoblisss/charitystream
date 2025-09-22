@@ -1367,6 +1367,19 @@
         const data = await response.json();
         
         if (data.message) {
+          // Update localStorage with the new username before redirecting
+          const currentUserStr = localStorage.getItem('currentUser');
+          if (currentUserStr) {
+            try {
+              const currentUser = JSON.parse(currentUserStr);
+              currentUser.username = username;
+              localStorage.setItem('currentUser', JSON.stringify(currentUser));
+              console.log('✅ Updated localStorage with new username:', username);
+            } catch (error) {
+              console.error('❌ Error updating localStorage:', error);
+            }
+          }
+          
           showMessage('Username set successfully! Redirecting...', 'success');
           setTimeout(() => {
             window.location.href = '/';
