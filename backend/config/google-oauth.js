@@ -40,11 +40,9 @@ if (!GOOGLE_CLIENT_ID || !GOOGLE_CLIENT_SECRET) {
       res.status(501).json({ error: 'Google OAuth not configured' });
     }
   };
-  return;
-}
-
-// Configure Google OAuth Strategy
-passport.use(new GoogleStrategy({
+} else {
+  // Configure Google OAuth Strategy
+  passport.use(new GoogleStrategy({
   clientID: GOOGLE_CLIENT_ID,
   clientSecret: GOOGLE_CLIENT_SECRET,
   callbackURL: GOOGLE_CALLBACK_URL,
@@ -133,19 +131,20 @@ passport.use(new GoogleStrategy({
   }
 }));
 
-// Serialize user for session
-passport.serializeUser((user, done) => {
-  done(null, user.id);
-});
+  // Serialize user for session
+  passport.serializeUser((user, done) => {
+    done(null, user.id);
+  });
 
-// Deserialize user from session
-passport.deserializeUser(async (id, done) => {
-  try {
-    const [err, user] = await dbHelpers.getUserById(id);
-    done(err, user);
-  } catch (error) {
-    done(error, null);
-  }
-});
+  // Deserialize user from session
+  passport.deserializeUser(async (id, done) => {
+    try {
+      const [err, user] = await dbHelpers.getUserById(id);
+      done(err, user);
+    } catch (error) {
+      done(error, null);
+    }
+  });
 
-module.exports = passport;
+  module.exports = passport;
+}

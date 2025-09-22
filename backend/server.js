@@ -838,14 +838,21 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
     }
 
     // Send password reset email
-    const emailResult = await emailService.sendPasswordResetEmail(
-      user.email, 
-      user.username || user.email.split('@')[0], 
-      tokenPackage.token
-    );
-    if (!emailResult.success) {
-      console.error('❌ Failed to send password reset email:', emailResult.error);
-      // Don't fail the request if email fails, but log it
+    if (emailService && emailService.isEmailConfigured()) {
+      console.log('📧 Sending password reset email...');
+      const emailResult = await emailService.sendPasswordResetEmail(
+        user.email, 
+        user.username || user.email.split('@')[0], 
+        tokenPackage.token
+      );
+      if (emailResult.success) {
+        console.log('✅ Password reset email sent successfully');
+      } else {
+        console.error('❌ Failed to send password reset email:', emailResult.error);
+        // Don't fail the request if email fails, but log it
+      }
+    } else {
+      console.log('⚠️ Email service not configured, skipping password reset email');
     }
 
     console.log('✅ Password reset email sent to:', user.email);
