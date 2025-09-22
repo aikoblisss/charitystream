@@ -1063,8 +1063,7 @@
       showLoading(this);
       
       try {
-        // Step 1: Create account with email and password
-        const response = await fetch('/api/auth/register-step1', {
+        const response = await fetch('/api/auth/register', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -1079,17 +1078,17 @@
         const result = await response.json();
         hideLoading(this);
 
-        if (result.userId && result.nextStep === 'username') {
-          // Store user ID for step 2
-          sessionStorage.setItem('pendingUserId', result.userId);
-          sessionStorage.setItem('pendingEmail', email);
+        if (result.requiresVerification) {
+          showMessage('Account created! Please check your email to verify your account.', 'success');
+          // Don't show username popup for manual signups - they need to verify email first
+        } else if (result.token) {
+          localStorage.setItem('authToken', result.token);
+          localStorage.setItem('currentUser', JSON.stringify(result.user));
           
-          // Show username modal
-          document.getElementById('usernameModal').classList.add('show');
-          document.getElementById('usernameInput').value = '';
-          document.getElementById('usernameInput').placeholder = 'Enter your desired username';
-          
-          showMessage('Account created! Please choose your username.', 'success');
+          showMessage('Account created successfully! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
         } else {
           showMessage(result.error || 'Sign up failed', 'error');
         }
@@ -1305,62 +1304,22 @@
       usernameSubmit.querySelector('.btn-text').textContent = 'Creating your profile...';
       
       try {
-        // Check if this is a new registration (step 2) or Google OAuth username setup
-        const pendingUserId = sessionStorage.getItem('pendingUserId');
-        const authToken = localStorage.getItem('authToken');
-        
-        let response;
-        
-        if (pendingUserId) {
-          // This is step 2 of regular registration
-          response = await fetch('/api/auth/register-step2', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ 
-              userId: parseInt(pendingUserId),
-              username: username 
-            })
-          });
-        } else if (authToken) {
-          // This is Google OAuth username setup
-          response = await fetch('/api/auth/update-username', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ username: username })
-          });
-        } else {
-          throw new Error('No pending registration or authentication found');
-        }
+        const response = await fetch('/api/auth/update-username', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+          },
+          body: JSON.stringify({ username: username })
+        });
 
         const data = await response.json();
         
         if (data.message) {
-          // Clear pending data if it was step 2
-          if (pendingUserId) {
-            sessionStorage.removeItem('pendingUserId');
-            sessionStorage.removeItem('pendingEmail');
-          }
-          
-          // Close modal
-          document.getElementById('usernameModal').classList.remove('show');
-          
-          if (pendingUserId) {
-            // Regular registration - show verification message
-            showMessage('Username set successfully! Please check your email to verify your account.', 'success');
-            // Switch back to sign in tab
-            switchTab('signin');
-          } else {
-            // Google OAuth - redirect to main page
-            showMessage('Username set successfully! Redirecting...', 'success');
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 1500);
-          }
+          showMessage('Username set successfully! Redirecting...', 'success');
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 1500);
         } else {
           hideLoading(usernameSubmit);
           showMessage(data.error || 'Failed to set username', 'error');
@@ -1375,7 +1334,6 @@
     // Function to close username modal and clear auth data
     async function closeUsernameModal() {
       const token = localStorage.getItem('authToken');
-      const pendingUserId = sessionStorage.getItem('pendingUserId');
       
       // If user has a token, call the backend to delete the incomplete Google user
       if (token) {
@@ -1397,12 +1355,6 @@
           console.error('❌ Error cancelling registration:', error);
           // Continue with frontend cleanup even if backend call fails
         }
-      }
-      
-      // Clear pending registration data if it exists
-      if (pendingUserId) {
-        sessionStorage.removeItem('pendingUserId');
-        sessionStorage.removeItem('pendingEmail');
       }
       
       document.getElementById('usernameModal').classList.remove('show');

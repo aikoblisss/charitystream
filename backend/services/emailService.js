@@ -33,7 +33,7 @@ class EmailService {
   /**
    * Send verification email
    * @param {string} email - Recipient email
-   * @param {string} username - Recipient username
+   * @param {string} username - Recipient username (not used in greeting)
    * @param {string} token - Verification token
    * @returns {Promise<Object>} - {success: boolean, messageId?: string, error?: string}
    */
@@ -51,7 +51,7 @@ class EmailService {
         from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: 'Verify Your Email - Charity Stream',
-        html: this.getVerificationEmailTemplate(username, verificationUrl)
+        html: this.getVerificationEmailTemplate(verificationUrl)
       };
 
       const info = await this.transporter.sendMail(mailOptions);
@@ -95,18 +95,17 @@ class EmailService {
 
   /**
    * Get verification email HTML template
-   * @param {string} username - Username
    * @param {string} verificationUrl - Verification URL
    * @returns {string} - HTML email template
    */
-  getVerificationEmailTemplate(username, verificationUrl) {
+  getVerificationEmailTemplate(verificationUrl) {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #3f9d5e; color: white; padding: 20px; text-align: center;">
           <h1>Welcome to Charity Stream!</h1>
         </div>
         <div style="padding: 20px; background-color: #f9fafb;">
-          <h2>Hi ${username}!</h2>
+          <h2>Hello!</h2>
           <p>Thank you for signing up! To complete your registration and start watching ads for charity, please verify your email address.</p>
           
           <div style="text-align: center; margin: 30px 0;">
