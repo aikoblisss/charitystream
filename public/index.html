@@ -1501,9 +1501,15 @@
         }
 
         function loadVideoWithQuality(index) {
-          if (index >= playlist.length) return;
+          if (index >= playlist.length) {
+            console.log(`⚠️ Index ${index} is out of bounds for playlist length ${playlist.length}`);
+            return;
+          }
           
           console.log(`🎬 loadVideoWithQuality called with index: ${index}`);
+          console.log(`🎬 Current playlist:`, playlist);
+          console.log(`🎬 Current quality:`, currentQuality);
+          
           currentIndex = index;
           const source = getCurrentVideoSource();
           console.log(`🎬 Loading video ${index + 1} (${playlist[index]}): ${source.src}`);
@@ -1525,21 +1531,17 @@
             clearTimeout(loadTimeout);
             console.log('✅ Video loaded successfully');
             
-            // Auto-play on initial load and when switching videos
+            // Auto-play when video loads (both initial and subsequent videos)
+            setTimeout(() => {
+              console.log('🎬 Attempting to auto-play video...');
+              player.play().catch(error => {
+                console.log('Auto-play prevented:', error);
+              });
+            }, 100);
+            
+            // Mark initial load as complete
             if (isInitialLoad) {
-              setTimeout(() => {
-                player.play().catch(error => {
-                  console.log('Initial auto-play prevented:', error);
-                });
-                isInitialLoad = false;
-              }, 200);
-            } else {
-              // Auto-play when switching to next video in playlist
-              setTimeout(() => {
-                player.play().catch(error => {
-                  console.log('Video switch auto-play prevented:', error);
-                });
-              }, 100);
+              isInitialLoad = false;
             }
           });
           
@@ -1669,6 +1671,12 @@
 
         player.on("ended", function () {
           console.log(`🎬 Video ${currentIndex + 1} (${playlist[currentIndex]}) ended, switching to next video...`);
+          console.log(`🎬 Current player state:`, {
+            readyState: player.readyState(),
+            paused: player.paused(),
+            ended: player.ended(),
+            currentSrc: player.currentSrc()
+          });
           
           // Complete current session if exists
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
@@ -1701,6 +1709,8 @@
                 console.log('📊 New session started for next video:', sessionId);
               });
             }
+          } else {
+            console.log('⚠️ Quality switching in progress, skipping video switch');
           }
         });
 
