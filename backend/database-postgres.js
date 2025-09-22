@@ -449,12 +449,23 @@ const dbHelpers = {
         'SELECT * FROM users WHERE reset_password_token IS NOT NULL AND reset_password_expires > NOW()'
       );
       
-      // Check each user's hashed token against the plain token
+      // Check each user's token against the plain token
       for (const user of result.rows) {
-        const bcrypt = require('bcryptjs');
-        const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
-        if (isValid) {
+        // First try direct comparison (for plain tokens)
+        if (user.reset_password_token === plainToken) {
           return [null, user];
+        }
+        
+        // Then try bcrypt comparison (for hashed tokens)
+        try {
+          const bcrypt = require('bcryptjs');
+          const isValid = await bcrypt.compare(plainToken, user.reset_password_token);
+          if (isValid) {
+            return [null, user];
+          }
+        } catch (bcryptError) {
+          // If bcrypt comparison fails, continue to next user
+          continue;
         }
       }
       
