@@ -798,10 +798,8 @@
           document.getElementById('userLeaderboardName').textContent = displayName;
         }
       } else {
-        document.getElementById('loggedInNav').style.display = 'none';
-        document.getElementById('guestNav').style.display = 'flex';
-        document.getElementById('loginOverlay').style.display = 'flex';
-        document.getElementById('currentUserRow').style.display = 'none';
+        // Redirect to lander page when not authenticated
+        window.location.href = '/lander.html';
       }
     }
 
@@ -846,8 +844,9 @@
           setTimeout(initializeVideoPlayer, 500);
         });
       } else {
-        console.log('❌ No token found, initializing guest video player');
-        setTimeout(initializeVideoPlayerForGuests, 500);
+        console.log('❌ No token found, redirecting to lander page');
+        // Redirect to lander page when not authenticated
+        window.location.href = '/lander.html';
       }
     };
 
