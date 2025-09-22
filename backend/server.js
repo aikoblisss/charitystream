@@ -856,7 +856,11 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
     }
 
     console.log('✅ Password reset email sent to:', user.email);
-    res.json({ success: true, message: successMessage });
+    res.json({ 
+      success: true, 
+      message: successMessage,
+      note: 'Email delivery may take 1-3 minutes depending on email provider processing time'
+    });
 
   } catch (error) {
     console.error('❌ Forgot password error:', error);

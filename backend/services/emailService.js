@@ -16,7 +16,18 @@ class EmailService {
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS
-      }
+      },
+      // Optimize for faster delivery
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100,
+      rateLimit: 14, // 14 emails per second (Gmail limit)
+      connectionTimeout: 60000, // 60 seconds
+      greetingTimeout: 30000, // 30 seconds
+      socketTimeout: 60000, // 60 seconds
+      // Retry configuration
+      retryDelay: 1000, // 1 second between retries
+      retryAttempts: 3
     };
 
     // Check if email service is properly configured
@@ -182,6 +193,9 @@ class EmailService {
     }
 
     try {
+      const startTime = Date.now();
+      console.log(`📧 Starting password reset email to ${email} at ${new Date().toISOString()}`);
+      
       const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
       const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
       
@@ -193,7 +207,11 @@ class EmailService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Password reset email sent:', info.messageId);
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      console.log(`✅ Password reset email sent to ${email} in ${duration}ms:`, info.messageId);
+      console.log(`📧 Email sent at: ${new Date().toISOString()}`);
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error('❌ Error sending password reset email:', error);

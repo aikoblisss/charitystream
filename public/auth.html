@@ -1002,6 +1002,10 @@
       document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
       document.getElementById(tab + 'Form').classList.add('active');
       
+      // Clear all form data when switching tabs
+      document.getElementById('signinForm').reset();
+      document.getElementById('signupForm').reset();
+      
       // Clear messages
       hideMessages();
     }
@@ -1430,7 +1434,7 @@
         submitBtn.querySelector('.btn-text').textContent = 'Send Reset Link';
         
         if (data.success) {
-          showMessage('Password reset link sent! Please check your email.', 'success');
+          showMessage('Password reset link sent! Please check your email. Delivery may take 1-3 minutes.', 'success');
           closeForgotPasswordModal();
         } else {
           showMessage(data.error || 'Failed to send reset email', 'error');
