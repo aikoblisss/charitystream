@@ -1186,33 +1186,67 @@ app.post('/api/admin/reset-database', async (req, res) => {
       }
     });
     
-    // Delete all data from tables (in correct order due to foreign keys)
-    console.log('🗑️ Clearing event_tracking table...');
-    await pool.query('DELETE FROM event_tracking');
+    // Check which tables exist and clear them (in correct order due to foreign keys)
+    const tablesToClear = [
+      'event_tracking',
+      'watch_sessions', 
+      'daily_analytics',
+      'users'
+    ];
     
-    console.log('🗑️ Clearing watch_sessions table...');
-    await pool.query('DELETE FROM watch_sessions');
+    const clearedTables = [];
     
-    console.log('🗑️ Clearing daily_analytics table...');
-    await pool.query('DELETE FROM daily_analytics');
+    for (const tableName of tablesToClear) {
+      try {
+        // Check if table exists
+        const tableExists = await pool.query(`
+          SELECT EXISTS (
+            SELECT FROM information_schema.tables 
+            WHERE table_schema = 'public' 
+            AND table_name = $1
+          )
+        `, [tableName]);
+        
+        if (tableExists.rows[0].exists) {
+          console.log(`🗑️ Clearing ${tableName} table...`);
+          await pool.query(`DELETE FROM ${tableName}`);
+          clearedTables.push(tableName);
+          console.log(`✅ ${tableName} table cleared`);
+        } else {
+          console.log(`⚠️ ${tableName} table does not exist, skipping`);
+        }
+      } catch (error) {
+        console.error(`❌ Error clearing ${tableName} table:`, error.message);
+        // Continue with other tables even if one fails
+      }
+    }
     
-    console.log('🗑️ Clearing users table...');
-    await pool.query('DELETE FROM users');
-    
-    // Reset auto-increment sequences
+    // Reset auto-increment sequences (only for existing tables)
     console.log('🔄 Resetting sequences...');
-    await pool.query('ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE IF EXISTS watch_sessions_id_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE IF EXISTS event_tracking_id_seq RESTART WITH 1');
-    await pool.query('ALTER SEQUENCE IF EXISTS daily_analytics_id_seq RESTART WITH 1');
+    const sequencesToReset = [
+      'users_id_seq',
+      'watch_sessions_id_seq', 
+      'event_tracking_id_seq',
+      'daily_analytics_id_seq'
+    ];
+    
+    for (const sequenceName of sequencesToReset) {
+      try {
+        await pool.query(`ALTER SEQUENCE IF EXISTS ${sequenceName} RESTART WITH 1`);
+        console.log(`✅ ${sequenceName} reset`);
+      } catch (error) {
+        console.log(`⚠️ ${sequenceName} does not exist, skipping`);
+      }
+    }
     
     await pool.end();
     
     res.json({ 
       message: 'Database reset completed successfully',
-      clearedTables: ['event_tracking', 'watch_sessions', 'daily_analytics', 'users'],
-      clearedData: ['event tracking data', 'watch sessions', 'analytics data', 'user accounts', 'password reset tokens', 'verification tokens'],
-      resetSequences: ['users_id_seq', 'watch_sessions_id_seq', 'event_tracking_id_seq', 'daily_analytics_id_seq']
+      clearedTables: clearedTables,
+      clearedData: clearedTables.includes('users') ? ['user accounts', 'password reset tokens', 'verification tokens'] : [],
+      skippedTables: tablesToClear.filter(table => !clearedTables.includes(table)),
+      resetSequences: sequencesToReset
     });
   } catch (error) {
     console.error('❌ Reset error:', error);
