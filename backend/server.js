@@ -1187,27 +1187,32 @@ app.post('/api/admin/reset-database', async (req, res) => {
     });
     
     // Delete all data from tables (in correct order due to foreign keys)
+    console.log('🗑️ Clearing event_tracking table...');
+    await pool.query('DELETE FROM event_tracking');
+    
     console.log('🗑️ Clearing watch_sessions table...');
     await pool.query('DELETE FROM watch_sessions');
     
+    console.log('🗑️ Clearing daily_analytics table...');
+    await pool.query('DELETE FROM daily_analytics');
+    
     console.log('🗑️ Clearing users table...');
     await pool.query('DELETE FROM users');
-    
-    console.log('🗑️ Clearing password reset tokens...');
-    // Note: This is handled by the DELETE FROM users above, but good to be explicit
     
     // Reset auto-increment sequences
     console.log('🔄 Resetting sequences...');
     await pool.query('ALTER SEQUENCE IF EXISTS users_id_seq RESTART WITH 1');
     await pool.query('ALTER SEQUENCE IF EXISTS watch_sessions_id_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE IF EXISTS event_tracking_id_seq RESTART WITH 1');
+    await pool.query('ALTER SEQUENCE IF EXISTS daily_analytics_id_seq RESTART WITH 1');
     
     await pool.end();
     
     res.json({ 
       message: 'Database reset completed successfully',
-      clearedTables: ['watch_sessions', 'users'],
-      clearedData: ['user accounts', 'watch sessions', 'password reset tokens', 'verification tokens'],
-      resetSequences: ['users_id_seq', 'watch_sessions_id_seq']
+      clearedTables: ['event_tracking', 'watch_sessions', 'daily_analytics', 'users'],
+      clearedData: ['event tracking data', 'watch sessions', 'analytics data', 'user accounts', 'password reset tokens', 'verification tokens'],
+      resetSequences: ['users_id_seq', 'watch_sessions_id_seq', 'event_tracking_id_seq', 'daily_analytics_id_seq']
     });
   } catch (error) {
     console.error('❌ Reset error:', error);
