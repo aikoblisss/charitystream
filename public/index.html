@@ -332,6 +332,30 @@
       display: none !important;
     }
 
+    /* Prevent unwanted interactions */
+    .video-js, .video-js video {
+      user-select: none !important;
+      -webkit-user-select: none !important;
+      -moz-user-select: none !important;
+      -ms-user-select: none !important;
+      -webkit-touch-callout: none !important;
+      -webkit-tap-highlight-color: transparent !important;
+    }
+    
+    /* Disable drag and drop */
+    .video-js video {
+      pointer-events: none !important;
+    }
+    
+    /* Re-enable pointer events for controls */
+    .video-js .vjs-control-bar {
+      pointer-events: auto !important;
+    }
+    
+    .video-js .vjs-big-play-button {
+      pointer-events: auto !important;
+    }
+
     /* Hide time displays */
     .video-js .vjs-current-time,
     .video-js .vjs-duration,
@@ -1193,17 +1217,47 @@
         function disableDoubleClickFullscreen() {
           player.off('dblclick');
           const videoEl = player.el();
+          const videoElement = videoEl.querySelector('video');
+          
           const preventDoubleClick = (e) => {
             e.preventDefault();
             e.stopPropagation();
+            console.log('🚫 Double-click prevented');
             return false;
           };
+          
+          const preventRightClick = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🚫 Right-click prevented');
+            return false;
+          };
+          
+          // Prevent double-click on video player
           videoEl.addEventListener('dblclick', preventDoubleClick, true);
-          videoEl.addEventListener('contextmenu', preventDoubleClick);
+          if (videoElement) {
+            videoElement.addEventListener('dblclick', preventDoubleClick, true);
+          }
+          
+          // Prevent right-click context menu
+          videoEl.addEventListener('contextmenu', preventRightClick, true);
+          if (videoElement) {
+            videoElement.addEventListener('contextmenu', preventRightClick, true);
+          }
+          
+          // Disable fullscreen functionality
           player.requestFullscreen = function() {
-            console.log('Fullscreen disabled');
+            console.log('🚫 Fullscreen disabled');
             return Promise.resolve();
           };
+          
+          // Disable picture-in-picture
+          if (videoElement && videoElement.requestPictureInPicture) {
+            videoElement.requestPictureInPicture = function() {
+              console.log('🚫 Picture-in-picture disabled');
+              return Promise.resolve();
+            };
+          }
         }
 
         player.on('play', () => {
@@ -1215,14 +1269,22 @@
             console.log('▶️ Video started playing, tracking begins');
           }
           
-          // Hide the big play button when playing
-          setTimeout(() => {
+          // Hide the big play button when playing - try multiple times to ensure it works
+          const hidePlayButton = () => {
             const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
             if (bigPlayButton) {
               console.log('🎯 Hiding play button');
               bigPlayButton.style.display = 'none';
+              bigPlayButton.style.visibility = 'hidden';
+              bigPlayButton.style.opacity = '0';
             }
-          }, 100);
+          };
+          
+          // Try immediately and with delays
+          hidePlayButton();
+          setTimeout(hidePlayButton, 50);
+          setTimeout(hidePlayButton, 100);
+          setTimeout(hidePlayButton, 200);
         });
 
         player.on('pause', () => {
@@ -1231,10 +1293,18 @@
           console.log('⏸️ Video paused, pause count:', pausedCount);
           
           // Show the big play button when paused
-          const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
-          if (bigPlayButton) {
-            bigPlayButton.style.display = 'flex';
-          }
+          const showPlayButton = () => {
+            const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
+            if (bigPlayButton) {
+              console.log('🎯 Showing play button');
+              bigPlayButton.style.display = 'flex';
+              bigPlayButton.style.visibility = 'visible';
+              bigPlayButton.style.opacity = '1';
+            }
+          };
+          
+          showPlayButton();
+          setTimeout(showPlayButton, 50);
         });
 
         // Show play button when clicking anywhere on the video while playing
@@ -1242,13 +1312,16 @@
           if (isPlaying) {
             const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
             if (bigPlayButton) {
+              console.log('🎯 Showing play button on click');
               bigPlayButton.style.display = 'flex';
+              bigPlayButton.style.visibility = 'visible';
+              bigPlayButton.style.opacity = '1';
             }
           }
         });
 
         player.on("ended", function () {
-          console.log(`Video ${currentIndex + 1} ended, switching to next video...`);
+          console.log(`🎬 Video ${currentIndex + 1} ended, switching to next video...`);
           
           // Complete current session if exists
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
@@ -1266,33 +1339,19 @@
           if (!isQualitySwitching) {
             // Move to next video in playlist
             currentIndex = (currentIndex + 1) % playlist.length;
-            console.log(`Switching to video ${currentIndex + 1}: ${playlist[currentIndex]}`);
+            console.log(`🔄 Switching to video ${currentIndex + 1}: ${playlist[currentIndex]}`);
             
-            // Load the next video
-            const source = getCurrentVideoSource();
-            console.log(`Loading next video: ${source.src}`);
-            
-            // Set the new video source
-            player.src(source);
+            // Load the next video using the same method as initial load
+            loadVideoWithQuality(currentIndex);
             
             // Start new session for the next video
             if (authToken) {
               startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
                 currentSessionId = sessionId;
                 currentVideoStartTime = Date.now();
-                console.log('New session started for next video');
+                console.log('📊 New session started for next video:', sessionId);
               });
             }
-            
-            // Auto-play the next video when it's loaded
-            player.one('loadeddata', () => {
-              console.log('Next video loaded, starting playback automatically');
-              setTimeout(() => {
-                player.play().catch(error => {
-                  console.log('Auto-play prevented:', error);
-                });
-              }, 500);
-            });
           }
         });
 
