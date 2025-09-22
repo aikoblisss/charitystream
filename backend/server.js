@@ -1110,34 +1110,42 @@ app.post('/api/admin/migrate-verification', async (req, res) => {
       }
     });
     
-    // Check if verification columns already exist
+    // Check if all required columns exist
     const checkColumns = await pool.query(`
       SELECT column_name 
       FROM information_schema.columns 
       WHERE table_name = 'users' 
-      AND column_name IN ('verified', 'verification_token', 'token_expires_at')
+      AND column_name IN ('verified', 'verification_token', 'token_expires_at', 'reset_password_token', 'reset_password_expires')
     `);
 
     const existingColumns = checkColumns.rows.map(row => row.column_name);
-    console.log('📋 Existing verification columns:', existingColumns);
+    console.log('📋 Existing columns:', existingColumns);
 
     // Add missing columns
-    if (!existingColumns.includes('verified')) {
-      console.log('➕ Adding verified column...');
-      await pool.query('ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT FALSE');
-      console.log('✅ verified column added');
-    }
+    const columnsToAdd = [
+      { name: 'verified', sql: 'ALTER TABLE users ADD COLUMN verified BOOLEAN DEFAULT FALSE' },
+      { name: 'verification_token', sql: 'ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)' },
+      { name: 'token_expires_at', sql: 'ALTER TABLE users ADD COLUMN token_expires_at TIMESTAMP' },
+      { name: 'reset_password_token', sql: 'ALTER TABLE users ADD COLUMN reset_password_token VARCHAR(255)' },
+      { name: 'reset_password_expires', sql: 'ALTER TABLE users ADD COLUMN reset_password_expires TIMESTAMP' }
+    ];
 
-    if (!existingColumns.includes('verification_token')) {
-      console.log('➕ Adding verification_token column...');
-      await pool.query('ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)');
-      console.log('✅ verification_token column added');
-    }
-
-    if (!existingColumns.includes('token_expires_at')) {
-      console.log('➕ Adding token_expires_at column...');
-      await pool.query('ALTER TABLE users ADD COLUMN token_expires_at TIMESTAMP');
-      console.log('✅ token_expires_at column added');
+    for (const column of columnsToAdd) {
+      if (!existingColumns.includes(column.name)) {
+        try {
+          console.log(`➕ Adding ${column.name} column...`);
+          await pool.query(column.sql);
+          console.log(`✅ ${column.name} column added`);
+        } catch (error) {
+          if (error.code === '42701') {
+            console.log(`⚠️ Column ${column.name} already exists`);
+          } else {
+            console.error(`❌ Error adding ${column.name} column:`, error.message);
+          }
+        }
+      } else {
+        console.log(`✅ ${column.name} column already exists`);
+      }
     }
 
     // Update existing users to be verified
