@@ -79,7 +79,7 @@
     }
 
     .nav-hidden-mobile {
-      display: flex;
+      display: none;
       align-items: center;
       gap: 1.5rem;
     }
@@ -714,6 +714,47 @@
     let currentSessionId = null;
     let player = null;
 
+    // Check authentication immediately when script loads
+    authToken = localStorage.getItem('authToken');
+    const userStr = localStorage.getItem('currentUser');
+    
+    if (authToken && userStr) {
+      try {
+        currentUser = JSON.parse(userStr);
+        console.log('👤 Pre-loaded user data:', currentUser);
+      } catch (error) {
+        console.error('❌ Error parsing cached user data:', error);
+      }
+    }
+
+    // Set initial UI state immediately to prevent flash
+    function setInitialUIState() {
+      if (authToken) {
+        document.getElementById('loggedInNav').style.display = 'flex';
+        document.getElementById('guestNav').style.display = 'none';
+        document.getElementById('loginOverlay').style.display = 'none';
+        document.getElementById('currentUserRow').style.display = 'flex';
+        
+        if (currentUser) {
+          const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+          document.getElementById('usernameDisplay').textContent = displayName;
+          document.getElementById('userLeaderboardName').textContent = displayName;
+        }
+      } else {
+        document.getElementById('loggedInNav').style.display = 'none';
+        document.getElementById('guestNav').style.display = 'flex';
+        document.getElementById('loginOverlay').style.display = 'flex';
+        document.getElementById('currentUserRow').style.display = 'none';
+      }
+    }
+
+    // Call immediately when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setInitialUIState);
+    } else {
+      setInitialUIState();
+    }
+
     // Check authentication on page load
     window.onload = function() {
       console.log('🚀 Page loading, checking authentication...');
@@ -738,23 +779,9 @@
         token: authToken ? 'Present' : 'Missing'
       });
       
+      // UI state is already set by setInitialUIState(), just handle video initialization
       if (authToken) {
-        console.log('✅ User has token, loading user info...');
-        showAuthenticatedUI();
-        
-        // Check if we have user data in localStorage first
-        if (userStr) {
-          try {
-            currentUser = JSON.parse(userStr);
-            console.log('👤 Using cached user data:', currentUser);
-            // Update UI with cached data immediately
-            const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
-            document.getElementById('usernameDisplay').textContent = displayName;
-            document.getElementById('userLeaderboardName').textContent = displayName;
-          } catch (error) {
-            console.error('❌ Error parsing cached user data:', error);
-          }
-        }
+        console.log('✅ User has token, initializing authenticated video player...');
         
         // Load fresh user info from server, then initialize video player
         loadUserInfo().then(() => {
@@ -762,8 +789,7 @@
           setTimeout(initializeVideoPlayer, 500);
         });
       } else {
-        console.log('❌ No token found, showing unauthenticated UI');
-        showUnauthenticatedUI();
+        console.log('❌ No token found, initializing guest video player');
         setTimeout(initializeVideoPlayerForGuests, 500);
       }
     };
