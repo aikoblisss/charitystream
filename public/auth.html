@@ -1075,7 +1075,7 @@
         if (result.requiresVerification) {
           showMessage('Please verify your email before logging in. Check your inbox for a verification link.', 'error');
         } else if (result.requiresPasswordSetup) {
-          showMessage('Please set up a password for your account to enable manual login.', 'error');
+          showMessage('Please set up a password for your account to enable manual login. Click "Forgot your password?" to create one.', 'error');
         } else if (result.token) {
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));

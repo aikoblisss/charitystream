@@ -804,10 +804,10 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
       return res.json({ success: true, message: successMessage });
     }
 
-    // Don't allow Google users to reset password via email
+    // Allow Google users to set their first password via forgot password flow
     if (user.auth_provider === 'google' || user.auth_provider === 'email_google') {
-      console.log('📧 Google user attempted password reset, returning success message');
-      return res.json({ success: true, message: successMessage });
+      console.log('📧 Google user setting up password for manual login');
+      // Continue with password reset flow for Google users
     }
 
     // Generate reset token package
@@ -846,7 +846,8 @@ app.post('/api/auth/forgot-password', forgotPasswordLimiter, async (req, res) =>
       const emailResult = await emailService.sendPasswordResetEmail(
         user.email, 
         user.username || user.email.split('@')[0], 
-        tokenPackage.token
+        tokenPackage.token,
+        user.auth_provider === 'google' || user.auth_provider === 'email_google'
       );
       if (emailResult.success) {
         console.log('✅ Password reset email sent successfully');
@@ -984,11 +985,15 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
     console.log('✅ Reset token validated for user:', user.email);
 
-    // Check if new password is different from old password
-    const isSamePassword = await bcrypt.compare(password, user.password_hash);
-    if (isSamePassword) {
-      console.log('❌ New password cannot be the same as the current password');
-      return res.status(400).json({ error: 'New password must be different from your current password' });
+    // Check if new password is different from old password (only if user has an existing password)
+    if (user.password_hash && typeof user.password_hash === 'string') {
+      const isSamePassword = await bcrypt.compare(password, user.password_hash);
+      if (isSamePassword) {
+        console.log('❌ New password cannot be the same as the current password');
+        return res.status(400).json({ error: 'New password must be different from your current password' });
+      }
+    } else {
+      console.log('🔑 Setting up first password for Google user:', user.email);
     }
 
     // Hash new password
@@ -1002,11 +1007,15 @@ app.post('/api/auth/reset-password', async (req, res) => {
       return res.status(500).json({ error: 'Failed to update password' });
     }
 
-    console.log(`✅ Password reset successful for user: ${user.email}`);
+    console.log(`✅ Password ${user.password_hash ? 'reset' : 'setup'} successful for user: ${user.email}`);
+
+    const message = user.password_hash 
+      ? 'Password has been reset successfully. You can now log in with your new password.'
+      : 'Password has been set up successfully! You can now log in manually with your email and password.';
 
     res.json({
       success: true,
-      message: 'Password has been reset successfully. You can now log in with your new password.'
+      message: message
     });
 
   } catch (error) {
