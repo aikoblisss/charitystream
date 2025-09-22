@@ -190,7 +190,7 @@
           <a href="#" class="nav-link active" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
           <a href="#" class="nav-link" onclick="handleNavClick('watch')">Watch Ads</a>
-          <div class="user-menu">
+          <div class="user-menu" id="userMenu" style="display: none;">
             <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
               <span id="userDisplayName">Guest</span> ▼
             </button>
@@ -198,6 +198,7 @@
               <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
           </div>
+          <a href="/auth.html" class="nav-link" id="signInLink" style="display: none;">Sign In / Sign Up</a>
         </div>
       </nav>
     </div>
@@ -510,20 +511,17 @@
           console.error('Error parsing user data:', error);
           document.getElementById('userDisplayName').textContent = 'Guest';
         }
+        // Show user menu, hide sign in link
+        document.getElementById('userMenu').style.display = 'block';
+        document.getElementById('signInLink').style.display = 'none';
       } else {
-        document.getElementById('userDisplayName').textContent = 'Guest';
+        // Show sign in link, hide user menu
+        document.getElementById('userMenu').style.display = 'none';
+        document.getElementById('signInLink').style.display = 'inline';
       }
     }
 
     function handleNavClick(action) {
-      const token = localStorage.getItem('authToken');
-      
-      if (!token) {
-        // Redirect to login if not authenticated
-        window.location.href = '/auth.html';
-        return;
-      }
-
       switch (action) {
         case 'about':
           window.location.href = '/about.html';
