@@ -1436,10 +1436,12 @@
       // User is authenticated, initialize video player
       console.log('✅ User has token, initializing authenticated video player...');
       
-      // Load fresh user info from server, then initialize video player
-      loadUserInfo().then(() => {
-        // Initialize video player immediately
-        initializeVideoPlayer();
+      // Initialize video player immediately (don't wait for loadUserInfo)
+      initializeVideoPlayer();
+      
+      // Load fresh user info in background (non-blocking)
+      loadUserInfo().catch(error => {
+        console.log('User info loading failed (non-critical):', error);
       });
     };
 
@@ -2030,70 +2032,182 @@
           loadingIndicator.style.display = "none";
         });
 
-        player.ready(function() {
-          console.log('=== AUTHENTICATED VIDEO PLAYER LOADED ===');
-          disableDoubleClickFullscreen();
+        // Set up event handlers immediately after player creation
+        console.log('=== AUTHENTICATED VIDEO PLAYER LOADED ===');
+        disableDoubleClickFullscreen();
+        
+        // Set up play button behavior
+        const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
+        if (bigPlayButton) {
+          bigPlayButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            console.log('🎯 Play button clicked - starting video');
+            
+            // Ensure smooth playback
+            setTimeout(() => {
+              player.play().catch(error => {
+                console.log('Play button click prevented:', error);
+              });
+            }, 10);
+          });
+        }
+
+        // Hide unwanted controls
+        const progress = player.controlBar.progressControl;
+        if (progress) progress.el().style.display = "none";
+        const fullscreenBtn = player.controlBar.fullscreenToggle;
+        if (fullscreenBtn) fullscreenBtn.el().style.display = "none";
+        const pipBtn = player.controlBar.pictureInPictureToggle;
+        if (pipBtn) pipBtn.el().style.display = "none";
+        
+        // Hide time displays
+        const currentTimeDisplay = player.controlBar.currentTimeDisplay;
+        if (currentTimeDisplay) currentTimeDisplay.el().style.display = "none";
+        const durationDisplay = player.controlBar.durationDisplay;
+        if (durationDisplay) durationDisplay.el().style.display = "none";
+        const remainingTimeDisplay = player.controlBar.remainingTimeDisplay;
+        if (remainingTimeDisplay) remainingTimeDisplay.el().style.display = "none";
+        const timeDivider = player.controlBar.timeDivider;
+        if (timeDivider) timeDivider.el().style.display = "none";
+
+        // Add error handling for video loading
+        player.on('loadstart', function() {
+          console.log('Video loading started');
+        });
+
+        player.on('loadedmetadata', function() {
+          console.log('Video metadata loaded');
+        });
+
+        player.on('loadeddata', function() {
+          console.log('Video data loaded');
+        });
+
+        // Set up all event handlers immediately
+        player.on("waiting", () => {
+          if (!isQualitySwitching) {
+            loadingIndicator.style.display = "block";
+          }
+        });
+
+        player.on("playing", () => {
+          loadingIndicator.style.display = "none";
+        });
+
+        player.on("error", function() {
+          const error = player.error();
+          console.error('Video error:', error);
+          console.error('Current video should be:', getCurrentVideoSource().src);
+          loadingIndicator.style.display = "none";
+        });
+
+        player.on('play', () => {
+          isPlaying = true;
+          console.log('▶️ Video started playing');
           
-          // Ensure smooth play button behavior
+          if (!sessionStartTime && currentSessionId) {
+            sessionStartTime = Date.now();
+            console.log('▶️ Video started playing, tracking begins');
+          }
+          
+          // Hide the big play button when playing
           const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
           if (bigPlayButton) {
-            bigPlayButton.addEventListener('click', function(e) {
-              e.preventDefault();
-              e.stopPropagation();
-              
-              console.log('🎯 Play button clicked - starting video');
-              
-              // Ensure smooth playback
-              setTimeout(() => {
-                player.play().catch(error => {
-                  console.log('Play button click prevented:', error);
-                });
-              }, 10);
-            });
+            console.log('🎯 Hiding play button on play');
+            bigPlayButton.style.display = 'none';
+            bigPlayButton.style.visibility = 'hidden';
+            bigPlayButton.style.opacity = '0';
+            bigPlayButton.style.pointerEvents = 'none';
           }
+        });
 
-          const progress = player.controlBar.progressControl;
-          if (progress) progress.el().style.display = "none";
-          const fullscreenBtn = player.controlBar.fullscreenToggle;
-          if (fullscreenBtn) fullscreenBtn.el().style.display = "none";
-          const pipBtn = player.controlBar.pictureInPictureToggle;
-          if (pipBtn) pipBtn.el().style.display = "none";
+        player.on('pause', () => {
+          isPlaying = false;
+          console.log('⏸️ Video paused');
           
-          // Hide time displays
-          const currentTimeDisplay = player.controlBar.currentTimeDisplay;
-          if (currentTimeDisplay) currentTimeDisplay.el().style.display = "none";
-          const durationDisplay = player.controlBar.durationDisplay;
-          if (durationDisplay) durationDisplay.el().style.display = "none";
-          const remainingTimeDisplay = player.controlBar.remainingTimeDisplay;
-          if (remainingTimeDisplay) remainingTimeDisplay.el().style.display = "none";
-          const timeDivider = player.controlBar.timeDivider;
-          if (timeDivider) timeDivider.el().style.display = "none";
+          // Show the big play button when paused
+          const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
+          if (bigPlayButton) {
+            console.log('🎯 Showing play button on pause');
+            bigPlayButton.style.display = 'flex';
+            bigPlayButton.style.visibility = 'visible';
+            bigPlayButton.style.opacity = '1';
+            bigPlayButton.style.pointerEvents = 'auto';
+          }
+        });
 
-          // Add error handling for video loading
-          player.on('loadstart', function() {
-            console.log('Video loading started');
-          });
-
-          player.on('loadedmetadata', function() {
-            console.log('Video metadata loaded');
-          });
-
-          player.on('loadeddata', function() {
-            console.log('Video data loaded');
-          });
-
-          setTimeout(() => {
-            console.log('Video player fully initialized');
-            isPlayerInitialized = true;
-            loadVideoWithQuality(0);
-            
-            // Ensure play button is visible initially
+        // Show play button when clicking anywhere on the video while playing
+        player.on('click', () => {
+          if (isPlaying) {
             const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
             if (bigPlayButton) {
+              console.log('🎯 Showing play button on click');
               bigPlayButton.style.display = 'flex';
+              bigPlayButton.style.visibility = 'visible';
+              bigPlayButton.style.opacity = '1';
+              bigPlayButton.style.pointerEvents = 'auto';
             }
-          }, 100);
+          }
         });
+
+        player.on("ended", function () {
+          console.log(`🎬 Video ${currentIndex + 1} (${playlist[currentIndex]}) ended, switching to next video...`);
+          console.log(`🎬 Current player state:`, {
+            readyState: player.readyState(),
+            paused: player.paused(),
+            ended: player.ended(),
+            currentSrc: player.currentSrc()
+          });
+          
+          // Complete current session if exists
+          if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
+            const durationSeconds = Math.floor((Date.now() - currentVideoStartTime) / 1000);
+            if (typeof completeWatchSession === 'function') {
+              completeWatchSession(currentSessionId, durationSeconds, true, pausedCount);
+            }
+            
+            currentVideoStartTime = null;
+            sessionStartTime = null;
+            pausedCount = 0;
+            currentSessionId = null;
+          }
+          
+          if (!isQualitySwitching) {
+            // Move to next video in playlist
+            const oldIndex = currentIndex;
+            currentIndex = (currentIndex + 1) % playlist.length;
+            console.log(`🔄 Switching from video ${oldIndex + 1} (${playlist[oldIndex]}) to video ${currentIndex + 1} (${playlist[currentIndex]})`);
+            console.log(`🔄 Next video URL: videos/${playlist[currentIndex]}_${currentQuality}.mp4`);
+            
+            // Load the next video using the same method as initial load
+            loadVideoWithQuality(currentIndex);
+            
+            // Start new session for the next video (non-blocking)
+            if (authToken) {
+              startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
+                currentSessionId = sessionId;
+                currentVideoStartTime = Date.now();
+                console.log('📊 New session started for next video:', sessionId);
+              }).catch(error => {
+                console.log('📊 New session failed to start (non-critical):', error);
+              });
+            }
+          } else {
+            console.log('⚠️ Quality switching in progress, skipping video switch');
+          }
+        });
+
+        // Initialize first video immediately
+        console.log('Video player fully initialized');
+        isPlayerInitialized = true;
+        loadVideoWithQuality(0);
+        
+        // Ensure play button is visible initially
+        if (bigPlayButton) {
+          bigPlayButton.style.display = 'flex';
+        }
 
         console.log('Authenticated video player initialization complete!');
       } catch (error) {
