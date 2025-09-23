@@ -39,9 +39,10 @@
 
     /* Brand colors */
     :root {
-      --brand-500: #3f9d5e;
-      --brand-600: #2f7a48;
-      --brand-700: #26623a;
+      --brand-500: #2F7D31;
+      --brand-600: #2F7D31;
+      --brand-700: #276629;
+      --fora-bg: #E9FFE9;
       --gray-50: #f9fafb;
       --gray-200: #e5e7eb;
       --gray-600: #4b5563;
@@ -55,14 +56,14 @@
       border-bottom: 1px solid var(--gray-200);
     }
 
-    .header .container {
+    .header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0 1rem;
       height: 4rem;
       display: flex;
       align-items: center;
-      gap: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 1rem;
+      gap: 1.25rem;
     }
 
     .logo {
@@ -75,15 +76,15 @@
       margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 1.5rem;
-      font-size: 0.875rem;
+      gap: 1.25rem;
+      font-size: 0.9375rem;
       color: var(--gray-700);
     }
 
     .nav-hidden-mobile {
-      display: none;
+      display: flex;
       align-items: center;
-      gap: 1.5rem;
+      gap: 1.25rem;
     }
 
     .welcome {
@@ -104,26 +105,44 @@
       color: var(--gray-900);
     }
 
-    .watch-ads-btn, .login-btn {
+    .watch-ads-btn {
       display: inline-flex;
       align-items: center;
-      background: none;
-      color: var(--gray-700);
-      padding: 0.5rem 0;
+      background-color: var(--brand-600);
+      color: white;
+      padding: 0.5rem 1rem;
       border: none;
-      border-radius: 0;
-      font-weight: 400;
+      border-radius: 0.5rem;
+      font-weight: 500;
       text-decoration: none;
       cursor: pointer;
     }
 
-    .watch-ads-btn:hover, .login-btn:hover {
-      color: var(--gray-900);
+    .watch-ads-btn:hover {
+      background-color: var(--brand-700);
     }
 
-    .watch-ads-btn.active, .login-btn.active {
-      color: var(--brand-600);
+    /* FORA Charity Header */
+    .charity-header {
+      background-color: var(--fora-bg);
+      border-bottom: 1px solid var(--gray-200);
+    }
+
+    .charity-header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 0.75rem 1rem;
+      text-align: center;
+    }
+
+    .charity-text {
+      font-size: 0.9375rem;
+      color: var(--gray-800);
+    }
+
+    .charity-highlight {
       font-weight: 600;
+      color: var(--brand-600);
     }
 
     .user-menu {
@@ -181,36 +200,37 @@
     }
 
     .hero-container {
-      max-width: 1200px;
+      max-width: 1320px;
       margin: 0 auto;
-      padding: 2rem 1rem;
+      padding: 1rem 1rem;
       text-align: center;
     }
 
-    .hero-title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--gray-900);
+    .hero-title { 
+      font-size: 1.25rem; 
+      font-weight: 600; 
+      color: var(--gray-900); 
+      margin-bottom: 0.125rem; 
     }
 
-    .hero-amount {
-      margin-top: 0.25rem;
-      font-size: 3rem;
-      font-weight: 800;
-      color: var(--brand-600);
-      letter-spacing: -0.025em;
-      font-variant-numeric: tabular-nums;
+    .hero-amount { 
+      margin-top: 0; 
+      font-size: 3.875rem; 
+      font-weight: 800; 
+      color: var(--brand-600); 
+      letter-spacing: -0.025em; 
+      font-variant-numeric: tabular-nums; 
     }
 
-    .hero-subtitle {
-      margin-top: 0.5rem;
-      font-size: 0.875rem;
-      color: var(--gray-600);
+    .hero-subtitle { 
+      margin-top: 0.125rem; 
+      font-size: 1.125rem; 
+      color: var(--gray-600); 
     }
 
     /* Main content */
     .main {
-      max-width: 1200px;
+      max-width: 1320px;
       margin: 0 auto;
       padding: 1.5rem 1rem;
     }
@@ -218,8 +238,9 @@
     .grid {
       display: grid;
       grid-template-columns: 2fr 1fr;
-      gap: 1.5rem;
+      gap: 1.25rem;
       align-items: stretch;
+      margin-bottom: 1.5rem;
     }
 
     /* Video section */
@@ -234,7 +255,11 @@
       overflow: hidden;
       border-radius: 0.75rem 0.75rem 0 0;
       border: 1px solid var(--gray-200);
-      background-color: #000;
+      background-color: var(--gray-200);
+    }
+
+    .video-aspect {
+      position: relative;
       width: 100%;
       height: 0;
       padding-bottom: 56.25%; /* 16:9 aspect ratio */
@@ -458,6 +483,96 @@
 
     .upgrade-btn:hover {
       background-color: var(--brand-700);
+    }
+
+    .play-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 5rem;
+      height: 5rem;
+      background-color: var(--brand-600);
+      border: none;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .play-button:hover {
+      background-color: var(--brand-700);
+    }
+
+    .play-icon {
+      width: 2.5rem;
+      height: 2.5rem;
+      fill: white;
+    }
+
+    /* Progress bar section */
+    .progress-section {
+      border: 1px solid var(--gray-200);
+      border-radius: 0.75rem;
+      background-color: white;
+      box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.1);
+    }
+
+    .progress-content {
+      padding: 0.75rem 0;
+      margin: 0 0.25rem 0 -1rem;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.5rem;
+    }
+
+    .partner-text {
+      font-size: 0.9375rem;
+      color: var(--gray-700);
+      font-weight: 600;
+    }
+
+    .progress-amount {
+      font-size: 0.9375rem;
+      color: var(--gray-700);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .amount-raised {
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .amount-goal {
+      font-weight: 600;
+      color: var(--gray-900);
+    }
+
+    .amount-text {
+      font-weight: 400;
+      color: var(--gray-600);
+    }
+
+    .progress-bar-container {
+      width: 100%;
+      height: 0.5rem;
+      background-color: var(--gray-200);
+      border-radius: 0.25rem;
+      overflow: hidden;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      background-color: var(--brand-600);
+      border-radius: 0.25rem;
+      width: 70.4%; /* $352 of $500 */
+      transition: width 0.3s ease;
     }
 
     /* Sidebar */
@@ -817,37 +932,109 @@
         margin-bottom: 40px;
       }
     }
+
+    /* Responsive */
+    @media (max-width: 1024px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .hero-amount { 
+        margin-top: 0; 
+        font-size: 3.875rem; 
+        font-weight: 800; 
+        color: var(--brand-600); 
+        letter-spacing: -0.025em; 
+        font-variant-numeric: tabular-nums; 
+      }
+    }
+
+    @media (max-width: 768px) {
+      .header-container, .charity-header-container, .hero-container, .main {
+        padding-left: 1rem;
+        padding-right: 1rem;
+      }
+      
+      .nav-hidden-mobile {
+        display: none;
+      }
+    }
+
+    @media (min-width: 640px) {
+      .hero-amount { 
+        margin-top: 0; 
+        font-size: 3.875rem; 
+        font-weight: 800; 
+        color: var(--brand-600); 
+        letter-spacing: -0.025em; 
+        font-variant-numeric: tabular-nums; 
+      }
+      
+      .header-container, .charity-header-container, .hero-container, .main {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+      }
+
+      .progress-section {
+        padding-left: 1.5rem;
+        padding-right: 1.5rem;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .header-container, .charity-header-container, .hero-container, .main {
+        padding-left: 2rem;
+        padding-right: 2rem;
+      }
+
+      .progress-section {
+        padding-left: 2rem;
+        padding-right: 2rem;
+      }
+      
+      .upgrade-btn {
+        padding: 0.5rem 1.5rem;
+      }
+    }
+  
+/* === Viewport Framing (Desktop 100% Zoom) === */
+@media (min-width: 1024px) {
+  html, body { height: 100%; }
+  body { scroll-snap-type: y mandatory; }
+  .frame-snap { scroll-snap-align: start; scroll-snap-stop: always; }
+  .frame-scaler { position: relative; width: 100%; }
+  .frame-inner { transform-origin: top center; }
+}
   </style>
 </head>
 <body>
   <!-- Top Nav -->
   <header class="header">
-    <div class="container">
+    <div class="header-container">
       <div class="logo">Charity Stream</div>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
-          <a href="#" class="nav-link active" onclick="handleNavClick('watch')">Watch Ads</a>
-          <div class="user-menu">
-            <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
-              <span id="usernameDisplay">User</span> ▼
-            </button>
-            <div class="user-dropdown" id="userDropdown" style="display: none;">
-              <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-          </div>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertiser.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
-          <a href="#" class="nav-link watch-ads-btn" onclick="handleWatchAdsClick(event)">Watch Ads</a>
+          <a href="#" class="watch-ads-btn" onclick="handleWatchAdsClick(event)">Watch Ads</a>
         </div>
       </nav>
     </div>
   </header>
+
+  <!-- FORA Charity Header (shown when authenticated) -->
+  <section class="charity-header" id="charityHeader" style="display: none;">
+    <div class="charity-header-container">
+      <div class="charity-text">Your Donations This Week Support: <span class="charity-highlight">FORA — Empowering Refugee Families Through Education</span></div>
+    </div>
+  </section>
 
   <!-- Hero / Total Raised (shown when authenticated) -->
   <section class="hero" id="heroSection" style="display: none;">
@@ -872,32 +1059,34 @@
       <!-- Video Area -->
       <section class="video-section">
         <div class="video-container">
-          <video
-            id="my-video"
-            class="video-js vjs-default-skin"
-            controls
-            preload="auto"
-            data-setup="{}"
-          >
-            <source src="videos/video1_1080p.mp4" type="video/mp4" />
-            <p class="vjs-no-js">
-              To view this video please enable JavaScript, and consider upgrading to a
-              web browser that supports HTML5 video.
-            </p>
-          </video>
-          
-          <!-- Login overlay for non-authenticated users -->
-          <div class="login-overlay" id="loginOverlay">
-            <div class="login-prompt">
-              <h3>Sign In Required</h3>
-              <p>Please sign in to start watching ads for charity and track your impact!</p>
-              <button class="watch-ads-btn" onclick="goToAuth()">Sign In / Sign Up</button>
+          <div class="video-aspect">
+            <video
+              id="my-video"
+              class="video-js vjs-default-skin"
+              controls
+              preload="auto"
+              data-setup="{}"
+            >
+              <source src="videos/video1_1080p.mp4" type="video/mp4" />
+              <p class="vjs-no-js">
+                To view this video please enable JavaScript, and consider upgrading to a
+                web browser that supports HTML5 video.
+              </p>
+            </video>
+            
+            <!-- Login overlay for non-authenticated users -->
+            <div class="login-overlay" id="loginOverlay">
+              <div class="login-prompt">
+                <h3>Sign In Required</h3>
+                <p>Please sign in to start watching ads for charity and track your impact!</p>
+                <button class="watch-ads-btn" onclick="goToAuth()">Sign In / Sign Up</button>
+              </div>
             </div>
           </div>
         </div>
         <div class="video-controls">
           <div class="quality-text">Quality: <span class="quality-number" id="currentQualityDisplay">1080p</span></div>
-          <button class="upgrade-btn">Upgrade to Premium for $3/month</button>
+          <button class="upgrade-btn">Upgrade to 1080p for $1/month</button>
         </div>
       </section>
 
@@ -976,6 +1165,21 @@
         </div>
       </aside>
     </div>
+    
+    <!-- Weekly Partner Progress Section -->
+    <section class="progress-section">
+      <div class="progress-content">
+        <div class="progress-header">
+          <div class="partner-text">Weekly Partner: Refugee FORA</div>
+          <div class="progress-amount">
+            <span class="amount-raised">$352</span> <span class="amount-text">raised of</span> <span class="amount-goal">$500</span> <span class="amount-text">goal</span>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill"></div>
+        </div>
+      </div>
+    </section>
   </main>
 
   <!-- Lander Main Content (shown when not authenticated) -->
@@ -1068,6 +1272,7 @@
       
       const loggedInNav = document.getElementById('loggedInNav');
       const guestNav = document.getElementById('guestNav');
+      const charityHeader = document.getElementById('charityHeader');
       const heroSection = document.getElementById('heroSection');
       const landerHero = document.getElementById('landerHero');
       const mainContent = document.getElementById('mainContent');
@@ -1079,6 +1284,7 @@
         // Show lander content
         if (guestNav) guestNav.style.display = 'flex';
         if (loggedInNav) loggedInNav.style.display = 'none';
+        if (charityHeader) charityHeader.style.display = 'none';
         if (landerHero) landerHero.style.display = 'block';
         if (heroSection) heroSection.style.display = 'none';
         if (landerMain) landerMain.style.display = 'flex';
@@ -1107,6 +1313,7 @@
       // Show authenticated content
       if (loggedInNav) loggedInNav.style.display = 'flex';
       if (guestNav) guestNav.style.display = 'none';
+      if (charityHeader) charityHeader.style.display = 'block';
       if (heroSection) heroSection.style.display = 'block';
       if (landerHero) landerHero.style.display = 'none';
       if (mainContent) mainContent.style.display = 'block';
@@ -1819,6 +2026,30 @@
         console.error('Error initializing authenticated video player:', error);
       }
     }
+
+    // Viewport framing script
+    (function() {
+      if (!window.matchMedia || !window.matchMedia('(min-width:1024px)').matches) return;
+      var scaler = document.getElementById('framed-viewport');
+      if (!scaler) return;
+      var inner = scaler.querySelector('.frame-inner');
+      if (!inner) return;
+
+      function fit() {
+        // Reset, measure, then scale down if needed
+        inner.style.transform = 'scale(1)';
+        var H = inner.getBoundingClientRect().height;
+        var vh = window.innerHeight;
+        var s = Math.min(1, vh / H);
+        inner.style.transform = 'scale(' + s + ')';
+        scaler.style.height = (H * s) + 'px';
+      }
+
+      window.addEventListener('load', fit, { once: true });
+      window.addEventListener('resize', fit);
+      // In case fonts/assets shift layout slightly after load
+      setTimeout(fit, 600);
+    })();
   </script>
 </body>
 </html>
