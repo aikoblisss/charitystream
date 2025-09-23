@@ -1335,15 +1335,8 @@ app.post('/api/tracking/complete-session', authenticateToken, async (req, res) =
       return res.status(500).json({ error: 'Failed to complete session' });
     }
 
-    // Update user's total watch time if completed
-    if (completed && minutesWatched > 0) {
-      const [updateErr] = await dbHelpers.updateWatchTime(req.user.userId, minutesWatched);
-      if (updateErr) {
-        console.error('Error updating watch time:', updateErr);
-      } else {
-        console.log(`⏱️ ${req.user.username} watched ${minutesWatched} minutes`);
-      }
-    }
+    // Note: Watch time is now tracked per-ad via updateWatchSeconds, not per-session
+    // This prevents double-tracking and ensures immediate minute updates
 
     res.json({
       message: 'Session completed',

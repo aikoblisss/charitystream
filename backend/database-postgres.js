@@ -257,15 +257,13 @@ const dbHelpers = {
     }
   },
 
-  // Update user's watch time (in seconds)
+  // Update user's watch time (in seconds only - minutes computed in API)
   updateWatchSeconds: async (userId, secondsWatched) => {
     try {
       const result = await pool.query(
         `UPDATE users 
          SET total_seconds_watched = total_seconds_watched + $2,
-             current_month_seconds = current_month_seconds + $2,
-             total_minutes_watched = (total_seconds_watched + $2) / 60,
-             current_month_minutes = (current_month_seconds + $2) / 60
+             current_month_seconds = current_month_seconds + $2
          WHERE id = $1 
          RETURNING total_seconds_watched, current_month_seconds`,
         [userId, secondsWatched]
