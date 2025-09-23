@@ -53,6 +53,8 @@ async function createTables() {
       is_active BOOLEAN DEFAULT TRUE,
       total_minutes_watched INTEGER DEFAULT 0,
       current_month_minutes INTEGER DEFAULT 0,
+      total_seconds_watched INTEGER DEFAULT 0,
+      current_month_seconds INTEGER DEFAULT 0,
       subscription_tier VARCHAR(50) DEFAULT 'free',
       auth_provider VARCHAR(50) DEFAULT 'google'
     )
@@ -234,7 +236,26 @@ const dbHelpers = {
     }
   },
 
-  // Update user's watch time
+  // Update user's watch time (in seconds)
+  updateWatchSeconds: async (userId, secondsWatched) => {
+    try {
+      const result = await pool.query(
+        `UPDATE users 
+         SET total_seconds_watched = total_seconds_watched + $2,
+             current_month_seconds = current_month_seconds + $2,
+             total_minutes_watched = FLOOR((total_seconds_watched + $2) / 60),
+             current_month_minutes = FLOOR((current_month_seconds + $2) / 60)
+         WHERE id = $1 
+         RETURNING *`,
+        [userId, secondsWatched]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Update user's watch time (legacy - kept for compatibility)
   updateWatchTime: async (userId, minutesWatched) => {
     try {
       const result = await pool.query(
@@ -708,7 +729,8 @@ const dbHelpers = {
         `SELECT 
           u.id,
           u.username,
-          u.current_month_minutes,
+          FLOOR(u.current_month_seconds::numeric / 60) AS current_month_minutes,
+          u.current_month_seconds,
           u.profile_picture,
           u.created_at,
           COALESCE(ds.ads_watched, 0) as ads_watched_today,
@@ -733,7 +755,7 @@ const dbHelpers = {
           SELECT MAX(streak_length) as streak_days FROM streak_calc
         ) streak ON true
         WHERE u.is_active = true
-        ORDER BY u.current_month_minutes DESC
+        ORDER BY u.current_month_seconds DESC
         LIMIT $1`,
         [limit]
       );
@@ -753,8 +775,8 @@ const dbHelpers = {
       const result = await pool.query(
         `SELECT COUNT(*) + 1 as rank
          FROM users 
-         WHERE current_month_minutes > (
-           SELECT current_month_minutes 
+         WHERE current_month_seconds > (
+           SELECT current_month_seconds 
            FROM users 
            WHERE id = $1
          ) AND is_active = true`,
@@ -822,7 +844,7 @@ const dbHelpers = {
     try {
       await ensureTablesExist();
       const result = await pool.query(
-        'UPDATE users SET current_month_minutes = 0'
+        'UPDATE users SET current_month_minutes = 0, current_month_seconds = 0'
       );
       
       console.log(`✅ Reset monthly leaderboard for ${result.rowCount} users`);

@@ -1399,14 +1399,14 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
         console.log(`📊 Updated daily stats for user ${req.user.userId}`);
       }
 
-      // Update user's total and monthly watch time
-      const minutesWatched = Math.floor(durationSeconds / 60);
-      if (minutesWatched > 0) {
-        const [watchTimeErr] = await dbHelpers.updateWatchTime(req.user.userId, minutesWatched);
+      // Update user's total and monthly watch time (record seconds every time an ad completes)
+      const secondsWatched = parseInt(durationSeconds, 10) || 0;
+      if (secondsWatched > 0) {
+        const [watchTimeErr] = await dbHelpers.updateWatchSeconds(req.user.userId, secondsWatched);
         if (watchTimeErr) {
-          console.error('Error updating watch time:', watchTimeErr);
+          console.error('Error updating watch seconds:', watchTimeErr);
         } else {
-          console.log(`⏱️ ${req.user.username} watched ${minutesWatched} minutes (${durationSeconds} seconds)`);
+          console.log(`⏱️ ${req.user.username} watched ${secondsWatched} seconds (${durationSeconds} sec)`);
         }
       }
     }
@@ -1488,8 +1488,8 @@ app.get('/api/user/impact', authenticateToken, async (req, res) => {
         currentRank: monthlyRank,
         overallRank: overallRank,
         totalUsers: totalUsers,
-        watchTimeMinutes: user.current_month_minutes,
-        totalWatchTimeMinutes: user.total_minutes_watched,
+        watchTimeMinutes: Math.floor((user.current_month_seconds || 0) / 60),
+        totalWatchTimeMinutes: Math.floor((user.total_seconds_watched || 0) / 60),
         streakDays: streakDays,
         accountAgeDays: accountAgeDays,
         donationsGenerated: Math.round(totalAdsWatched * 0.01) // Placeholder: $0.01 per ad
