@@ -1402,11 +1402,11 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
       // Update user's total and monthly watch time (record seconds every time an ad completes)
       const secondsWatched = parseInt(durationSeconds, 10) || 0;
       if (secondsWatched > 0) {
-        const [watchTimeErr] = await dbHelpers.updateWatchSeconds(req.user.userId, secondsWatched);
+        const [watchTimeErr, updatedUser] = await dbHelpers.updateWatchSeconds(req.user.userId, secondsWatched);
         if (watchTimeErr) {
           console.error('Error updating watch seconds:', watchTimeErr);
         } else {
-          console.log(`⏱️ ${req.user.username} watched ${secondsWatched} seconds (${durationSeconds} sec)`);
+          console.log(`⏱️ ${req.user.username} watched ${secondsWatched} seconds (${durationSeconds} sec) - Total: ${updatedUser.total_seconds_watched}s, Monthly: ${updatedUser.current_month_seconds}s`);
         }
       }
     }
@@ -1438,7 +1438,7 @@ app.get('/api/leaderboard/monthly', async (req, res) => {
       leaderboard: leaderboard.map((user, index) => ({
         rank: index + 1,
         username: user.username,
-        minutesWatched: user.current_month_minutes,
+        minutesWatched: Math.floor(user.current_month_seconds / 60),
         profilePicture: user.profile_picture,
         adsWatchedToday: user.ads_watched_today,
         streakDays: user.streak_days,

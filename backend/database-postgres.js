@@ -243,10 +243,10 @@ const dbHelpers = {
         `UPDATE users 
          SET total_seconds_watched = total_seconds_watched + $2,
              current_month_seconds = current_month_seconds + $2,
-             total_minutes_watched = FLOOR((total_seconds_watched + $2) / 60),
-             current_month_minutes = FLOOR((current_month_seconds + $2) / 60)
+             total_minutes_watched = (total_seconds_watched + $2) / 60,
+             current_month_minutes = (current_month_seconds + $2) / 60
          WHERE id = $1 
-         RETURNING *`,
+         RETURNING total_seconds_watched, current_month_seconds`,
         [userId, secondsWatched]
       );
       return [null, result.rows[0]];

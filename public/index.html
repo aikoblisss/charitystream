@@ -1570,7 +1570,7 @@
           document.getElementById('usernameDisplay').textContent = displayName;
           document.getElementById('userLeaderboardName').textContent = displayName;
           document.getElementById('totalAdsWatched').textContent = currentUser.totalMinutesWatched || 0;
-          document.getElementById('userMinutesDisplay').textContent = (currentUser.currentMonthMinutes || 0) + ' mins';
+          document.getElementById('userMinutesDisplay').textContent = '0 mins'; // Will be updated by loadUserImpact()
           
           // Load user impact and leaderboard data
           loadUserImpact();
