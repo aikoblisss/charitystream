@@ -1390,13 +1390,24 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
       return res.status(500).json({ error: 'Failed to complete ad tracking' });
     }
 
-    // Update daily stats if ad was completed
+    // Update daily stats and user's monthly minutes if ad was completed
     if (completed && durationSeconds > 0) {
       const [statsErr] = await dbHelpers.updateDailyStats(req.user.userId, 1, durationSeconds);
       if (statsErr) {
         console.error('Error updating daily stats:', statsErr);
       } else {
         console.log(`📊 Updated daily stats for user ${req.user.userId}`);
+      }
+
+      // Update user's total and monthly watch time
+      const minutesWatched = Math.floor(durationSeconds / 60);
+      if (minutesWatched > 0) {
+        const [watchTimeErr] = await dbHelpers.updateWatchTime(req.user.userId, minutesWatched);
+        if (watchTimeErr) {
+          console.error('Error updating watch time:', watchTimeErr);
+        } else {
+          console.log(`⏱️ ${req.user.username} watched ${minutesWatched} minutes (${durationSeconds} seconds)`);
+        }
       }
     }
 

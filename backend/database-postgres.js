@@ -703,6 +703,7 @@ const dbHelpers = {
   getMonthlyLeaderboard: async (limit = 5) => {
     try {
       await ensureTablesExist();
+      console.log('🔍 Getting monthly leaderboard with limit:', limit);
       const result = await pool.query(
         `SELECT 
           u.id,
@@ -731,14 +732,16 @@ const dbHelpers = {
           )
           SELECT MAX(streak_length) as streak_days FROM streak_calc
         ) streak ON true
-        WHERE u.is_active = true AND u.current_month_minutes > 0
+        WHERE u.is_active = true
         ORDER BY u.current_month_minutes DESC
         LIMIT $1`,
         [limit]
       );
       
+      console.log('✅ Monthly leaderboard query result:', result.rows.length, 'users');
       return [null, result.rows];
     } catch (error) {
+      console.error('❌ Error in getMonthlyLeaderboard:', error);
       return [error, null];
     }
   },

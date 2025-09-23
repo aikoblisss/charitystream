@@ -1725,8 +1725,9 @@
 
         if (response.ok) {
           console.log('📺 Ad tracking completed:', durationSeconds, 'seconds');
-          // Refresh user impact data
+          // Refresh user impact data and leaderboard
           loadUserImpact();
+          loadLeaderboard();
         }
       } catch (error) {
         console.error('Error completing ad tracking:', error);
