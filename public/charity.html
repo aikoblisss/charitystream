@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Join as a Charity - Charity Stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --brand-primary: #2F7D31;
+      --brand-600: #2F7D31;
+      --brand-700: #276629;
+      --gray-50:#f9fafb; --gray-75:#FAFAFA; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+      --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-900:#111827;
+    }
+
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      font-feature-settings:'liga' 1,'calt' 1,'tnum' 1;
+      background:#ffffff;color:var(--gray-900);line-height:1.5;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+      min-height:100vh;
+    }
+
+    .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+
+    /* Header */
+    .header{border-bottom:1px solid var(--gray-200);width:100%;background:#fff}
+    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:var(--brand-600)}
+    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
+    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
+    .welcome{color:var(--gray-900)}
+    .welcome-bold{font-weight:500}
+    .nav-link{text-decoration:none;font-weight:500;transition:.2s}
+    .nav-link:hover{color:var(--brand-600)}
+    .nav-link.active{color:var(--brand-600);font-weight:600}
+    .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer;transition:.2s}
+    .watch-ads-btn:hover{background:var(--brand-700)}
+
+    /* Hero Section */
+    .hero{
+      padding:3rem 0 2.5rem;
+      background:var(--gray-50);
+      text-align:center;
+    }
+
+    .hero-badge{
+      display:inline-block;
+      background:var(--brand-primary);
+      color:#fff;
+      padding:.5rem 1rem;
+      border-radius:9999px;
+      font-size:.875rem;
+      font-weight:600;
+      margin-bottom:1rem;
+    }
+
+    .hero-title{
+      font-size:3rem;
+      font-weight:800;
+      margin-bottom:.75rem;
+      line-height:1.1;
+      color:var(--gray-900);
+      max-width:800px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+
+    .hero-subtitle{
+      font-size:1.125rem;
+      color:var(--gray-600);
+      margin-bottom:2rem;
+      max-width:700px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+
+    .hero-stats{
+      display:flex;
+      justify-content:center;
+      gap:4rem;
+      margin-bottom:2rem;
+    }
+
+    .stat{
+      text-align:center;
+    }
+
+    .stat-number{
+      font-size:2.5rem;
+      font-weight:800;
+      color:var(--brand-600);
+      display:block;
+      margin-bottom:.25rem;
+    }
+
+    .stat-label{
+      font-size:.875rem;
+      color:var(--gray-600);
+      font-weight:500;
+    }
+
+    .hero-cta{
+      display:inline-flex;
+      align-items:center;
+      gap:.75rem;
+      background:var(--brand-600);
+      color:#fff;
+      padding:1rem 2rem;
+      border:none;
+      border-radius:.75rem;
+      font-size:1.125rem;
+      font-weight:600;
+      text-decoration:none;
+      cursor:pointer;
+      transition:.3s;
+      box-shadow:0 4px 15px rgba(47,125,49,.2);
+    }
+
+    .hero-cta:hover{
+      background:var(--brand-700);
+      transform:translateY(-2px);
+      box-shadow:0 8px 25px rgba(47,125,49,.3);
+    }
+
+    /* Trust Strip */
+    .trust-strip{
+      background:#fff;
+      padding:1.5rem 0;
+      border-bottom:1px solid var(--gray-200);
+    }
+
+    .trust-items{
+      display:flex;
+      justify-content:center;
+      gap:3rem;
+      align-items:center;
+    }
+
+    .trust-item{
+      display:flex;
+      align-items:center;
+      gap:.5rem;
+      font-size:.875rem;
+      color:var(--gray-700);
+    }
+
+    .trust-icon{
+      color:var(--brand-600);
+      font-weight:700;
+    }
+
+    /* Form Section */
+    .form-section{
+      padding:4rem 0;
+      background:#fff;
+    }
+
+    .form-container{
+      max-width:600px;
+      margin:0 auto;
+    }
+
+    .form-header{
+      text-align:center;
+      margin-bottom:2.5rem;
+    }
+
+    .form-title{
+      font-size:2rem;
+      font-weight:700;
+      margin-bottom:.75rem;
+      color:var(--gray-900);
+    }
+
+    .form-subtitle{
+      color:var(--gray-600);
+      font-size:1rem;
+    }
+
+    .form{
+      background:var(--gray-50);
+      border-radius:1rem;
+      padding:2.5rem;
+      border:1px solid var(--gray-200);
+    }
+
+    .form-group{
+      margin-bottom:1.5rem;
+    }
+
+    .form-label{
+      display:block;
+      font-size:.875rem;
+      font-weight:600;
+      color:var(--gray-700);
+      margin-bottom:.5rem;
+    }
+
+    .form-input{
+      width:100%;
+      padding:.875rem;
+      border:1px solid var(--gray-200);
+      border-radius:.5rem;
+      font-size:.875rem;
+      transition:.2s;
+      background:#fff;
+      font-family:inherit;
+    }
+
+    .form-input:focus{
+      outline:none;
+      border-color:var(--brand-600);
+      box-shadow:0 0 0 3px rgba(47,125,49,.1);
+    }
+
+    .form-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:1rem;
+    }
+
+    .entry-info{
+      background:#fff;
+      border:1px solid var(--gray-200);
+      border-radius:.75rem;
+      padding:1.5rem;
+      margin:1.5rem 0;
+    }
+
+    .entry-title{
+      font-weight:600;
+      color:var(--gray-900);
+      margin-bottom:.75rem;
+    }
+
+    .entry-description{
+      font-size:.9rem;
+      color:var(--gray-700);
+      line-height:1.6;
+    }
+
+    .checkbox-group{
+      display:flex;
+      align-items:flex-start;
+      gap:.75rem;
+      margin:1.5rem 0;
+    }
+
+    .checkbox{
+      width:18px;
+      height:18px;
+      accent-color:var(--brand-600);
+      margin-top:.125rem;
+    }
+
+    .checkbox-label{
+      font-size:.875rem;
+      color:var(--gray-700);
+      line-height:1.5;
+    }
+
+    .submit-btn{
+      width:100%;
+      background:var(--brand-600);
+      color:#fff;
+      padding:1rem 2rem;
+      border:none;
+      border-radius:.75rem;
+      font-size:1rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:.3s;
+      margin-top:1rem;
+    }
+
+    .submit-btn:hover{
+      background:var(--brand-700);
+      transform:translateY(-1px);
+    }
+
+    .form-disclaimer{
+      font-size:.75rem;
+      color:var(--gray-600);
+      text-align:center;
+      margin-top:1.5rem;
+      line-height:1.4;
+    }
+
+    /* Footer */
+    .footer{
+      background:var(--brand-700);
+      color:#d7e7de;
+      padding:1rem 0;
+    }
+
+    .footer .container{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:1rem;
+    }
+
+    .footer p{
+      font-style:italic;
+      font-weight:600;
+      font-size:.875rem;
+    }
+
+    .social-icons{
+      display:flex;
+      gap:.5rem;
+    }
+
+    .social-icon{
+      width:2rem;
+      height:2rem;
+      border-radius:9999px;
+      background:rgba(255,255,255,.15);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      text-decoration:none;
+      color:#eaf3ef;
+      font-size:.85rem;
+    }
+
+    .social-icon:hover{
+      background:rgba(255,255,255,.25);
+    }
+
+    /* Responsive */
+    @media (max-width:1024px){
+      .form-section .container > div{
+        grid-template-columns:1fr !important;
+        gap:2rem !important;
+      }
+      .form-section .container > div > div:last-child{
+        position:static !important;
+      }
+      .form-section .container .form-row,
+      .form-section .container div[style*="grid-template-columns"]{
+        grid-template-columns:1fr !important;
+      }
+    }
+    @media (max-width:768px){
+      .nav-hidden-mobile{
+        display:none;
+      }
+      .container{
+        padding:0 1rem;
+      }
+      .form{
+        padding:2rem 1.5rem;
+      }
+      .hero-title{
+        font-size:2.25rem;
+      }
+      .hero-stats{
+        flex-direction:column;
+        gap:1.5rem;
+      }
+      .trust-items{
+        flex-direction:column;
+        gap:1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">Charity Stream</div>
+      <nav class="nav">
+        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
+          <a href="/about.html" class="nav-link">About</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+        </div>
+        <div class="nav-hidden-mobile" id="guestNav">
+          <a href="/about.html" class="nav-link">About</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+        </div>
+        <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-badge">Trusted by 127+ Verified Nonprofits</div>
+      <h1 class="hero-title">Your Mission Deserves Funding</h1>
+      <p class="hero-subtitle">Skip grants. 100% of corporate net ad revenue becomes unrestricted support for verified 501(c)(3)s.</p>
+      
+      <div class="hero-stats">
+        <div class="stat">
+          <span class="stat-number">$47K+</span>
+          <span class="stat-label">Donated to Date</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">127</span>
+          <span class="stat-label">Organizations Funded</span>
+        </div>
+        <div class="stat">
+          <span class="stat-number">$100-500</span>
+          <span class="stat-label">Weekly Award Range</span>
+        </div>
+      </div>
+
+      <a href="#apply" class="hero-cta">
+        <span>Apply Now</span>
+        <span>→</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Trust Strip -->
+  <section class="trust-strip">
+    <div class="container">
+      <div class="trust-items">
+        <div class="trust-item">
+          <span class="trust-icon">✓</span>
+          <span>Verified 501(c)(3) Only</span>
+        </div>
+        <div class="trust-item">
+          <span class="trust-icon">✓</span>
+          <span>100% Net Revenue to Winners</span>
+        </div>
+        <div class="trust-item">
+          <span class="trust-icon">✓</span>
+          <span>Unrestricted Funding</span>
+        </div>
+        <div class="trust-item">
+          <span class="trust-icon">✓</span>
+          <span>Weekly Opportunities</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Form Section -->
+  <section class="form-section" id="apply">
+    <div class="container">
+      <div style="display:grid;grid-template-columns:1fr 400px;gap:3rem;max-width:1200px;margin:0 auto">
+        <!-- Form -->
+        <div class="form-container">
+          <div class="form-header">
+            <h2 class="form-title">Apply to Receive Donations</h2>
+            <p class="form-subtitle">Enter weekly for donations, visibility, and future supporters—no grant writing required.</p>
+          </div>
+          
+          <form class="form" id="charityForm">
+            <div style="margin-bottom:2rem">
+              <h3 style="font-size:1.125rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem;border-bottom:2px solid var(--gray-200);padding-bottom:.5rem">Charity Information</h3>
+              
+              <div class="form-group">
+                <label class="form-label" for="charityName">Charity Name *</label>
+                <input type="text" id="charityName" class="form-input" placeholder="Your registered charity name" required>
+              </div>
+
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div class="form-group">
+                  <label class="form-label" for="ein">Federal EIN *</label>
+                  <input type="text" id="ein" class="form-input" placeholder="12-3456789" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="email">Contact Email *</label>
+                  <input type="email" id="email" class="form-input" placeholder="contact@yourcharity.org" required>
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-bottom:2rem">
+              <h3 style="font-size:1.125rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem;border-bottom:2px solid var(--gray-200);padding-bottom:.5rem">Entry Payment</h3>
+              
+              <div style="background:#fff;border:1px solid var(--gray-200);border-radius:.75rem;padding:1.5rem;margin-bottom:1rem">
+                <div style="font-weight:600;color:var(--gray-900);margin-bottom:.75rem">
+                  <span>$1 Entry</span>
+                  <div style="display:inline-flex;align-items:center;gap:.25rem;background:#635bff;color:#fff;padding:.25rem .5rem;border-radius:.25rem;font-weight:600;font-size:.65rem;margin-left:.75rem">
+                    <span style="font-size:.7rem">🔒</span>
+                    <span>Secured by Stripe</span>
+                  </div>
+                </div>
+                <div style="font-size:.875rem;color:var(--gray-700);line-height:1.6;margin-bottom:1rem">
+                  100% donated to weekly winner. Ensures serious applications. Instant refund if not approved.
+                </div>
+                
+                <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:.5rem;padding:1rem">
+                  <div style="display:flex;gap:.75rem;margin-bottom:1rem">
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                      <input type="radio" name="paymentMethod" value="card" checked style="accent-color:var(--brand-600)">
+                      <span style="font-size:.875rem">Credit/Debit Card</span>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+                      <input type="radio" name="paymentMethod" value="paypal" style="accent-color:var(--brand-600)">
+                      <span style="font-size:.875rem">PayPal</span>
+                    </label>
+                  </div>
+                  
+                  <div id="cardPayment">
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:.75rem;margin-bottom:.75rem">
+                      <div>
+                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">Card Number</label>
+                        <input type="text" placeholder="1234 5678 9012 3456" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
+                      </div>
+                      <div>
+                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">CVV</label>
+                        <input type="text" placeholder="123" maxlength="4" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
+                      </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+                      <div>
+                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">Expiry Date</label>
+                        <input type="text" placeholder="MM/YY" maxlength="5" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
+                      </div>
+                      <div>
+                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">Zip Code</label>
+                        <input type="text" placeholder="12345" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div id="paypalPayment" style="display:none;text-align:center;padding:1rem">
+                    <div style="font-size:.875rem;color:var(--gray-600);margin-bottom:1rem">You'll be redirected to PayPal to complete your $1 payment</div>
+                    <div style="background:#0070ba;color:#fff;padding:.75rem 1.5rem;border-radius:.5rem;display:inline-block;font-weight:600">PayPal</div>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;gap:.5rem;align-items:flex-start">
+                <input type="checkbox" id="confirm501c3" style="width:18px;height:18px;accent-color:var(--brand-600);margin-top:.125rem" required>
+                <label for="confirm501c3" style="font-size:.875rem;color:var(--gray-700);margin:0;font-weight:500;line-height:1.5">
+                  I confirm we are a registered 501(c)(3) and agree to the <a href="#" style="color:var(--brand-600);text-decoration:underline">charity partner community guidelines</a>.
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="submit-btn">Submit Entry</button>
+          </form>
+        </div>
+
+        <!-- Sidebar -->
+        <div style="background:var(--gray-50);border-radius:1rem;padding:2rem;height:fit-content;position:sticky;top:2rem">
+          <h3 style="font-size:1.5rem;font-weight:700;color:var(--gray-900);margin-bottom:2rem;white-space:nowrap">Why Organizations Choose Us</h3>
+          
+          <div style="margin-bottom:2.5rem">
+            <div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--gray-200)">
+              <span style="color:var(--brand-600);font-weight:700;font-size:1.1rem;margin-top:.1rem">✓</span>
+              <div>
+                <div style="font-weight:600;color:var(--gray-900);margin-bottom:.25rem">We're trusted and transparent</div>
+                <div style="font-size:.875rem;color:var(--gray-600);line-height:1.5">Established platform with verified organizations. Every donation tracked and reported publicly.</div>
+              </div>
+            </div>
+            
+            <div style="display:flex;align-items:flex-start;gap:1rem;margin-bottom:2rem;padding-bottom:1.5rem;border-bottom:1px solid var(--gray-200)">
+              <span style="color:var(--brand-600);font-weight:700;font-size:1.1rem;margin-top:.1rem">✓</span>
+              <div>
+                <div style="font-weight:600;color:var(--gray-900);margin-bottom:.25rem">We provide massive visibility</div>
+                <div style="font-size:.875rem;color:var(--gray-600);line-height:1.5">Featured across our platform, social media, and newsletters to thousands of viewers</div>
+              </div>
+            </div>
+            
+            <div style="display:flex;align-items:flex-start;gap:1rem">
+              <span style="color:var(--brand-600);font-weight:700;font-size:1.1rem;margin-top:.1rem">✓</span>
+              <div>
+                <div style="font-weight:600;color:var(--gray-900);margin-bottom:.25rem">We offer ongoing opportunity</div>
+                <div style="font-size:.875rem;color:var(--gray-600);line-height:1.5">Enter every week - previous winners remain eligible</div>
+              </div>
+            </div>
+          </div>
+
+          <div style="background:#fff;border-radius:.75rem;padding:1.5rem;border:1px solid var(--gray-200)">
+            <div style="display:flex;justify-content:space-between;margin-bottom:.75rem">
+              <span style="color:var(--gray-700);font-size:.875rem">Total Donated</span>
+              <span style="color:var(--brand-600);font-weight:700">$832</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:.75rem">
+              <span style="color:var(--gray-700);font-size:.875rem">Charities Supported</span>
+              <span style="color:var(--brand-600);font-weight:700">19</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:1rem">
+              <span style="color:var(--gray-700);font-size:.875rem">Weekly Opportunities</span>
+              <span style="color:var(--brand-600);font-weight:700">52</span>
+            </div>
+            <div style="font-size:.75rem;color:var(--gray-600)">
+              Updated weekly • <a href="#" style="color:var(--brand-600);text-decoration:underline">See impact reports</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Stream ads, fuel impact, compete for good.</p>
+      <div class="social-icons">
+        <a href="#" class="social-icon">✉</a>
+        <a href="#" class="social-icon">in</a>
+        <a href="#" class="social-icon">X</a>
+        <a href="#" class="social-icon">●</a>
+        <a href="#" class="social-icon">◉</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Check authentication status
+    const authToken = localStorage.getItem('authToken');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    // Set initial UI state
+    function setInitialUIState() {
+      const loggedInNav = document.getElementById('loggedInNav');
+      const guestNav = document.getElementById('guestNav');
+      const usernameDisplay = document.getElementById('usernameDisplay');
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
+
+      if (authToken && currentUser) {
+        // User is logged in
+        if (loggedInNav) loggedInNav.style.display = 'flex';
+        if (guestNav) guestNav.style.display = 'none';
+        
+        if (usernameDisplay && currentUser.username) {
+          usernameDisplay.textContent = currentUser.username;
+        }
+      } else {
+        // User is not logged in
+        if (loggedInNav) loggedInNav.style.display = 'none';
+        if (guestNav) guestNav.style.display = 'flex';
+      }
+
+      // Watch Ads button functionality
+      if (watchAdsBtn) {
+        watchAdsBtn.onclick = () => {
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+    }
+
+    // Payment method switching
+    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        const cardPayment = document.getElementById('cardPayment');
+        const paypalPayment = document.getElementById('paypalPayment');
+        
+        if (this.value === 'card') {
+          cardPayment.style.display = 'block';
+          paypalPayment.style.display = 'none';
+        } else {
+          cardPayment.style.display = 'none';
+          paypalPayment.style.display = 'block';
+        }
+      });
+    });
+
+    // Card number formatting
+    document.querySelector('input[placeholder="1234 5678 9012 3456"]').addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      value = value.replace(/(\d{4})(?=\d)/g, '$1 ');
+      if (value.length > 19) value = value.substring(0, 19);
+      e.target.value = value;
+    });
+
+    // Expiry date formatting
+    document.querySelector('input[placeholder="MM/YY"]').addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length >= 2) {
+        value = value.substring(0, 2) + '/' + value.substring(2, 4);
+      }
+      e.target.value = value;
+    });
+
+    // EIN formatting
+    document.getElementById('ein').addEventListener('input', function(e) {
+      let value = e.target.value.replace(/\D/g, '');
+      if (value.length >= 2) {
+        value = value.substring(0, 2) + '-' + value.substring(2, 9);
+      }
+      e.target.value = value;
+    });
+
+    // Form submission
+    document.getElementById('charityForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      if (!document.getElementById('confirm501c3').checked) {
+        alert('Please confirm 501(c)(3) status and community guidelines.');
+        return;
+      }
+
+      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+      
+      if (paymentMethod === 'paypal') {
+        alert("Redirecting to PayPal for $1 payment...");
+        // In real implementation, redirect to PayPal
+      } else {
+        alert("Processing $1 payment and application...");
+        // In real implementation, process card payment
+      }
+      
+      // Simulate success
+      setTimeout(() => {
+        alert("Thank you! Your application and payment have been submitted. You'll receive confirmation within 24 hours.");
+        this.reset();
+      }, 1500);
+    });
+
+    // Smooth scroll to form and auto-focus
+    document.querySelector('.hero-cta').addEventListener('click', function(e) {
+      e.preventDefault();
+      document.getElementById('apply').scrollIntoView({
+        behavior: 'smooth'
+      });
+      setTimeout(() => {
+        document.getElementById('charityName').focus();
+      }, 800);
+    });
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+      setInitialUIState();
+    });
+  </script>
+</body>
+</html>
