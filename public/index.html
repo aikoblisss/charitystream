@@ -1959,6 +1959,10 @@
                 currentVideoStartTime = Date.now();
                 sessionStartTime = null;
                 pausedCount = 0;
+                // Reset ad tracking state for new video
+                isAdPlaying = false;
+                currentAdTrackingId = null;
+                adStartTime = null;
                 console.log('📊 Watch session started:', sessionId);
               }
             }).catch(error => {
@@ -2022,7 +2026,7 @@
             console.log('▶️ Video started playing, tracking begins');
           }
           
-          // Start ad tracking when video starts playing
+          // Start ad tracking when video starts playing (only if not already tracking)
           if (currentSessionId && !isAdPlaying) {
             isAdPlaying = true;
             adStartTime = Date.now();
@@ -2030,6 +2034,9 @@
               currentAdTrackingId = adTrackingId;
               console.log('📺 Ad tracking started for video play');
             });
+          } else if (isAdPlaying && currentAdTrackingId) {
+            // Resume tracking the same ad (don't start a new one)
+            console.log('📺 Ad tracking resumed (same ad)');
           }
           
           // Hide the big play button when playing - try multiple times to ensure it works
@@ -2057,15 +2064,9 @@
           pausedCount++;
           console.log('⏸️ Video paused, pause count:', pausedCount);
           
-          // Complete ad tracking if ad was playing
-          if (isAdPlaying && currentAdTrackingId && adStartTime) {
-            const adDurationSeconds = Math.floor((Date.now() - adStartTime) / 1000);
-            completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
-            isAdPlaying = false;
-            currentAdTrackingId = null;
-            adStartTime = null;
-            console.log('📺 Ad tracking completed on pause:', adDurationSeconds, 'seconds');
-          }
+          // Don't complete ad tracking on pause - just pause the tracking
+          // The ad is still playing, just paused
+          console.log('📺 Ad tracking paused (not completed)');
           
           // Show the big play button when paused
           const showPlayButton = () => {
@@ -2107,7 +2108,7 @@
             currentSrc: player.currentSrc()
           });
           
-          // Complete ad tracking if ad was playing
+          // Complete ad tracking if ad was playing (only when video actually ends)
           if (isAdPlaying && currentAdTrackingId && adStartTime) {
             const adDurationSeconds = Math.floor((Date.now() - adStartTime) / 1000);
             completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
@@ -2145,6 +2146,10 @@
               startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
                 currentSessionId = sessionId;
                 currentVideoStartTime = Date.now();
+                // Reset ad tracking state for new video
+                isAdPlaying = false;
+                currentAdTrackingId = null;
+                adStartTime = null;
                 console.log('📊 New session started for next video:', sessionId);
               }).catch(error => {
                 console.log('📊 New session failed to start (non-critical):', error);
@@ -2329,6 +2334,10 @@
               startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
                 currentSessionId = sessionId;
                 currentVideoStartTime = Date.now();
+                // Reset ad tracking state for new video
+                isAdPlaying = false;
+                currentAdTrackingId = null;
+                adStartTime = null;
                 console.log('📊 New session started for next video:', sessionId);
               }).catch(error => {
                 console.log('📊 New session failed to start (non-critical):', error);
