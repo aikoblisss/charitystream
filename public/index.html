@@ -1017,7 +1017,7 @@
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('account')">Account</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
         </div>
         <a class="watch-ads-btn" href="#" onclick="handleNavClick('watch')" id="watchAdsBtn" style="display: none;">Watch Ads</a>
         <div class="nav-hidden-mobile" id="guestNav">
@@ -1455,12 +1455,12 @@
         case 'advertise':
           window.location.href = '/advertiser.html';
           break;
-        case 'account':
-          // Handle account functionality
-          console.log('Account clicked');
+        case 'impact':
+          window.location.href = '/impact.html';
           break;
         case 'watch':
-          // Already on main page
+          // Already on main page, scroll to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
           break;
       }
     }
@@ -1473,13 +1473,25 @@
         case 'advertise':
           window.location.href = '/advertiser.html';
           break;
-        case 'account':
-          // Handle account functionality
-          console.log('Account clicked');
+        case 'impact':
+          window.location.href = '/impact.html';
           break;
         case 'watch':
           window.location.href = '/auth.html';
           break;
+      }
+    }
+
+    function handleWatchAdsClick(event) {
+      event.preventDefault();
+      
+      // Check if user is authenticated
+      if (authToken) {
+        // User is authenticated, go to main page (ad watching section)
+        window.location.href = '/';
+      } else {
+        // User is not authenticated, redirect to auth page
+        window.location.href = '/auth.html';
       }
     }
 

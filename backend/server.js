@@ -1501,10 +1501,35 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 
 // ===== SERVER STARTUP =====
 
-// Handle frontend routing - serve index.html for any non-API routes
+// Handle frontend routing - serve appropriate page for non-API routes
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
+    // List of valid static pages
+    const validPages = [
+      '/',
+      '/index.html',
+      '/about.html',
+      '/advertiser.html',
+      '/auth.html',
+      '/impact.html',
+      '/reset-password.html',
+      '/verify-email.html',
+      '/test-video.html',
+      '/lander.html',
+      '/404.html'
+    ];
+
+    // Check if the requested path is a valid page
+    if (validPages.includes(req.path)) {
+      if (req.path === '/' || req.path === '/index.html') {
+        res.sendFile(path.join(__dirname, '../public/index.html'));
+      } else {
+        res.sendFile(path.join(__dirname, '../public' + req.path));
+      }
+    } else {
+      // Serve 404 page for unknown routes
+      res.status(404).sendFile(path.join(__dirname, '../public/404.html'));
+    }
   }
 });
 
