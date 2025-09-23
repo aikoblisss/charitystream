@@ -587,6 +587,152 @@
   </section>
 
   <script>
+    // Load user impact data
+    async function loadUserImpact() {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/user/impact', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const impact = result.impact;
+          
+          // Update impact stats
+          document.querySelector('.stat:nth-child(1) .stat-value').textContent = `#${impact.currentRank}`;
+          document.querySelector('.stat:nth-child(2) .stat-value').textContent = `${impact.watchTimeMinutes} mins`;
+          document.querySelector('.stat:nth-child(3) .stat-value').textContent = impact.totalAdsWatched;
+          document.querySelector('.stat:nth-child(4) .stat-value').textContent = `$${impact.donationsGenerated}`;
+          
+          console.log('📊 User impact data loaded:', impact);
+        }
+      } catch (error) {
+        console.error('Error loading user impact:', error);
+      }
+    }
+
+    // Load leaderboard data
+    async function loadLeaderboard() {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/leaderboard/monthly?limit=5', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const leaderboard = result.leaderboard;
+          
+          // Update leaderboard UI
+          const leaderboardContainer = document.querySelector('#watchers .board-card');
+          if (leaderboardContainer) {
+            // Clear existing rows except the "You" row
+            const existingRows = leaderboardContainer.querySelectorAll('.row:not(.me)');
+            existingRows.forEach(row => row.remove());
+            
+            // Add leaderboard items
+            leaderboard.forEach((user, index) => {
+              const row = document.createElement('div');
+              row.className = 'row';
+              row.innerHTML = `
+                <div class="left">
+                  <div class="rank">${user.rank}</div>
+                  <div>
+                    <div class="title-sm">${user.username}</div>
+                    <div class="meta">${user.streakDays}-day streak • Active ${Math.floor(user.accountAgeDays / 30)} months</div>
+                  </div>
+                </div>
+                <div class="value">${user.minutesWatched} mins</div>
+              `;
+              
+              // Insert before the "You" row
+              const meRow = leaderboardContainer.querySelector('.row.me');
+              if (meRow) {
+                leaderboardContainer.insertBefore(row, meRow);
+              } else {
+                leaderboardContainer.appendChild(row);
+              }
+            });
+            
+            // Add placeholder items if fewer than 5 users
+            for (let i = leaderboard.length; i < 5; i++) {
+              const row = document.createElement('div');
+              row.className = 'row';
+              row.innerHTML = `
+                <div class="left">
+                  <div class="rank">${i + 1}</div>
+                  <div>
+                    <div class="title-sm">Claim this spot</div>
+                    <div class="meta">Be the first to watch ads</div>
+                  </div>
+                </div>
+                <div class="value">0 mins</div>
+              `;
+              
+              // Insert before the "You" row
+              const meRow = leaderboardContainer.querySelector('.row.me');
+              if (meRow) {
+                leaderboardContainer.insertBefore(row, meRow);
+              } else {
+                leaderboardContainer.appendChild(row);
+              }
+            }
+          }
+          
+          console.log('🏆 Leaderboard data loaded:', leaderboard);
+        }
+      } catch (error) {
+        console.error('Error loading leaderboard:', error);
+      }
+    }
+
+    // Load user's "You" row data
+    async function loadUserRow() {
+      const token = localStorage.getItem('authToken');
+      if (!token) return;
+
+      try {
+        const response = await fetch('/api/user/impact', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const impact = result.impact;
+          const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+          
+          // Update the "You" row
+          const meRow = document.querySelector('.row.me');
+          if (meRow) {
+            const username = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+            meRow.innerHTML = `
+              <div class="left">
+                <div class="rank">${impact.currentRank}</div>
+                <div>
+                  <div class="title-sm">${username} (You)</div>
+                  <div class="meta">${impact.streakDays}-day streak • Active ${Math.floor(impact.accountAgeDays / 7)} weeks • #${impact.currentRank} of ${impact.totalUsers}</div>
+                </div>
+              </div>
+              <div class="value">${impact.watchTimeMinutes} mins</div>
+            `;
+          }
+        }
+      } catch (error) {
+        console.error('Error loading user row:', error);
+      }
+    }
+
     // Check authentication status on page load
     document.addEventListener('DOMContentLoaded', function() {
       checkAuthStatus();
@@ -609,6 +755,11 @@
         // Show user menu, hide sign in link
         document.getElementById('userMenu').style.display = 'block';
         document.getElementById('signInLink').style.display = 'none';
+        
+        // Load dynamic data
+        loadUserImpact();
+        loadLeaderboard();
+        loadUserRow();
       } else {
         document.getElementById('userDisplayName').textContent = 'Guest';
         // Show sign-up prompt, hide authenticated content

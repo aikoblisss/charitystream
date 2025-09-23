@@ -1285,20 +1285,21 @@ app.post('/api/admin/reset-database', async (req, res) => {
 // ===== TRACKING ROUTES (Ready for your video player) =====
 
 // Start watching session
-app.post('/api/tracking/start-session', authenticateToken, (req, res) => {
-  const { videoName, quality } = req.body;
-  const userIP = req.ip || req.connection.remoteAddress;
-  const userAgent = req.get('User-Agent');
+app.post('/api/tracking/start-session', authenticateToken, async (req, res) => {
+  try {
+    const { videoName, quality } = req.body;
+    const userIP = req.ip || req.connection.remoteAddress;
+    const userAgent = req.get('User-Agent');
 
-  const sessionData = {
-    userId: req.user.userId,
-    videoName: videoName,
-    quality: quality,
-    userIP: userIP,
-    userAgent: userAgent
-  };
+    const sessionData = {
+      userId: req.user.userId,
+      videoName: videoName,
+      quality: quality,
+      userIP: userIP,
+      userAgent: userAgent
+    };
 
-  dbHelpers.createWatchSession(sessionData, function(err) {
+    const [err, sessionId] = await dbHelpers.createWatchSession(sessionData);
     if (err) {
       console.error('Error creating watch session:', err);
       return res.status(500).json({ error: 'Failed to start session' });
@@ -1306,19 +1307,29 @@ app.post('/api/tracking/start-session', authenticateToken, (req, res) => {
 
     console.log(`📺 Session started: ${req.user.username} watching ${videoName} (${quality})`);
     res.json({
-      sessionId: this.lastID,
+      sessionId: sessionId,
       message: 'Session started'
     });
-  });
+  } catch (error) {
+    console.error('Error in start-session:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Complete watching session
-app.post('/api/tracking/complete-session', authenticateToken, (req, res) => {
-  const { sessionId, durationSeconds, completed, pausedCount } = req.body;
-  const minutesWatched = Math.floor(durationSeconds / 60);
+app.post('/api/tracking/complete-session', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId, durationSeconds, completed, pausedCount } = req.body;
+    const minutesWatched = Math.floor(durationSeconds / 60);
 
-  // Complete the session
-  dbHelpers.completeWatchSession(sessionId, durationSeconds, completed, pausedCount || 0, (err) => {
+    // Complete the session
+    const [err] = await dbHelpers.updateWatchSession(sessionId, {
+      end_time: new Date(),
+      duration_seconds: durationSeconds,
+      completed: completed,
+      paused_count: pausedCount || 0
+    });
+
     if (err) {
       console.error('Error completing session:', err);
       return res.status(500).json({ error: 'Failed to complete session' });
@@ -1326,48 +1337,166 @@ app.post('/api/tracking/complete-session', authenticateToken, (req, res) => {
 
     // Update user's total watch time if completed
     if (completed && minutesWatched > 0) {
-      dbHelpers.updateWatchTime(req.user.userId, minutesWatched, (err) => {
-        if (err) {
-          console.error('Error updating watch time:', err);
-        } else {
-          console.log(`⏱️ ${req.user.username} watched ${minutesWatched} minutes`);
-        }
-      });
+      const [updateErr] = await dbHelpers.updateWatchTime(req.user.userId, minutesWatched);
+      if (updateErr) {
+        console.error('Error updating watch time:', updateErr);
+      } else {
+        console.log(`⏱️ ${req.user.username} watched ${minutesWatched} minutes`);
+      }
     }
 
     res.json({
       message: 'Session completed',
       minutesWatched: minutesWatched
     });
-  });
+  } catch (error) {
+    console.error('Error in complete-session:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ===== AD TRACKING ENDPOINTS =====
+
+// Start ad tracking
+app.post('/api/tracking/start-ad', authenticateToken, async (req, res) => {
+  try {
+    const { sessionId } = req.body;
+    
+    const [err, adTrackingId] = await dbHelpers.startAdTracking(req.user.userId, sessionId);
+    if (err) {
+      console.error('Error starting ad tracking:', err);
+      return res.status(500).json({ error: 'Failed to start ad tracking' });
+    }
+
+    console.log(`📺 Ad tracking started for user ${req.user.userId}, session ${sessionId}`);
+    res.json({
+      adTrackingId: adTrackingId,
+      message: 'Ad tracking started'
+    });
+  } catch (error) {
+    console.error('Error in start-ad:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Complete ad tracking
+app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
+  try {
+    const { adTrackingId, durationSeconds, completed = true } = req.body;
+    
+    const [err, adTracking] = await dbHelpers.completeAdTracking(adTrackingId, durationSeconds, completed);
+    if (err) {
+      console.error('Error completing ad tracking:', err);
+      return res.status(500).json({ error: 'Failed to complete ad tracking' });
+    }
+
+    // Update daily stats if ad was completed
+    if (completed && durationSeconds > 0) {
+      const [statsErr] = await dbHelpers.updateDailyStats(req.user.userId, 1, durationSeconds);
+      if (statsErr) {
+        console.error('Error updating daily stats:', statsErr);
+      } else {
+        console.log(`📊 Updated daily stats for user ${req.user.userId}`);
+      }
+    }
+
+    res.json({
+      message: 'Ad tracking completed',
+      durationSeconds: durationSeconds
+    });
+  } catch (error) {
+    console.error('Error in complete-ad:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // ===== LEADERBOARD ROUTES =====
 
-// Get leaderboard
-app.get('/api/leaderboard', (req, res) => {
-  const limit = req.query.limit || 10;
-  
-  dbHelpers.getLeaderboard(limit, (err, users) => {
+// Get monthly leaderboard (top 5 users)
+app.get('/api/leaderboard/monthly', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 5;
+    const [err, leaderboard] = await dbHelpers.getMonthlyLeaderboard(limit);
+    
     if (err) {
+      console.error('Error getting monthly leaderboard:', err);
       return res.status(500).json({ error: 'Failed to get leaderboard' });
     }
 
     res.json({
-      leaderboard: users.map((user, index) => ({
+      leaderboard: leaderboard.map((user, index) => ({
         rank: index + 1,
         username: user.username,
         minutesWatched: user.current_month_minutes,
-        profilePicture: user.profile_picture
+        profilePicture: user.profile_picture,
+        adsWatchedToday: user.ads_watched_today,
+        streakDays: user.streak_days,
+        accountAgeDays: Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24))
       }))
     });
-  });
+  } catch (error) {
+    console.error('Error in monthly leaderboard:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get user's impact data
+app.get('/api/user/impact', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    
+    // Get all user data in parallel
+    const [
+      [adsTodayErr, adsWatchedToday],
+      [totalAdsErr, totalAdsWatched],
+      [monthlyRankErr, monthlyRank],
+      [overallRankErr, overallRank],
+      [totalUsersErr, totalUsers],
+      [accountAgeErr, accountAgeDays],
+      [streakErr, streakDays],
+      [userErr, user]
+    ] = await Promise.all([
+      dbHelpers.getAdsWatchedToday(userId),
+      dbHelpers.getTotalAdsWatched(userId),
+      dbHelpers.getUserMonthlyRank(userId),
+      dbHelpers.getUserOverallRank(userId),
+      dbHelpers.getTotalActiveUsers(),
+      dbHelpers.getUserAccountAge(userId),
+      dbHelpers.calculateUserStreak(userId),
+      dbHelpers.getUserById(userId)
+    ]);
+
+    if (userErr || !user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({
+      impact: {
+        adsWatchedToday: adsWatchedToday,
+        totalAdsWatched: totalAdsWatched,
+        currentRank: monthlyRank,
+        overallRank: overallRank,
+        totalUsers: totalUsers,
+        watchTimeMinutes: user.current_month_minutes,
+        totalWatchTimeMinutes: user.total_minutes_watched,
+        streakDays: streakDays,
+        accountAgeDays: accountAgeDays,
+        donationsGenerated: Math.round(totalAdsWatched * 0.01) // Placeholder: $0.01 per ad
+      }
+    });
+  } catch (error) {
+    console.error('Error getting user impact:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // Get user's rank
-app.get('/api/leaderboard/my-rank', authenticateToken, (req, res) => {
-  dbHelpers.getUserRank(req.user.userId, (err, rank) => {
+app.get('/api/leaderboard/my-rank', authenticateToken, async (req, res) => {
+  try {
+    const [err, rank] = await dbHelpers.getUserMonthlyRank(req.user.userId);
+    
     if (err) {
+      console.error('Error getting user rank:', err);
       return res.status(500).json({ error: 'Failed to get rank' });
     }
 
@@ -1375,7 +1504,35 @@ app.get('/api/leaderboard/my-rank', authenticateToken, (req, res) => {
       rank: rank,
       username: req.user.username
     });
-  });
+  } catch (error) {
+    console.error('Error in my-rank:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Legacy leaderboard endpoint (for backward compatibility)
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    const [err, leaderboard] = await dbHelpers.getMonthlyLeaderboard(limit);
+    
+    if (err) {
+      console.error('Error getting leaderboard:', err);
+      return res.status(500).json({ error: 'Failed to get leaderboard' });
+    }
+
+    res.json({
+      leaderboard: leaderboard.map((user, index) => ({
+        rank: index + 1,
+        username: user.username,
+        minutesWatched: user.current_month_minutes,
+        profilePicture: user.profile_picture
+      }))
+    });
+  } catch (error) {
+    console.error('Error in leaderboard:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // ===== ENHANCED ADMIN ROUTES =====

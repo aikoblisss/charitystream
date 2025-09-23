@@ -74,11 +74,42 @@ async function createTables() {
     )
   `;
 
+  const createAdTrackingTable = `
+    CREATE TABLE IF NOT EXISTS ad_tracking (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      session_id INTEGER REFERENCES watch_sessions(id),
+      ad_start_time TIMESTAMP NOT NULL,
+      ad_end_time TIMESTAMP,
+      duration_seconds INTEGER DEFAULT 0,
+      completed BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
+  const createDailyStatsTable = `
+    CREATE TABLE IF NOT EXISTS daily_stats (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      date DATE NOT NULL,
+      ads_watched INTEGER DEFAULT 0,
+      total_watch_time_seconds INTEGER DEFAULT 0,
+      streak_days INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(user_id, date)
+    )
+  `;
+
   try {
     await pool.query(createUsersTable);
     console.log('✅ Users table ready');
     await pool.query(createSessionsTable);
     console.log('✅ Watch sessions table ready');
+    await pool.query(createAdTrackingTable);
+    console.log('✅ Ad tracking table ready');
+    await pool.query(createDailyStatsTable);
+    console.log('✅ Daily stats table ready');
   } catch (error) {
     console.error('❌ Error creating tables:', error);
   }
@@ -519,6 +550,281 @@ const dbHelpers = {
       return [null, result.rows[0]];
     } catch (error) {
       console.error('Error deleting incomplete Google user:', error);
+      return [error, null];
+    }
+  },
+
+  // ===== AD TRACKING FUNCTIONS =====
+
+  // Start tracking an ad
+  startAdTracking: async (userId, sessionId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'INSERT INTO ad_tracking (user_id, session_id, ad_start_time) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id',
+        [userId, sessionId]
+      );
+      return [null, result.rows[0].id];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Complete ad tracking
+  completeAdTracking: async (adTrackingId, durationSeconds, completed = true) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE ad_tracking SET ad_end_time = CURRENT_TIMESTAMP, duration_seconds = $2, completed = $3 WHERE id = $1 RETURNING *',
+        [adTrackingId, durationSeconds, completed]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Update daily stats for a user
+  updateDailyStats: async (userId, adsWatched = 1, watchTimeSeconds = 0) => {
+    try {
+      await ensureTablesExist();
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Try to update existing record
+      const updateResult = await pool.query(
+        `UPDATE daily_stats 
+         SET ads_watched = ads_watched + $3, 
+             total_watch_time_seconds = total_watch_time_seconds + $4,
+             updated_at = CURRENT_TIMESTAMP
+         WHERE user_id = $1 AND date = $2
+         RETURNING *`,
+        [userId, today, adsWatched, watchTimeSeconds]
+      );
+
+      if (updateResult.rows.length > 0) {
+        return [null, updateResult.rows[0]];
+      }
+
+      // If no existing record, create new one
+      const insertResult = await pool.query(
+        `INSERT INTO daily_stats (user_id, date, ads_watched, total_watch_time_seconds, streak_days)
+         VALUES ($1, $2, $3, $4, 1)
+         RETURNING *`,
+        [userId, today, adsWatched, watchTimeSeconds]
+      );
+
+      return [null, insertResult.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Get user's daily stats
+  getUserDailyStats: async (userId, date = null) => {
+    try {
+      await ensureTablesExist();
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      
+      const result = await pool.query(
+        'SELECT * FROM daily_stats WHERE user_id = $1 AND date = $2',
+        [userId, targetDate]
+      );
+      
+      return [null, result.rows[0] || null];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Get user's ads watched today
+  getAdsWatchedToday: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const today = new Date().toISOString().split('T')[0];
+      
+      const result = await pool.query(
+        'SELECT ads_watched FROM daily_stats WHERE user_id = $1 AND date = $2',
+        [userId, today]
+      );
+      
+      return [null, result.rows[0]?.ads_watched || 0];
+    } catch (error) {
+      return [error, 0];
+    }
+  },
+
+  // Get user's total ads watched
+  getTotalAdsWatched: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT SUM(ads_watched) as total FROM daily_stats WHERE user_id = $1',
+        [userId]
+      );
+      
+      return [null, parseInt(result.rows[0]?.total || 0)];
+    } catch (error) {
+      return [error, 0];
+    }
+  },
+
+  // Calculate user's streak
+  calculateUserStreak: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        `WITH RECURSIVE streak_calc AS (
+          SELECT date, ads_watched, 1 as streak_length
+          FROM daily_stats 
+          WHERE user_id = $1 AND ads_watched > 0
+          ORDER BY date DESC
+          LIMIT 1
+          
+          UNION ALL
+          
+          SELECT ds.date, ds.ads_watched, sc.streak_length + 1
+          FROM daily_stats ds
+          JOIN streak_calc sc ON ds.date = sc.date - INTERVAL '1 day'
+          WHERE ds.user_id = $1 AND ds.ads_watched > 0
+        )
+        SELECT MAX(streak_length) as streak_days FROM streak_calc`,
+        [userId]
+      );
+      
+      return [null, parseInt(result.rows[0]?.streak_days || 0)];
+    } catch (error) {
+      return [error, 0];
+    }
+  },
+
+  // ===== LEADERBOARD FUNCTIONS =====
+
+  // Get monthly leaderboard (top 5 users by current month minutes)
+  getMonthlyLeaderboard: async (limit = 5) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        `SELECT 
+          u.id,
+          u.username,
+          u.current_month_minutes,
+          u.profile_picture,
+          u.created_at,
+          COALESCE(ds.ads_watched, 0) as ads_watched_today,
+          COALESCE(streak.streak_days, 0) as streak_days
+        FROM users u
+        LEFT JOIN daily_stats ds ON u.id = ds.user_id AND ds.date = CURRENT_DATE
+        LEFT JOIN LATERAL (
+          WITH RECURSIVE streak_calc AS (
+            SELECT date, ads_watched, 1 as streak_length
+            FROM daily_stats 
+            WHERE user_id = u.id AND ads_watched > 0
+            ORDER BY date DESC
+            LIMIT 1
+            
+            UNION ALL
+            
+            SELECT ds2.date, ds2.ads_watched, sc.streak_length + 1
+            FROM daily_stats ds2
+            JOIN streak_calc sc ON ds2.date = sc.date - INTERVAL '1 day'
+            WHERE ds2.user_id = u.id AND ds2.ads_watched > 0
+          )
+          SELECT MAX(streak_length) as streak_days FROM streak_calc
+        ) streak ON true
+        WHERE u.is_active = true AND u.current_month_minutes > 0
+        ORDER BY u.current_month_minutes DESC
+        LIMIT $1`,
+        [limit]
+      );
+      
+      return [null, result.rows];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Get user's rank in monthly leaderboard
+  getUserMonthlyRank: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        `SELECT COUNT(*) + 1 as rank
+         FROM users 
+         WHERE current_month_minutes > (
+           SELECT current_month_minutes 
+           FROM users 
+           WHERE id = $1
+         ) AND is_active = true`,
+        [userId]
+      );
+      
+      return [null, parseInt(result.rows[0]?.rank || 1)];
+    } catch (error) {
+      return [error, 1];
+    }
+  },
+
+  // Get user's overall rank (all time)
+  getUserOverallRank: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        `SELECT COUNT(*) + 1 as rank
+         FROM users 
+         WHERE total_minutes_watched > (
+           SELECT total_minutes_watched 
+           FROM users 
+           WHERE id = $1
+         ) AND is_active = true`,
+        [userId]
+      );
+      
+      return [null, parseInt(result.rows[0]?.rank || 1)];
+    } catch (error) {
+      return [error, 1];
+    }
+  },
+
+  // Get total number of active users
+  getTotalActiveUsers: async () => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT COUNT(*) as total FROM users WHERE is_active = true'
+      );
+      
+      return [null, parseInt(result.rows[0]?.total || 0)];
+    } catch (error) {
+      return [error, 0];
+    }
+  },
+
+  // Get user's account age in days
+  getUserAccountAge: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT EXTRACT(DAYS FROM (CURRENT_DATE - created_at::date)) as account_age_days FROM users WHERE id = $1',
+        [userId]
+      );
+      
+      return [null, parseInt(result.rows[0]?.account_age_days || 0)];
+    } catch (error) {
+      return [error, 0];
+    }
+  },
+
+  // Reset monthly leaderboard (call this monthly)
+  resetMonthlyLeaderboard: async () => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'UPDATE users SET current_month_minutes = 0'
+      );
+      
+      console.log(`✅ Reset monthly leaderboard for ${result.rowCount} users`);
+      return [null, result.rowCount];
+    } catch (error) {
       return [error, null];
     }
   }

@@ -1572,18 +1572,9 @@
           document.getElementById('totalAdsWatched').textContent = currentUser.totalMinutesWatched || 0;
           document.getElementById('userMinutesDisplay').textContent = (currentUser.currentMonthMinutes || 0) + ' mins';
           
-          // Get user's rank
-          const rankResponse = await fetch('/api/leaderboard/my-rank', {
-            headers: {
-              'Authorization': `Bearer ${authToken}`
-            }
-          });
-          
-          if (rankResponse.ok) {
-            const rankResult = await rankResponse.json();
-            document.getElementById('currentRank').textContent = `#${rankResult.rank}`;
-            document.getElementById('userRankDisplay').textContent = `#${rankResult.rank}`;
-          }
+          // Load user impact and leaderboard data
+          loadUserImpact();
+          loadLeaderboard();
         }
       } catch (error) {
         console.error('Error loading user info:', error);
@@ -1687,34 +1678,150 @@
       return null;
     }
 
-    // Complete a watch session
-    async function completeWatchSession(sessionId, durationSeconds, completed, pausedCount = 0) {
-      if (!authToken || !sessionId) return;
+    // Start ad tracking
+    async function startAdTracking(sessionId) {
+      if (!authToken || !sessionId) return null;
 
       try {
-        const response = await fetch('/api/tracking/complete-session', {
+        const response = await fetch('/api/tracking/start-ad', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${authToken}`
           },
           body: JSON.stringify({
-            sessionId: sessionId,
-            durationSeconds: durationSeconds,
-            completed: completed,
-            pausedCount: pausedCount
+            sessionId: sessionId
           })
         });
 
         if (response.ok) {
           const result = await response.json();
-          console.log('⏱️ Watch session completed:', result.minutesWatched, 'minutes');
-          
-          // Refresh user info to show updated watch time
-          loadUserInfo();
+          console.log('📺 Ad tracking started:', result.adTrackingId);
+          return result.adTrackingId;
         }
       } catch (error) {
-        console.error('Error completing watch session:', error);
+        console.error('Error starting ad tracking:', error);
+      }
+      return null;
+    }
+
+    // Complete ad tracking
+    async function completeAdTracking(adTrackingId, durationSeconds, completed = true) {
+      if (!authToken || !adTrackingId) return;
+
+      try {
+        const response = await fetch('/api/tracking/complete-ad', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            adTrackingId: adTrackingId,
+            durationSeconds: durationSeconds,
+            completed: completed
+          })
+        });
+
+        if (response.ok) {
+          console.log('📺 Ad tracking completed:', durationSeconds, 'seconds');
+          // Refresh user impact data
+          loadUserImpact();
+        }
+      } catch (error) {
+        console.error('Error completing ad tracking:', error);
+      }
+    }
+
+    // Load user impact data
+    async function loadUserImpact() {
+      if (!authToken) return;
+
+      try {
+        const response = await fetch('/api/user/impact', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const impact = result.impact;
+          
+          // Update UI with impact data
+          document.getElementById('adsWatchedToday').textContent = impact.adsWatchedToday;
+          document.getElementById('totalAdsWatched').textContent = impact.totalAdsWatched;
+          document.getElementById('currentRank').textContent = `#${impact.currentRank}`;
+          document.getElementById('userMinutesDisplay').textContent = `${impact.watchTimeMinutes} mins`;
+          document.getElementById('userRankDisplay').textContent = `#${impact.currentRank}`;
+          
+          console.log('📊 User impact data loaded:', impact);
+        }
+      } catch (error) {
+        console.error('Error loading user impact:', error);
+      }
+    }
+
+    // Load leaderboard data
+    async function loadLeaderboard() {
+      if (!authToken) return;
+
+      try {
+        const response = await fetch('/api/leaderboard/monthly?limit=5', {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const leaderboard = result.leaderboard;
+          
+          // Update leaderboard UI
+          const leaderboardContainer = document.querySelector('.leaderboard');
+          if (leaderboardContainer) {
+            // Clear existing items except the current user row
+            const currentUserRow = document.getElementById('currentUserRow');
+            leaderboardContainer.innerHTML = '';
+            
+            // Add leaderboard items
+            leaderboard.forEach((user, index) => {
+              const item = document.createElement('li');
+              item.className = 'leaderboard-item';
+              item.innerHTML = `
+                <div class="leaderboard-left">
+                  <span class="rank">#${user.rank}</span>
+                  <span class="username">${user.username}</span>
+                </div>
+                <span class="minutes">${user.minutesWatched} mins</span>
+              `;
+              leaderboardContainer.appendChild(item);
+            });
+            
+            // Add placeholder items if fewer than 5 users
+            for (let i = leaderboard.length; i < 5; i++) {
+              const item = document.createElement('li');
+              item.className = 'leaderboard-item';
+              item.innerHTML = `
+                <div class="leaderboard-left">
+                  <span class="rank">#${i + 1}</span>
+                  <span class="username">Spot is open!</span>
+                </div>
+                <span class="minutes">0 mins</span>
+              `;
+              leaderboardContainer.appendChild(item);
+            }
+            
+            // Add current user row if it exists
+            if (currentUserRow) {
+              leaderboardContainer.appendChild(currentUserRow);
+            }
+          }
+          
+          console.log('🏆 Leaderboard data loaded:', leaderboard);
+        }
+      } catch (error) {
+        console.error('Error loading leaderboard:', error);
       }
     }
 
@@ -1779,6 +1886,9 @@
         let currentVideoStartTime = null;
         let isInitialLoad = true;
         let isPlaying = false;
+        let currentAdTrackingId = null;
+        let adStartTime = null;
+        let isAdPlaying = false;
 
         function getVideoUrl(videoName, quality) {
           return `videos/${videoName}_${quality}.mp4`;
@@ -1912,6 +2022,16 @@
             console.log('▶️ Video started playing, tracking begins');
           }
           
+          // Start ad tracking when video starts playing
+          if (currentSessionId && !isAdPlaying) {
+            isAdPlaying = true;
+            adStartTime = Date.now();
+            startAdTracking(currentSessionId).then(adTrackingId => {
+              currentAdTrackingId = adTrackingId;
+              console.log('📺 Ad tracking started for video play');
+            });
+          }
+          
           // Hide the big play button when playing - try multiple times to ensure it works
           const hidePlayButton = () => {
             const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
@@ -1936,6 +2056,16 @@
           isPlaying = false;
           pausedCount++;
           console.log('⏸️ Video paused, pause count:', pausedCount);
+          
+          // Complete ad tracking if ad was playing
+          if (isAdPlaying && currentAdTrackingId && adStartTime) {
+            const adDurationSeconds = Math.floor((Date.now() - adStartTime) / 1000);
+            completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
+            isAdPlaying = false;
+            currentAdTrackingId = null;
+            adStartTime = null;
+            console.log('📺 Ad tracking completed on pause:', adDurationSeconds, 'seconds');
+          }
           
           // Show the big play button when paused
           const showPlayButton = () => {
@@ -1976,6 +2106,16 @@
             ended: player.ended(),
             currentSrc: player.currentSrc()
           });
+          
+          // Complete ad tracking if ad was playing
+          if (isAdPlaying && currentAdTrackingId && adStartTime) {
+            const adDurationSeconds = Math.floor((Date.now() - adStartTime) / 1000);
+            completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
+            isAdPlaying = false;
+            currentAdTrackingId = null;
+            adStartTime = null;
+            console.log('📺 Ad tracking completed on video end:', adDurationSeconds, 'seconds');
+          }
           
           // Complete current session if exists
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
