@@ -1890,6 +1890,7 @@
         let currentAdTrackingId = null;
         let adStartTime = null;
         let isAdPlaying = false;
+        let accumulatedAdTime = 0; // Track actual playback time
 
         function getVideoUrl(videoName, quality) {
           return `videos/${videoName}_${quality}.mp4`;
@@ -1964,6 +1965,7 @@
                 isAdPlaying = false;
                 currentAdTrackingId = null;
                 adStartTime = null;
+                accumulatedAdTime = 0;
                 console.log('📊 Watch session started:', sessionId);
               }
             }).catch(error => {
@@ -2065,6 +2067,13 @@
           pausedCount++;
           console.log('⏸️ Video paused, pause count:', pausedCount);
           
+          // Accumulate actual playback time if ad was playing
+          if (isAdPlaying && adStartTime) {
+            const currentTime = player.currentTime() || 0;
+            accumulatedAdTime = currentTime;
+            console.log('📺 Ad tracking paused - Current video time:', Math.floor(currentTime), 'seconds');
+          }
+          
           // Don't complete ad tracking on pause - just pause the tracking
           // The ad is still playing, just paused
           console.log('📺 Ad tracking paused (not completed)');
@@ -2111,12 +2120,15 @@
           
           // Complete ad tracking if ad was playing (only when video actually ends)
           if (isAdPlaying && currentAdTrackingId && adStartTime) {
-            const adDurationSeconds = Math.floor((Date.now() - adStartTime) / 1000);
+            // Use the video's current time for accurate tracking (excludes loading/buffering time)
+            const currentTime = player.currentTime() || 0;
+            const adDurationSeconds = Math.floor(Math.max(currentTime, accumulatedAdTime));
             completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
             isAdPlaying = false;
             currentAdTrackingId = null;
             adStartTime = null;
-            console.log('📺 Ad tracking completed on video end:', adDurationSeconds, 'seconds');
+            accumulatedAdTime = 0;
+            console.log('📺 Ad tracking completed on video end:', adDurationSeconds, 'seconds (actual video time)');
           }
           
           // Complete current session if exists
@@ -2151,6 +2163,7 @@
                 isAdPlaying = false;
                 currentAdTrackingId = null;
                 adStartTime = null;
+                accumulatedAdTime = 0;
                 console.log('📊 New session started for next video:', sessionId);
               }).catch(error => {
                 console.log('📊 New session failed to start (non-critical):', error);
@@ -2339,6 +2352,7 @@
                 isAdPlaying = false;
                 currentAdTrackingId = null;
                 adStartTime = null;
+                accumulatedAdTime = 0;
                 console.log('📊 New session started for next video:', sessionId);
               }).catch(error => {
                 console.log('📊 New session failed to start (non-critical):', error);
