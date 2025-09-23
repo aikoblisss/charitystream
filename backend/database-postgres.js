@@ -112,8 +112,29 @@ async function createTables() {
     console.log('✅ Ad tracking table ready');
     await pool.query(createDailyStatsTable);
     console.log('✅ Daily stats table ready');
+    
+    // Add missing columns if they don't exist
+    await addMissingColumns();
   } catch (error) {
     console.error('❌ Error creating tables:', error);
+  }
+  
+  // Always try to add missing columns
+  await addMissingColumns();
+}
+
+// Add missing columns to existing tables
+async function addMissingColumns() {
+  try {
+    // Add seconds columns to users table if they don't exist
+    await pool.query(`
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS total_seconds_watched INTEGER DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS current_month_seconds INTEGER DEFAULT 0
+    `);
+    console.log('✅ Added missing seconds columns to users table');
+  } catch (error) {
+    console.error('❌ Error adding missing columns:', error);
   }
 }
 
@@ -734,26 +755,9 @@ const dbHelpers = {
           u.profile_picture,
           u.created_at,
           COALESCE(ds.ads_watched, 0) as ads_watched_today,
-          COALESCE(streak.streak_days, 0) as streak_days
+          0 as streak_days
         FROM users u
         LEFT JOIN daily_stats ds ON u.id = ds.user_id AND ds.date = CURRENT_DATE
-        LEFT JOIN LATERAL (
-          WITH RECURSIVE streak_calc AS (
-            SELECT date, ads_watched, 1 as streak_length
-            FROM daily_stats 
-            WHERE user_id = u.id AND ads_watched > 0
-            ORDER BY date DESC
-            LIMIT 1
-            
-            UNION ALL
-            
-            SELECT ds2.date, ds2.ads_watched, sc.streak_length + 1
-            FROM daily_stats ds2
-            JOIN streak_calc sc ON ds2.date = sc.date - INTERVAL '1 day'
-            WHERE ds2.user_id = u.id AND ds2.ads_watched > 0
-          )
-          SELECT MAX(streak_length) as streak_days FROM streak_calc
-        ) streak ON true
         WHERE u.is_active = true
         ORDER BY u.current_month_seconds DESC
         LIMIT $1`,
