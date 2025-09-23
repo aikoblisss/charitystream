@@ -1017,8 +1017,9 @@
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
           <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+          <a href="#" class="nav-link" onclick="handleNavClick('account')">Account</a>
         </div>
+        <a class="watch-ads-btn" href="#" onclick="handleNavClick('watch')" id="watchAdsBtn" style="display: none;">Watch Ads</a>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertiser.html" class="nav-link">Advertise</a>
@@ -1030,20 +1031,22 @@
   </header>
 
   <!-- FORA Charity Header (shown when authenticated) -->
-  <section class="charity-header" id="charityHeader" style="display: none;">
-    <div class="charity-header-container">
-      <div class="charity-text">Your Donations This Week Support: <span class="charity-highlight">FORA — Empowering Refugee Families Through Education</span></div>
-    </div>
-  </section>
-
-  <!-- Hero / Total Raised (shown when authenticated) -->
-  <section class="hero" id="heroSection" style="display: none;">
-    <div class="hero-container">
-      <h1 class="hero-title">Total Raised for Charity</h1>
-      <div class="hero-amount">$832.11</div>
-      <p class="hero-subtitle">Stream ads, fuel impact, compete for good.</p>
-    </div>
-  </section>
+  <section class="frame-scaler frame-snap" id="framed-viewport">
+    <div class="frame-inner">
+      <section class="charity-header" id="charityHeader" style="display: none;">
+        <div class="charity-header-container">
+          <div class="charity-text">Your Donations This Week Support: <span class="charity-highlight">FORA — Empowering Refugee Families Through Education</span></div>
+        </div>
+      </section>
+      
+      <!-- Hero / Total Raised (shown when authenticated) -->
+      <section class="hero" id="heroSection" style="display: none;">
+        <div class="hero-container">
+          <h1 class="hero-title">Total Raised for Charity</h1>
+          <div class="hero-amount">$832.11</div>
+          <p class="hero-subtitle">Stream ads, fuel impact, compete for good.</p>
+        </div>
+      </section>
 
   <!-- Lander Hero (shown when not authenticated) -->
   <section class="lander-hero" id="landerHero">
@@ -1053,8 +1056,8 @@
     </div>
   </section>
 
-  <!-- Main Content (shown when authenticated) -->
-  <main class="main" id="mainContent" style="display: none;">
+      <!-- Main Content (shown when authenticated) -->
+      <main class="main" id="mainContent" style="display: none;">
     <div class="grid">
       <!-- Video Area -->
       <section class="video-section">
@@ -1180,7 +1183,9 @@
         </div>
       </div>
     </section>
-  </main>
+      </main>
+    </div>
+  </section>
 
   <!-- Lander Main Content (shown when not authenticated) -->
   <main class="lander-main" id="landerMain">
@@ -1272,6 +1277,7 @@
       
       const loggedInNav = document.getElementById('loggedInNav');
       const guestNav = document.getElementById('guestNav');
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
       const charityHeader = document.getElementById('charityHeader');
       const heroSection = document.getElementById('heroSection');
       const landerHero = document.getElementById('landerHero');
@@ -1284,6 +1290,7 @@
         // Show lander content
         if (guestNav) guestNav.style.display = 'flex';
         if (loggedInNav) loggedInNav.style.display = 'none';
+        if (watchAdsBtn) watchAdsBtn.style.display = 'none';
         if (charityHeader) charityHeader.style.display = 'none';
         if (landerHero) landerHero.style.display = 'block';
         if (heroSection) heroSection.style.display = 'none';
@@ -1313,6 +1320,7 @@
       // Show authenticated content
       if (loggedInNav) loggedInNav.style.display = 'flex';
       if (guestNav) guestNav.style.display = 'none';
+      if (watchAdsBtn) watchAdsBtn.style.display = 'inline-flex';
       if (charityHeader) charityHeader.style.display = 'block';
       if (heroSection) heroSection.style.display = 'block';
       if (landerHero) landerHero.style.display = 'none';
@@ -1447,8 +1455,9 @@
         case 'advertise':
           window.location.href = '/advertiser.html';
           break;
-        case 'impact':
-          window.location.href = '/impact.html';
+        case 'account':
+          // Handle account functionality
+          console.log('Account clicked');
           break;
         case 'watch':
           // Already on main page
@@ -1464,8 +1473,9 @@
         case 'advertise':
           window.location.href = '/advertiser.html';
           break;
-        case 'impact':
-          window.location.href = '/impact.html';
+        case 'account':
+          // Handle account functionality
+          console.log('Account clicked');
           break;
         case 'watch':
           window.location.href = '/auth.html';
@@ -2050,6 +2060,7 @@
       // In case fonts/assets shift layout slightly after load
       setTimeout(fit, 600);
     })();
+
   </script>
 </body>
 </html>
