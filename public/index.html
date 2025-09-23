@@ -1047,6 +1047,7 @@
     let authToken = null;
     let currentSessionId = null;
     let player = null;
+    let isPlayerInitialized = false;
 
     // Check authentication immediately when script loads
     authToken = localStorage.getItem('authToken');
@@ -1180,8 +1181,8 @@
       
       // Load fresh user info from server, then initialize video player
       loadUserInfo().then(() => {
-        // Give more time for Video.js to load before initializing
-        setTimeout(initializeVideoPlayer, 500);
+        // Initialize video player immediately
+        initializeVideoPlayer();
       });
     };
 
@@ -1218,8 +1219,9 @@
       if (player) {
         player.dispose();
         player = null;
+        isPlayerInitialized = false;
       }
-      setTimeout(initializeVideoPlayerForGuests, 100);
+      setTimeout(initializeVideoPlayerForGuests, 50);
     }
 
     function handleNavClick(action) {
@@ -1323,15 +1325,22 @@
 
     // Initialize video player for guests (no functionality)
     function initializeVideoPlayerForGuests() {
+      // Prevent multiple initializations
+      if (isPlayerInitialized) {
+        console.log('🎬 Guest player already initialized, skipping...');
+        return;
+      }
+      
       // Dispose any existing player
       if (player) {
         player.dispose();
         player = null;
+        isPlayerInitialized = false;
       }
       
       // Wait for Video.js to be available
       if (typeof videojs === 'undefined') {
-        setTimeout(initializeVideoPlayerForGuests, 100);
+        setTimeout(initializeVideoPlayerForGuests, 50);
         return;
       }
       
@@ -1365,6 +1374,7 @@
         });
         
         console.log('Guest video player initialized');
+        isPlayerInitialized = true;
       } catch (error) {
         console.error('Error initializing guest video player:', error);
       }
@@ -1433,6 +1443,12 @@
     // Initialize full video player functionality for authenticated users
     function initializeVideoPlayer() {
       if (!authToken) return;
+      
+      // Prevent multiple initializations
+      if (isPlayerInitialized) {
+        console.log('🎬 Player already initialized, skipping...');
+        return;
+      }
 
       console.log('🎬 Initializing authenticated video player...');
 
@@ -1440,11 +1456,13 @@
       if (player) {
         player.dispose();
         player = null;
+        isPlayerInitialized = false;
       }
       
-      // Wait for Video.js to be available
+      // Wait for Video.js to be available with shorter timeout
       if (typeof videojs === 'undefined') {
-        setTimeout(initializeVideoPlayer, 100);
+        console.log('🎬 Video.js not ready, retrying in 50ms...');
+        setTimeout(initializeVideoPlayer, 50);
         return;
       }
       
@@ -1785,6 +1803,7 @@
 
           setTimeout(() => {
             console.log('Video player fully initialized');
+            isPlayerInitialized = true;
             loadVideoWithQuality(0);
             
             // Ensure play button is visible initially
@@ -1792,7 +1811,7 @@
             if (bigPlayButton) {
               bigPlayButton.style.display = 'flex';
             }
-          }, 500);
+          }, 100);
         });
 
         console.log('Authenticated video player initialization complete!');
