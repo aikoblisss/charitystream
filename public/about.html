@@ -63,6 +63,14 @@
       font-size: 1.5rem;
       font-weight: 600;
       letter-spacing: -0.025em;
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .logo:hover {
+      color: var(--brand-600);
     }
 
     .nav {
@@ -256,22 +264,20 @@
   <!-- Header -->
   <header class="header">
     <div class="container">
-      <div class="logo">Charity Stream</div>
+      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       <nav class="nav">
-        <div class="nav-hidden-mobile">
+        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="/about.html" class="nav-link active">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-          <div class="user-menu" id="userMenu" style="display: none;">
-            <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
-              <span id="userDisplayName">Guest</span> ▼
-            </button>
-            <div class="user-dropdown" id="userDropdown" style="display: none;">
-              <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-          </div>
-          <a href="/auth.html" class="nav-link" id="signInLink" style="display: none;">Sign In / Sign Up</a>
+        </div>
+        <div class="nav-hidden-mobile" id="guestNav">
+          <a href="/about.html" class="nav-link active">About</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -318,11 +324,28 @@
       }
     }
 
-    // Watch Ads button functionality
+    // Logo and Watch Ads button functionality
     document.addEventListener('DOMContentLoaded', function() {
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
       const authToken = localStorage.getItem('authToken');
       
+      // Logo button functionality
+      const logoBtn = document.getElementById('logoBtn');
+      if (logoBtn) {
+        logoBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+
+      // Watch Ads button functionality
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
       if (watchAdsBtn) {
         watchAdsBtn.onclick = function(e) {
           e.preventDefault();
@@ -335,6 +358,26 @@
             window.location.href = '/auth.html';
           }
         };
+      }
+
+      // Set initial UI state
+      const loggedInNav = document.getElementById('loggedInNav');
+      const guestNav = document.getElementById('guestNav');
+      const usernameDisplay = document.getElementById('usernameDisplay');
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+      if (authToken && currentUser) {
+        // User is logged in
+        if (loggedInNav) loggedInNav.style.display = 'flex';
+        if (guestNav) guestNav.style.display = 'none';
+        
+        if (usernameDisplay && currentUser.username) {
+          usernameDisplay.textContent = currentUser.username;
+        }
+      } else {
+        // User is not logged in
+        if (loggedInNav) loggedInNav.style.display = 'none';
+        if (guestNav) guestNav.style.display = 'flex';
       }
     });
 

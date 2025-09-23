@@ -70,6 +70,14 @@
       font-size: 1.5rem;
       font-weight: 600;
       letter-spacing: -0.025em;
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .logo:hover {
+      color: var(--brand-600);
     }
 
     .nav {
@@ -1011,20 +1019,20 @@
   <!-- Top Nav -->
   <header class="header">
     <div class="header-container">
-      <div class="logo">Charity Stream</div>
+      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
+          <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
-        <a class="watch-ads-btn" href="#" onclick="handleNavClick('watch')" id="watchAdsBtn" style="display: none;">Watch Ads</a>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" onclick="handleWatchAdsClick(event)">Watch Ads</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -1347,6 +1355,40 @@
     } else {
       setInitialUIState();
     }
+
+    // Logo button functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const logoBtn = document.getElementById('logoBtn');
+      if (logoBtn) {
+        logoBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+
+      // Watch Ads button functionality
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
+      if (watchAdsBtn) {
+        watchAdsBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+    });
 
     // Lander click handlers
     function handleWatchAdsClick(event) {

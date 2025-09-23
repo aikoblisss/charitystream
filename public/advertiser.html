@@ -31,7 +31,8 @@
     /* Header */
     .header{border-bottom:1px solid var(--gray-200);width:100%}
     .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem;max-width:1200px;margin:0 auto;padding:0 1rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:inherit;text-decoration:none;cursor:pointer;transition:.2s}
+    .logo:hover{color:var(--brand-600)}
     .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
     .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
     .welcome{color:var(--gray-900)}
@@ -183,22 +184,20 @@
   <!-- Header -->
   <header class="header">
     <div class="container">
-      <div class="logo">Charity Stream</div>
+      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       <nav class="nav">
-        <div class="nav-hidden-mobile">
+        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link active">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-          <div class="user-menu" id="userMenu" style="display: none;">
-            <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
-              <span id="userDisplayName">Guest</span> ▼
-            </button>
-            <div class="user-dropdown" id="userDropdown" style="display: none;">
-              <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-          </div>
-          <a href="/auth.html" class="nav-link" id="signInLink" style="display: none;">Sign In / Sign Up</a>
+        </div>
+        <div class="nav-hidden-mobile" id="guestNav">
+          <a href="/about.html" class="nav-link">About</a>
+          <a href="/advertise.html" class="nav-link active">Advertise</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -734,11 +733,29 @@
       }
     });
 
-    // Watch Ads button functionality
+    // Logo and Watch Ads button functionality
     document.addEventListener('DOMContentLoaded', function() {
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
       const authToken = localStorage.getItem('authToken');
+      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
       
+      // Logo button functionality
+      const logoBtn = document.getElementById('logoBtn');
+      if (logoBtn) {
+        logoBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+
+      // Watch Ads button functionality
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
       if (watchAdsBtn) {
         watchAdsBtn.onclick = function(e) {
           e.preventDefault();
@@ -751,6 +768,25 @@
             window.location.href = '/auth.html';
           }
         };
+      }
+
+      // Set initial UI state
+      const loggedInNav = document.getElementById('loggedInNav');
+      const guestNav = document.getElementById('guestNav');
+      const usernameDisplay = document.getElementById('usernameDisplay');
+
+      if (authToken && currentUser) {
+        // User is logged in
+        if (loggedInNav) loggedInNav.style.display = 'flex';
+        if (guestNav) guestNav.style.display = 'none';
+        
+        if (usernameDisplay && currentUser.username) {
+          usernameDisplay.textContent = currentUser.username;
+        }
+      } else {
+        // User is not logged in
+        if (loggedInNav) loggedInNav.style.display = 'none';
+        if (guestNav) guestNav.style.display = 'flex';
       }
     });
   </script>

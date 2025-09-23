@@ -32,7 +32,8 @@
     /* Header */
     .header{border-bottom:1px solid var(--gray-200);width:100%;background:#fff}
     .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:var(--brand-600)}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:inherit;text-decoration:none;cursor:pointer;transition:.2s}
+    .logo:hover{color:var(--brand-600)}
     .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
     .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
     .welcome{color:var(--gray-900)}
@@ -377,20 +378,21 @@
   <!-- Header -->
   <header class="header">
     <div class="container">
-      <div class="logo">Charity Stream</div>
+      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
-        <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
       </nav>
     </div>
   </header>
@@ -654,6 +656,24 @@
         };
       }
     }
+
+    // Logo button functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const logoBtn = document.getElementById('logoBtn');
+      if (logoBtn) {
+        logoBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+    });
 
     // Payment method switching
     document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {

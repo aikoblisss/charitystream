@@ -65,8 +65,14 @@
       font-size: 1.5rem;
       font-weight: 600;
       letter-spacing: -0.025em;
-      color: var(--gray-900);
+      color: inherit;
       text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+
+    .logo:hover {
+      color: var(--brand-600);
     }
 
     .nav {
@@ -298,20 +304,21 @@
     <!-- Header -->
     <header class="header">
       <div class="container">
-        <a href="/" class="logo">Charity Stream</a>
+        <a href="#" class="logo" id="logoBtn">Charity Stream</a>
         <nav class="nav">
           <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
             <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
             <a href="/about.html" class="nav-link">About</a>
             <a href="/advertise.html" class="nav-link">Advertise</a>
-            <a href="#" class="nav-link" id="impactBtn">Impact</a>
+            <a href="/impact.html" class="nav-link">Impact</a>
+            <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
           </div>
           <div class="nav-hidden-mobile" id="guestNav">
             <a href="/about.html" class="nav-link">About</a>
             <a href="/advertise.html" class="nav-link">Advertise</a>
             <a href="/impact.html" class="nav-link">Impact</a>
+            <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
           </div>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </nav>
       </div>
     </header>
@@ -417,11 +424,32 @@
       }
     }
 
+    // Logo button functionality
+    function setupLogoButton() {
+      const logoBtn = document.getElementById('logoBtn');
+      const authToken = localStorage.getItem('authToken');
+      
+      if (logoBtn) {
+        logoBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+    }
+
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
       setInitialUIState();
       setupWatchAdsButtons();
       setupGoHomeButton();
+      setupLogoButton();
     });
   </script>
 </body>
