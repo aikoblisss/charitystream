@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advertise With Us - Charity Stream</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <style>
+    /* ==================================================================
+       Charity Stream – Advertise Page (Production)
+       ------------------------------------------------------------------
+       - Design tokens (colors, spacing, type scale)
+       - Base / Resets
+       - Layout helpers
+       - Components & Sections
+       - Responsive adjustments
+       ================================================================== */
+
+    /* -------------------- Design tokens -------------------- */
+    :root{
+      /* Brand */
+      --brand-primary: #2F7D31;
+      --brand-600: #2F7D31;
+      --brand-700: #276629;
+
+      /* Grays */
+      --gray-50:#f9fafb; --gray-75:#FAFAFA; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+      --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-900:#111827;
+
+      /* Spacing scale (rem) */
+      --sp-0: 0;
+      --sp-1: .5rem;
+      --sp-2: 1rem;
+      --sp-3: 1.5rem;
+      --sp-4: 2rem;
+      --sp-5: 2.5rem;
+      --sp-6: 3rem;
+
+      /* Type scale */
+      --fs-xs:.9375rem;     /* ~15px */
+      --fs-sm:.9625rem;     /* ~15.4px */
+      --fs-md:1.0125rem;    /* ~16.2px */
+      --fs-1:1.0625rem;     /* ~17px */
+      --fs-2:1.2rem;        /* subtitles */
+      --fs-3:1.375rem;      /* audience titles */
+      --fs-4:1.75rem;
+      --fs-5:2rem;          /* section titles */
+      --fs-6:2.375rem;      /* stat/pricing numbers */
+    }
+
+    /* -------------------- Base / Reset -------------------- */
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      font-family:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      font-feature-settings:'liga' 1,'calt' 1,'tnum' 1;
+      background:#ffffff;color:var(--gray-900);line-height:1.5;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
+    a{color:inherit}
+
+    .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+    @media (min-width:640px){ .container{padding:0 1.5rem} }
+    @media (min-width:1024px){ .container{padding:0 2rem} }
+
+    /* -------------------- Layout helpers -------------------- */
+    section{width:100%}
+    .section--white{background:#ffffff}
+    .section--green{background:var(--brand-primary);color:#fff}
+    .section-alt{background:var(--gray-75)} /* #FAFAFA background utility */
+
+    /* Link with brand underline (used for community guidelines) */
+    .community-link{
+      color:var(--brand-600);
+      text-decoration:underline;
+      text-decoration-color:var(--brand-600);
+      text-underline-offset:2px;
+      text-decoration-thickness:2px;
+    }
+
+    /* -------------------- Header -------------------- */
+    .header{border-bottom:1px solid var(--gray-200);width:100%}
+    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em}
+    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
+    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
+    .welcome{color:var(--gray-900)}
+    .welcome-bold{font-weight:500}
+    .nav-link{text-decoration:none}
+    .nav-link:hover{color:var(--gray-900)}
+    .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer}
+    .watch-ads-btn:hover{background:var(--brand-700)}
+
+    /* -------------------- Hero -------------------- */
+    .hero{border-bottom:1px solid var(--gray-200);padding:3rem 0 2.5rem}
+    .hero-content{text-align:center;max-width:900px;margin:0 auto}
+    .hero-title{font-size:3.5rem;font-weight:800;margin-bottom:.75rem;line-height:1.1;letter-spacing:-.025em}
+    .hero-title-underline{text-decoration:underline;text-decoration-color:var(--brand-primary);text-decoration-thickness:4px;text-underline-offset:8px}
+    .hero-subtitle{font-size:var(--fs-1);color:var(--gray-600);margin-bottom:1.75rem;font-weight:400;max-width:700px;margin-left:auto;margin-right:auto}
+    .cta-buttons{display:flex;gap:1rem;justify-content:center}
+    .btn{padding:.75rem 1.5rem;border-radius:.5rem;text-decoration:none;font-weight:600;font-size:.875rem;transition:.2s;border:none;cursor:pointer}
+    .btn-primary{background:var(--brand-600);color:#fff}
+    .btn-primary:hover{background:var(--brand-700)}
+    .btn-secondary{background:#fff;color:var(--brand-600);border:1px solid var(--brand-600)}
+    .btn-secondary:hover{background:var(--gray-50)}
+
+    /* -------------------- How it Works -------------------- */
+    .how-it-works{padding:3rem 0;background:#ffffff}
+    .section-title{font-size:var(--fs-5);font-weight:700;margin-bottom:2rem;text-align:center}
+    .section-title-underline{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:3px;text-decoration-color:var(--brand-primary)}
+    .how-it-works-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2rem;max-width:1100px;margin:0 auto}
+    .process-card{background:#fff;border:1px solid var(--gray-200);border-radius:.75rem;padding:2rem;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+    .process-title{font-size:var(--fs-1);font-weight:600;color:var(--brand-600);margin-bottom:.75rem}
+    .process-subtitle{font-size:var(--fs-1);font-weight:600;margin-bottom:.75rem}
+    .process-description{color:var(--gray-700);font-size:var(--fs-md);line-height:1.6;margin-bottom:1rem}
+    .process-steps{margin-top:1rem}
+    .process-steps-title{font-weight:600;color:var(--gray-900);margin-bottom:.5rem;font-size:var(--fs-md)}
+    .process-steps ol{margin-left:1.25rem;color:var(--gray-700);font-size:var(--fs-sm);line-height:1.6}
+    .process-steps li{margin-bottom:.5rem}
+    .process-note{margin-top:1rem;font-size:var(--fs-xs);color:var(--gray-600);font-style:italic;line-height:1.6}
+
+    /* -------------------- Platform Impact -------------------- */
+    .platform-impact{background:var(--brand-primary);color:#fff;text-align:center;padding:2rem 0}
+    .platform-title{font-size:var(--fs-5);font-weight:700;margin-bottom:2rem}
+    .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1.5rem;max-width:1000px;margin:0 auto}
+    .stat-item{padding:1rem}
+    .stat-number{font-size:var(--fs-6);font-weight:800;margin-bottom:.25rem;font-variant-numeric:tabular-nums}
+    .stat-label{font-size:var(--fs-xs);opacity:.95;font-weight:400;white-space:nowrap}
+
+    /* -------------------- Why Work With -------------------- */
+    .why-work{padding:3rem 0 2rem;background:#ffffff}
+    .audience-section{margin-bottom:2rem}
+    .audience-title{font-size:var(--fs-3);font-weight:600;margin-bottom:1.5rem;text-align:center}
+    .benefit-item{margin-bottom:1.5rem;border:1px solid var(--gray-200);padding:1.5rem;border-radius:.75rem;background:#fafbfc}
+    .benefit-title{font-size:var(--fs-1);font-weight:600;color:var(--brand-600);margin-bottom:.5rem}
+    .benefit-text{color:var(--gray-700);font-size:var(--fs-sm);line-height:1.6}
+
+    /* -------------------- Pricing -------------------- */
+    .pricing{padding:2rem 0}
+    .pricing.section-alt{background:var(--gray-75)}
+    .pricing-header{text-align:center;margin-bottom:2rem}
+    .pricing-title{font-size:var(--fs-5);font-weight:700;margin-bottom:1rem}
+    .pricing-title-underline{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:3px;text-decoration-color:var(--brand-primary)}
+    .pricing-subtitle{font-size:var(--fs-2);color:var(--gray-600);margin-top:.5rem;font-weight:400}
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem;max-width:900px;margin:0 auto 2rem}
+    .pricing-card{background:#fff;border:2px solid var(--gray-200);border-radius:.75rem;padding:2rem;text-align:center;transition:all .2s;position:relative}
+    .pricing-card:hover{border-color:var(--brand-primary);transform:translateY(-2px);box-shadow:0 8px 25px rgba(47,125,49,.15)}
+    .pricing-card.popular{border-color:var(--brand-primary);border-width:2px}
+    .pricing-card.popular::before{content:"Most Popular";position:absolute;top:-0.75rem;left:50%;transform:translateX(-50%);background:var(--brand-primary);color:white;font-size:.75rem;font-weight:600;padding:.375rem 1rem;border-radius:9999px}
+    .pricing-cpm{font-size:var(--fs-6);font-weight:800;color:var(--brand-primary);margin-bottom:.5rem;font-variant-numeric:tabular-nums}
+    .pricing-per{font-size:var(--fs-2);color:var(--gray-700);margin-bottom:.75rem;font-weight:400}
+    .pricing-impact{font-size:var(--fs-xs);color:var(--gray-600);font-style:italic;font-weight:400}
+    .pricing-footer{text-align:center;margin-top:1.5rem}
+    .pricing-guarantee{font-size:var(--fs-1);font-weight:600;margin-bottom:.25rem}
+    .pricing-note{font-size:var(--fs-sm);color:var(--gray-600);font-style:italic;font-weight:400}
+
+    /* -------------------- CTA -------------------- */
+    .cta{background:var(--brand-primary);color:#fff;text-align:center;padding:3rem 0}
+    .cta-title{font-size:var(--fs-5);font-weight:600;margin-bottom:.75rem}
+    .cta-subtitle{font-size:var(--fs-2);margin-bottom:2rem;font-weight:400}
+    .cta-buttons{display:flex;gap:1rem;justify-content:center}
+    .cta-btn{padding:.75rem 1.5rem;border-radius:.5rem;text-decoration:none;font-weight:600;font-size:.875rem;transition:.2s}
+    .btn-cta-primary{background:#fff;color:var(--brand-primary)}
+    .btn-cta-primary:hover{background:#f1f5f9}
+    .btn-cta-secondary{background:transparent;color:#fff;border:1px solid #fff;margin-left:1rem}
+    .btn-cta-secondary:hover{background:rgba(255,255,255,.1)}
+
+    /* -------------------- Footer -------------------- */
+    .footer{background:var(--brand-700);color:#d7e7de;padding:1rem 0}
+    .footer .container{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+    .footer p{font-style:italic;font-weight:600;font-size:.875rem}
+    .social-icons{display:flex;gap:.5rem}
+    .social-icon{width:2rem;height:2rem;border-radius:9999px;background:rgba(255,255,255,.15);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:#eaf3ef;font-size:.85rem}
+    .social-icon:hover{background:rgba(255,255,255,.25)}
+
+    /* -------------------- Responsive -------------------- */
+    @media (max-width:1024px){
+      .how-it-works-grid{grid-template-columns:1fr;gap:1.5rem}
+      .stats-grid{grid-template-columns:repeat(3,1fr)}
+      .pricing-grid{grid-template-columns:1fr;gap:1.25rem}
+      .hero-title{font-size:2.75rem}
+    }
+    @media (max-width:768px){
+      .stats-grid{grid-template-columns:repeat(2,1fr)}
+      .hero-title{font-size:2.25rem}
+      .cta-buttons{flex-direction:column;align-items:center}
+      .nav-hidden-mobile{display:none}
+      .container{padding:0 1rem}
+      .hero{padding:2.5rem 0 2rem}
+      .how-it-works,.why-work,.pricing,.cta{padding:2.5rem 0}
+      .platform-impact{padding:1.75rem 0}
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="container">
+      <div class="logo">Charity Stream</div>
+      <nav class="nav">
+        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
+          <a href="/about.html" class="nav-link">About</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
+          <a href="#" class="nav-link" id="impactBtn">Impact</a>
+        </div>
+        <div class="nav-hidden-mobile" id="guestNav">
+          <a href="/about.html" class="nav-link">About</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+        </div>
+        <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="hero section-alt">
+    <div class="container">
+      <div class="hero-content">
+        <h1 class="hero-title">Turn Your Marketing Budget Into<br><span class="hero-title-underline">Charitable Impact</span></h1>
+        <p class="hero-subtitle">Skip the ad blockers, skip the waste. Reach audiences who choose to engage while funding charitable causes.</p>
+        <div class="cta-buttons">
+          <a href="/advertiser.html" class="btn btn-primary">Join as a Company</a>
+          <a href="#" class="btn btn-secondary">Join as a Charity</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="how-it-works">
+    <div class="container">
+      <h2 class="section-title"><span class="section-title-underline">How it Works</span></h2>
+      <div class="how-it-works-grid">
+        <!-- For Companies -->
+        <div class="process-card">
+          <h3 class="process-title">For Companies</h3>
+          <div class="process-subtitle">Flexible Donation-Based Advertising</div>
+          <p class="process-description">Advertisement slots are paid for on a CPM (cost per 1,000 views) donation basis—you choose what your message is worth. Set your own rate from $0.01 to $100 per 1,000 views.</p>
+          
+          <div class="process-steps">
+            <div class="process-steps-title">Simple Process:</div>
+            <ol>
+              <li>Submit your ad with your chosen CPM rate</li>
+              <li>We review for quality and <a href="#" class="community-link">community guidelines</a></li>
+              <li>Get confirmation when your ad goes live</li>
+              <li>Track impact as your budget becomes charitable donations</li>
+            </ol>
+          </div>
+          
+          <p class="process-note">One curated ad reel plays each week featuring video and static ads from partner organizations. All revenue goes directly to the week's featured charity—no exceptions.</p>
+        </div>
+
+        <!-- For Charities -->
+        <div class="process-card">
+          <h3 class="process-title">For Charities</h3>
+          <div class="process-subtitle">Weekly Charity Selection</div>
+          <p class="process-description">Each week, one charity receives 100% of our advertising revenue for maximum impact.</p>
+          
+          <div class="process-steps">
+            <div class="process-steps-title">Entry Process:</div>
+            <ol>
+              <li><strong>Submit an entry</strong> – Provide charity name, email, EIN, and a $1 entry fee (donated to the chosen charity).</li>
+              <li><strong>Random selection</strong> – Three charities are drawn from all verified entries.</li>
+              <li><strong>Community vote</strong> – Users vote for their preferred charity among the three.</li>
+              <li><strong>Charity selected</strong> – The chosen charity receives the full week's ad revenue plus all entry fees.</li>
+            </ol>
+          </div>
+          
+          <p class="process-note">Must be a registered 501(c)(3) nonprofit organization and comply with our charity partner community guidelines.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Platform Impact -->
+  <section class="platform-impact">
+    <div class="container">
+      <h2 class="platform-title">Platform Impact</h2>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-number">$832.11</div>
+          <div class="stat-label">Total Raised</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">100%</div>
+          <div class="stat-label">View-Through Rate</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">241</div>
+          <div class="stat-label">Active Users</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">27</div>
+          <div class="stat-label">Company Advertisers</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number">19</div>
+          <div class="stat-label">Charities Supported</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Why Work With Charity Stream -->
+  <section class="why-work">
+    <div class="container">
+      <h2 class="section-title"><span class="section-title-underline">Why Work With Charity Stream</span></h2>
+      
+      <!-- For Companies -->
+      <div class="audience-section">
+        <h3 class="audience-title">For Companies</h3>
+        
+        <div class="benefit-item">
+          <h4 class="benefit-title">Guaranteed 100% View-Through Rate</h4>
+          <p class="benefit-text">Users voluntarily watch every second—no skipping, no ad blockers. Pay for actual attention at potentially lower CPMs than platforms where 90%+ get ignored.</p>
+        </div>
+
+        <div class="benefit-item">
+          <h4 class="benefit-title">Ad Spend = Tax-Deductible CSR Impact</h4>
+          <p class="benefit-text">Every dollar becomes corporate charitable giving with potential tax benefits. Hit both reach goals and ESG requirements with one budget.</p>
+        </div>
+
+        <div class="benefit-item">
+          <h4 class="benefit-title">Values-Driven, High-Intent Audience</h4>
+          <p class="benefit-text">Reach consumers who actively choose charitable engagement—the demographic that pays premium for purpose-driven brands.</p>
+        </div>
+      </div>
+
+      <!-- For Charities -->
+      <div class="audience-section">
+        <h3 class="audience-title">For Charities</h3>
+        
+        <div class="benefit-item">
+          <h4 class="benefit-title">Free Donations with Zero Effort</h4>
+          <p class="benefit-text">No grant writing required. $1 entry fee (donated to selected charity) for chance to win thousands in weekly donations.</p>
+        </div>
+
+        <div class="benefit-item">
+          <h4 class="benefit-title">Massive Exposure and Credibility</h4>
+          <p class="benefit-text">Featured across our platform, social media, and newsletters. Thousands of viewers learn about your cause and become supporters.</p>
+        </div>
+
+        <div class="benefit-item">
+          <h4 class="ben-title">52 Annual Opportunities + Corporate Pipeline</h4>
+          <p class="benefit-text">Unlimited weekly entries. Direct exposure to corporate advertisers creates pathways for future partnerships and sponsorships.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section class="pricing section-alt">
+    <div class="container">
+      <div class="pricing-header">
+        <h2 class="pricing-title"><span class="pricing-title-underline">Choose What Your Message Is Worth.</span></h2>
+        <p class="pricing-subtitle">Set your own CPM rate with complete flexibility</p>
+      </div>
+      
+      <div class="pricing-grid">
+        <div class="pricing-card">
+          <div class="pricing-cpm">$0.50</div>
+          <div class="pricing-per">per 1,000 views</div>
+          <div class="pricing-impact">$50&nbsp;donation&nbsp;per&nbsp;100k&nbsp;views</div>
+        </div>
+        
+        <div class="pricing-card popular">
+          <div class="pricing-cpm">$2.00</div>
+          <div class="pricing-per">per 1,000 views</div>
+          <div class="pricing-impact">$200&nbsp;donation&nbsp;per&nbsp;100k&nbsp;views</div>
+        </div>
+        
+        <div class="pricing-card">
+          <div class="pricing-cpm">$10.00</div>
+          <div class="pricing-per">per 1,000 views</div>
+          <div class="pricing-impact">$1,000&nbsp;donation&nbsp;per&nbsp;100k&nbsp;views</div>
+        </div>
+      </div>
+      
+      <div class="pricing-footer">
+        <p class="pricing-guarantee">You control the price, we guarantee the views</p>
+        <p class="pricing-note">100% of net advertising revenue goes directly to charity</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="cta">
+    <div class="container">
+      <h2 class="cta-title">Ready to make an impact?</h2>
+      <p class="cta-subtitle">Turn ads into action—join companies and charities driving change.</p>
+      <div class="cta-buttons">
+        <a href="/advertiser.html" class="cta-btn btn-cta-primary">Join as a Company</a>
+        <a href="#" class="cta-btn btn-cta-secondary">Join as a Charity</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p>Stream ads, fuel impact, compete for good.</p>
+      <div class="social-icons">
+        <a href="#" class="social-icon">✉</a>
+        <a href="#" class="social-icon">in</a>
+        <a href="#" class="social-icon">X</a>
+        <a href="#" class="social-icon">●</a>
+        <a href="#" class="social-icon">◉</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Check authentication status
+    const authToken = localStorage.getItem('authToken');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+    // Set initial UI state
+    function setInitialUIState() {
+      const loggedInNav = document.getElementById('loggedInNav');
+      const guestNav = document.getElementById('guestNav');
+      const usernameDisplay = document.getElementById('usernameDisplay');
+      const impactBtn = document.getElementById('impactBtn');
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
+
+      if (authToken && currentUser) {
+        // User is logged in
+        if (loggedInNav) loggedInNav.style.display = 'flex';
+        if (guestNav) guestNav.style.display = 'none';
+        
+        if (usernameDisplay && currentUser.username) {
+          usernameDisplay.textContent = currentUser.username;
+        }
+        
+        // Impact button functionality for logged in users
+        if (impactBtn) {
+          impactBtn.onclick = () => {
+            window.location.href = '/impact.html';
+          };
+        }
+      } else {
+        // User is not logged in
+        if (loggedInNav) loggedInNav.style.display = 'none';
+        if (guestNav) guestNav.style.display = 'flex';
+      }
+
+      // Watch Ads button functionality
+      if (watchAdsBtn) {
+        watchAdsBtn.onclick = () => {
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
+      }
+    }
+
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+      setInitialUIState();
+    });
+  </script>
+</body>
+</html>

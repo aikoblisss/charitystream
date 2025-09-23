@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Join as an Advertiser - Charity Stream</title>
+  <title>Join as a Company - Charity Stream</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -186,10 +186,10 @@
       <div class="logo">Charity Stream</div>
       <nav class="nav">
         <div class="nav-hidden-mobile">
-          <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
-          <a href="#" class="nav-link active" onclick="handleNavClick('advertise')">Advertise</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('watch')">Watch Ads</a>
+          <a href="/about.html" class="nav-link">About</a>
+          <a href="/advertise.html" class="nav-link active">Advertise</a>
+          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
           <div class="user-menu" id="userMenu" style="display: none;">
             <button class="user-menu-btn" onclick="toggleUserMenu()" id="userMenuBtn">
               <span id="userDisplayName">Guest</span> ▼
@@ -731,6 +731,26 @@
       
       if (userMenu && !userMenu.contains(event.target)) {
         dropdown.style.display = 'none';
+      }
+    });
+
+    // Watch Ads button functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const watchAdsBtn = document.getElementById('watchAdsBtn');
+      const authToken = localStorage.getItem('authToken');
+      
+      if (watchAdsBtn) {
+        watchAdsBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth.html';
+          }
+        };
       }
     });
   </script>

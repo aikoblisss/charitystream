@@ -1016,13 +1016,13 @@
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="#" class="nav-link" onclick="handleNavClick('about')">About</a>
-          <a href="#" class="nav-link" onclick="handleNavClick('advertise')">Advertise</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="#" class="nav-link" onclick="handleNavClick('impact')">Impact</a>
         </div>
         <a class="watch-ads-btn" href="#" onclick="handleNavClick('watch')" id="watchAdsBtn" style="display: none;">Watch Ads</a>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
-          <a href="/advertiser.html" class="nav-link">Advertise</a>
+          <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" onclick="handleWatchAdsClick(event)">Watch Ads</a>
         </div>
@@ -1452,9 +1452,6 @@
         case 'about':
           window.location.href = '/about.html';
           break;
-        case 'advertise':
-          window.location.href = '/advertiser.html';
-          break;
         case 'impact':
           window.location.href = '/impact.html';
           break;
@@ -1469,9 +1466,6 @@
       switch (action) {
         case 'about':
           window.location.href = '/about.html';
-          break;
-        case 'advertise':
-          window.location.href = '/advertiser.html';
           break;
         case 'impact':
           window.location.href = '/impact.html';
