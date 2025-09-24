@@ -1655,6 +1655,7 @@
       const loggedInNav = document.getElementById('loggedInNav');
       const guestNav = document.getElementById('guestNav');
       const watchAdsBtn = document.getElementById('watchAdsBtn');
+      const tutorialLink = document.getElementById('tutorialLink');
       const charityHeader = document.getElementById('charityHeader');
       const heroSection = document.getElementById('heroSection');
       const landerHero = document.getElementById('landerHero');
@@ -1668,6 +1669,7 @@
         if (guestNav) guestNav.style.display = 'flex';
         if (loggedInNav) loggedInNav.style.display = 'none';
         if (watchAdsBtn) watchAdsBtn.style.display = 'none';
+        if (tutorialLink) tutorialLink.style.display = 'none'; // Hide tutorial for guests
         if (charityHeader) charityHeader.style.display = 'none';
         if (landerHero) landerHero.style.display = 'block';
         if (heroSection) heroSection.style.display = 'none';
@@ -1825,6 +1827,7 @@
       document.getElementById('guestNav').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('currentUserRow').style.display = 'flex';
+      document.getElementById('tutorialLink').style.display = 'inline'; // Show tutorial for authenticated users
       
       // Username will be set by loadUserInfo() after it completes
       document.getElementById('usernameDisplay').textContent = 'Loading...';
@@ -1836,6 +1839,7 @@
       document.getElementById('guestNav').style.display = 'flex';
       document.getElementById('loginOverlay').style.display = 'flex';
       document.getElementById('currentUserRow').style.display = 'none';
+      document.getElementById('tutorialLink').style.display = 'none'; // Hide tutorial for guests
     }
 
     function goToAuth() {
