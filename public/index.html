@@ -3258,14 +3258,25 @@
         modal.style.display = 'none';
         this.isActive = false;
         window.isTutorialActive = false;
-        console.log('🎓 Tutorial modal hidden - popups can resume, video stays paused');
+        console.log('🎓 Tutorial modal hidden - popups can resume');
 
-        // Resume popup ads only (video stays paused until user manually starts it)
+        // Resume popup ads
         if (typeof resumePopupsAfterTutorial === 'function') {
           resumePopupsAfterTutorial();
         } else if (window.popupAdManager && typeof window.popupAdManager.activate === 'function') {
           console.log('📢 Resuming popup ads after tutorial dismissal');
           window.popupAdManager.activate();
+        }
+
+        // For new users, start video playback after tutorial dismissal
+        const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
+        if (isNewUser && player && typeof player.play === 'function') {
+          console.log('🎬 Starting video playback for new user after tutorial dismissal');
+          setTimeout(() => {
+            player.play().catch(error => {
+              console.log('Video playback start failed:', error);
+            });
+          }, 500); // Small delay to ensure everything is ready
         }
       }
 
@@ -3388,6 +3399,17 @@
         
         // Resume pop-up ads after tutorial completion
         if (typeof resumePopupsAfterTutorial === 'function') resumePopupsAfterTutorial();
+
+        // For new users, start video playback after tutorial completion
+        const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
+        if (isNewUser && player && typeof player.play === 'function') {
+          console.log('🎬 Starting video playback for new user after tutorial completion');
+          setTimeout(() => {
+            player.play().catch(error => {
+              console.log('Video playback start failed:', error);
+            });
+          }, 500); // Small delay to ensure everything is ready
+        }
       }
 
       showComplete() {
@@ -3435,7 +3457,8 @@
       
       if (isNewUser) {
         localStorage.setItem('charityStream_newUser', 'true');
-        console.log('🎓 New user detected - tutorial will be offered');
+        window.isTutorialActive = true; // Block video auto-play for new users
+        console.log('🎓 New user detected - tutorial will be offered, video auto-play blocked');
       }
     }
 
