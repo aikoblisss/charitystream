@@ -1629,7 +1629,7 @@
   <script>
     // Authentication and user management
     let currentUser = null;
-    let authToken = null;
+    let authToken = localStorage.getItem('authToken') || null;
     let currentSessionId = null;
     let player = null;
     let isPlayerInitialized = false;
@@ -1801,6 +1801,10 @@
         hasUser: !!userStr,
         token: authToken ? 'Present' : 'Missing'
       });
+      
+      // --- NEW: dispatch an auth-ready event for modules that need auth to be known
+      window.dispatchEvent(new Event('authReady'));
+      console.log('🔐 authReady dispatched, authToken present?', !!authToken);
       
       // UI state is already set by setInitialUIState()
       if (!authToken) {
@@ -3134,21 +3138,54 @@
           }
         ];
 
-        this.init();
+        // bind methods if needed
+        this.onAuthReady = this.onAuthReady.bind(this);
+
+        // init basic listeners (buttons etc)
+        this.initUIListeners();
+
+        // Do not call checkTutorialModal() synchronously here.
+        // Instead, either:
+        //  - If auth is already known, run the check now, or
+        //  - Otherwise wait for the global authReady event.
+        if (typeof authToken !== 'undefined' && authToken) {
+          // authToken already exists -> safe to evaluate
+          this.checkTutorialModal();
+        } else {
+          // wait for auth to be known (fires once)
+          window.addEventListener('authReady', this.onAuthReady, { once: true });
+          // also run a fallback check after a small timeout in case authReady never fires
+          // (defensive), but only if newUser flag is present.
+          const isNewUserFlag = localStorage.getItem('charityStream_newUser') === 'true';
+          if (isNewUserFlag) {
+            // show modal after short delay even if auth isn't known (useful for signup flows
+            // where newUser is set via URL params and no auth token exists yet)
+            setTimeout(() => this.checkTutorialModal(), 1000);
+          }
+        }
       }
 
-      init() {
-        // Set up event listeners
-        document.getElementById('tutorialYes').addEventListener('click', () => {
-          this.hideModal();
-          this.startTutorial();
-        });
+      initUIListeners() {
+        // Attach click handlers for modal buttons (safe even if DOM wasn't ready earlier)
+        const yesBtn = document.getElementById('tutorialYes');
+        const noBtn = document.getElementById('tutorialNo');
 
-        document.getElementById('tutorialNo').addEventListener('click', () => {
-          this.hideModal();
-          this.markTutorialSeen();
-        });
+        if (yesBtn) {
+          yesBtn.addEventListener('click', () => {
+            this.hideModal();
+            this.startTutorial();
+            this.markTutorialSeen();
+          });
+        }
 
+        if (noBtn) {
+          noBtn.addEventListener('click', () => {
+            this.hideModal();
+            this.markTutorialSeen();
+          });
+        }
+
+        // other event listeners can be set up here...
         document.getElementById('tutorialNext').addEventListener('click', () => {
           this.nextStep();
         });
@@ -3160,53 +3197,80 @@
         document.getElementById('tutorialCompleteBtn').addEventListener('click', () => {
           this.hideComplete();
         });
+      }
 
-        // Check if we should show the tutorial modal
+      onAuthReady() {
+        // authReady fired -> now an authToken variable should be populated or confirmed absent
         this.checkTutorialModal();
       }
 
       checkTutorialModal() {
-        // Check if this is a new user who hasn't seen the tutorial
-        const hasSeenTutorial = localStorage.getItem('charityStream_tutorialSeen');
-        const isNewUser = localStorage.getItem('charityStream_newUser');
-        
-        // For authenticated users, automatically set new user flag if they haven't seen tutorial
-        if (authToken && !hasSeenTutorial && isNewUser !== 'true') {
+        const hasSeenTutorial = localStorage.getItem('charityStream_tutorialSeen') === 'true';
+        const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
+
+        // If user has already seen tutorial -> nothing to do
+        if (hasSeenTutorial) return;
+
+        // If new user flagged, show modal. If not flagged but authToken exists and not seen,
+        // set newUser flag and show modal.
+        if (isNewUser) {
+          // show modal after short delay so UI has time to settle
+          setTimeout(() => this.showModal(), 700);
+          return;
+        }
+
+        // If authToken exists and the user hasn't seen the tutorial, treat them as new user
+        if (typeof authToken !== 'undefined' && authToken && !hasSeenTutorial) {
           localStorage.setItem('charityStream_newUser', 'true');
           console.log('🎓 Authenticated user detected - setting new user flag for tutorial');
+          setTimeout(() => this.showModal(), 700);
+          return;
         }
-        
-        if (isNewUser === 'true' && !hasSeenTutorial) {
-          // Show modal after a short delay to let the page load
-          setTimeout(() => {
-            this.showModal();
-          }, 1000);
-        }
+
+        // If neither newUser flag nor auth known yet, we already attached authReady listener in constructor.
+        // Nothing else to do here.
       }
 
       showModal() {
-        document.getElementById('tutorialModal').style.display = 'block';
-        isTutorialActive = true;
+        const modal = document.getElementById('tutorialModal');
+        if (!modal) return;
+        modal.style.display = 'block';
+        this.isActive = true;
+        window.isTutorialActive = true; // expose for other parts of the app if they check it
         console.log('🎓 Tutorial modal shown - video/popups paused');
+
+        // Pause videos/popups immediately when modal shows
+        if (typeof pauseVideosAndPopups === 'function') pauseVideosAndPopups();
       }
 
       hideModal() {
-        document.getElementById('tutorialModal').style.display = 'none';
-        isTutorialActive = false;
+        const modal = document.getElementById('tutorialModal');
+        if (!modal) return;
+        modal.style.display = 'none';
+        this.isActive = false;
+        window.isTutorialActive = false;
         console.log('🎓 Tutorial modal hidden - video/popups can resume');
-        
-        // Resume pop-up ads after tutorial dismissal
-        resumePopupsAfterTutorial();
+
+        // Only resume after the modal is dismissed
+        if (typeof resumePopupsAfterTutorial === 'function') resumePopupsAfterTutorial();
       }
 
       hideComplete() {
         document.getElementById('tutorialComplete').style.display = 'none';
       }
 
+      // Called when user completes the tutorial or explicitly dismisses it
+      markTutorialSeen() {
+        localStorage.setItem('charityStream_tutorialSeen', 'true');
+        localStorage.removeItem('charityStream_newUser');
+      }
+
+      // stub - implement actual tutorial flow
       startTutorial() {
+        console.log('🎓 Starting tutorial...');
         this.isActive = true;
         this.currentStep = 0;
-        isTutorialActive = true;
+        window.isTutorialActive = true;
         document.getElementById('tutorialOverlay').classList.add('active');
         this.showStep();
         console.log('🎓 Tutorial started - video/popups paused');
@@ -3302,23 +3366,18 @@
 
       endTutorial() {
         this.isActive = false;
-        isTutorialActive = false;
+        window.isTutorialActive = false;
         document.getElementById('tutorialOverlay').classList.remove('active');
         this.markTutorialSeen();
         this.showComplete();
         console.log('🎓 Tutorial ended - video/popups can resume');
         
         // Resume pop-up ads after tutorial completion
-        resumePopupsAfterTutorial();
+        if (typeof resumePopupsAfterTutorial === 'function') resumePopupsAfterTutorial();
       }
 
       showComplete() {
         document.getElementById('tutorialComplete').style.display = 'block';
-      }
-
-      markTutorialSeen() {
-        localStorage.setItem('charityStream_tutorialSeen', 'true');
-        localStorage.removeItem('charityStream_newUser');
       }
 
       // Public method to reset tutorial (for testing)

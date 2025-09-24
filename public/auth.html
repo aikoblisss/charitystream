@@ -986,6 +986,7 @@
             } else {
               console.log('✅ Username already set, redirecting to main page');
               // Username is already set, redirect to main page
+              localStorage.setItem('charityStream_newUser', 'true');
               setTimeout(() => {
                 window.location.href = '/';
               }, 1000);
@@ -1146,6 +1147,7 @@
         } else if (result.token) {
           localStorage.setItem('authToken', result.token);
           localStorage.setItem('currentUser', JSON.stringify(result.user));
+          localStorage.setItem('charityStream_newUser', 'true');
           
           showMessage('Account created successfully! Redirecting...', 'success');
           setTimeout(() => {
@@ -1381,6 +1383,7 @@
           }
           
           showMessage('Username set successfully! Redirecting...', 'success');
+          localStorage.setItem('charityStream_newUser', 'true');
           setTimeout(() => {
             window.location.href = '/';
           }, 1500);

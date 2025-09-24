@@ -1,0 +1,9 @@
+# Environment variables for local development
+# Copy your DATABASE_URL from Vercel and paste it here
+
+# Your Neon PostgreSQL database URL
+# Get this from your Vercel dashboard -> Project Settings -> Environment Variables
+DATABASE_URL=postgresql://username:password@host:port/database
+
+# Example format:
+# DATABASE_URL=postgresql://user:password@ep-cool-name-123456.us-east-1.aws.neon.tech/neondb?sslmode=require
