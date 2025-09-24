@@ -1102,13 +1102,293 @@
         font-size: 40px;
       }
     }
+
+    /* Tutorial System Styles */
+    .tutorial-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      z-index: 10001;
+      display: none;
+    }
+
+    .tutorial-overlay.active {
+      display: block;
+    }
+
+    .tutorial-highlight {
+      position: absolute;
+      border: 3px solid #2F7D31;
+      border-radius: 8px;
+      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 20px rgba(47, 125, 49, 0.8);
+      z-index: 10002;
+      transition: all 0.3s ease;
+    }
+
+    .tutorial-tooltip {
+      position: absolute;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      max-width: 300px;
+      z-index: 10003;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tutorial-tooltip::after {
+      content: '';
+      position: absolute;
+      width: 0;
+      height: 0;
+      border: 10px solid transparent;
+    }
+
+    .tutorial-tooltip.tooltip-top::after {
+      bottom: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-top-color: white;
+    }
+
+    .tutorial-tooltip.tooltip-bottom::after {
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-bottom-color: white;
+    }
+
+    .tutorial-tooltip.tooltip-left::after {
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-left-color: white;
+    }
+
+    .tutorial-tooltip.tooltip-right::after {
+      left: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      border-right-color: white;
+    }
+
+    .tutorial-text {
+      font-size: 16px;
+      color: #333;
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+
+    .tutorial-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+    }
+
+    .tutorial-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tutorial-btn-primary {
+      background-color: #2F7D31;
+      color: white;
+    }
+
+    .tutorial-btn-primary:hover {
+      background-color: #276629;
+    }
+
+    .tutorial-btn-secondary {
+      background-color: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .tutorial-btn-secondary:hover {
+      background-color: #e5e7eb;
+    }
+
+    .tutorial-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 10004;
+      text-align: center;
+      max-width: 400px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tutorial-modal h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #333;
+      margin-bottom: 16px;
+    }
+
+    .tutorial-modal p {
+      font-size: 16px;
+      color: #6b7280;
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    .tutorial-modal-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .tutorial-modal-btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 100px;
+    }
+
+    .tutorial-modal-btn-primary {
+      background-color: #2F7D31;
+      color: white;
+    }
+
+    .tutorial-modal-btn-primary:hover {
+      background-color: #276629;
+    }
+
+    .tutorial-modal-btn-secondary {
+      background-color: #f3f4f6;
+      color: #6b7280;
+    }
+
+    .tutorial-modal-btn-secondary:hover {
+      background-color: #e5e7eb;
+    }
+
+    .tutorial-link {
+      color: #6b7280;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      margin-left: 16px;
+      transition: color 0.2s;
+    }
+
+    .tutorial-link:hover {
+      color: #2F7D31;
+    }
+
+    .tutorial-complete {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      z-index: 10004;
+      text-align: center;
+      max-width: 300px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .tutorial-complete h2 {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2F7D31;
+      margin-bottom: 16px;
+    }
+
+    .tutorial-complete p {
+      font-size: 16px;
+      color: #6b7280;
+      margin-bottom: 24px;
+    }
+
+    .tutorial-complete-btn {
+      padding: 12px 24px;
+      background-color: #2F7D31;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .tutorial-complete-btn:hover {
+      background-color: #276629;
+    }
+
+    /* Responsive tutorial */
+    @media (max-width: 768px) {
+      .tutorial-tooltip {
+        max-width: 250px;
+        padding: 16px;
+      }
+
+      .tutorial-modal {
+        margin: 20px;
+        max-width: calc(100% - 40px);
+      }
+
+      .tutorial-complete {
+        margin: 20px;
+        max-width: calc(100% - 40px);
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Tutorial System -->
+  <div id="tutorialOverlay" class="tutorial-overlay">
+    <div id="tutorialHighlight" class="tutorial-highlight"></div>
+    <div id="tutorialTooltip" class="tutorial-tooltip">
+      <div class="tutorial-text" id="tutorialText"></div>
+      <div class="tutorial-buttons">
+        <button id="tutorialSkip" class="tutorial-btn tutorial-btn-secondary">Skip Tutorial</button>
+        <button id="tutorialNext" class="tutorial-btn tutorial-btn-primary">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="tutorialModal" class="tutorial-modal" style="display: none;">
+    <h2>Welcome to Charity Stream!</h2>
+    <p>Would you like a quick tutorial on how to use Charity Stream?</p>
+    <div class="tutorial-modal-buttons">
+      <button id="tutorialNo" class="tutorial-modal-btn tutorial-modal-btn-secondary">No</button>
+      <button id="tutorialYes" class="tutorial-modal-btn tutorial-modal-btn-primary">Yes</button>
+    </div>
+  </div>
+
+  <div id="tutorialComplete" class="tutorial-complete" style="display: none;">
+    <h2>Tutorial Complete 🎉</h2>
+    <p>You're all set! Start watching ads and making a difference.</p>
+    <button id="tutorialCompleteBtn" class="tutorial-complete-btn">Get Started</button>
+  </div>
+
   <!-- Top Nav -->
   <header class="header">
-    <div class="header-container">
-      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+      <div class="header-container">
+        <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+        <a href="#" class="tutorial-link" id="tutorialLink">Tutorial</a>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
@@ -2742,6 +3022,265 @@
 
     // Make popupAdManager globally available for debugging
     window.popupAdManager = popupAdManager;
+
+    // Tutorial System
+    class TutorialManager {
+      constructor() {
+        this.currentStep = 0;
+        this.isActive = false;
+        this.tutorialSteps = [
+          {
+            selector: '.video-js .vjs-big-play-button, .video-js .vjs-play-control',
+            text: 'Simply click the play button and begin watching ads.',
+            position: 'bottom'
+          },
+          {
+            selector: '.hero-amount',
+            text: 'Total money raised for charity. See the About page for more.',
+            position: 'bottom'
+          },
+          {
+            selector: '.sidebar .board-card:first-child',
+            text: 'Track how many ads you watched today, your total ads watched, and your current rank.',
+            position: 'left'
+          },
+          {
+            selector: '.sidebar .board-card:last-child',
+            text: 'The leaderboard for top ad watchers this month plus your current standing. Get to #1 by the end of the month and win XXX (reward TBD).',
+            position: 'left'
+          },
+          {
+            selector: '.upgrade-btn',
+            text: 'Pay $1/month to get a pop-out player, no pop-ups, 1.25x speed, and 1080p quality!',
+            position: 'top'
+          },
+          {
+            selector: '.charity-progress',
+            text: 'Our weekly charity partner progress bar.',
+            position: 'top'
+          },
+          {
+            selector: 'a[href="/about.html"]',
+            text: 'Learn more about Charity Stream here.',
+            position: 'bottom'
+          },
+          {
+            selector: 'a[href="/advertise.html"]',
+            text: 'To advertise with us, sign up here.',
+            position: 'bottom'
+          },
+          {
+            selector: 'a[href="/impact.html"]',
+            text: 'Track your personal impact.',
+            position: 'bottom'
+          },
+          {
+            selector: '.watch-ads-btn',
+            text: 'Click here anytime to return to this page.',
+            position: 'bottom'
+          }
+        ];
+
+        this.init();
+      }
+
+      init() {
+        // Set up event listeners
+        document.getElementById('tutorialLink').addEventListener('click', (e) => {
+          e.preventDefault();
+          this.startTutorial();
+        });
+
+        document.getElementById('tutorialYes').addEventListener('click', () => {
+          this.hideModal();
+          this.startTutorial();
+        });
+
+        document.getElementById('tutorialNo').addEventListener('click', () => {
+          this.hideModal();
+          this.markTutorialSeen();
+        });
+
+        document.getElementById('tutorialNext').addEventListener('click', () => {
+          this.nextStep();
+        });
+
+        document.getElementById('tutorialSkip').addEventListener('click', () => {
+          this.endTutorial();
+        });
+
+        document.getElementById('tutorialCompleteBtn').addEventListener('click', () => {
+          this.hideComplete();
+        });
+
+        // Check if we should show the tutorial modal
+        this.checkTutorialModal();
+      }
+
+      checkTutorialModal() {
+        // Check if this is a new user who hasn't seen the tutorial
+        const hasSeenTutorial = localStorage.getItem('charityStream_tutorialSeen');
+        const isNewUser = localStorage.getItem('charityStream_newUser');
+        
+        if (isNewUser === 'true' && !hasSeenTutorial) {
+          // Show modal after a short delay to let the page load
+          setTimeout(() => {
+            this.showModal();
+          }, 1000);
+        }
+      }
+
+      showModal() {
+        document.getElementById('tutorialModal').style.display = 'block';
+      }
+
+      hideModal() {
+        document.getElementById('tutorialModal').style.display = 'none';
+      }
+
+      hideComplete() {
+        document.getElementById('tutorialComplete').style.display = 'none';
+      }
+
+      startTutorial() {
+        this.isActive = true;
+        this.currentStep = 0;
+        document.getElementById('tutorialOverlay').classList.add('active');
+        this.showStep();
+      }
+
+      showStep() {
+        if (this.currentStep >= this.tutorialSteps.length) {
+          this.endTutorial();
+          return;
+        }
+
+        const step = this.tutorialSteps[this.currentStep];
+        const element = document.querySelector(step.selector);
+
+        if (!element) {
+          console.warn(`Tutorial step ${this.currentStep}: Element not found for selector "${step.selector}"`);
+          this.nextStep();
+          return;
+        }
+
+        // Highlight the element
+        this.highlightElement(element);
+        
+        // Show tooltip
+        this.showTooltip(element, step.text, step.position);
+      }
+
+      highlightElement(element) {
+        const highlight = document.getElementById('tutorialHighlight');
+        const rect = element.getBoundingClientRect();
+        
+        highlight.style.left = `${rect.left - 3}px`;
+        highlight.style.top = `${rect.top - 3}px`;
+        highlight.style.width = `${rect.width + 6}px`;
+        highlight.style.height = `${rect.height + 6}px`;
+      }
+
+      showTooltip(element, text, position) {
+        const tooltip = document.getElementById('tutorialTooltip');
+        const tooltipText = document.getElementById('tutorialText');
+        const rect = element.getBoundingClientRect();
+        
+        tooltipText.textContent = text;
+        
+        // Remove existing position classes
+        tooltip.classList.remove('tooltip-top', 'tooltip-bottom', 'tooltip-left', 'tooltip-right');
+        tooltip.classList.add(`tooltip-${position}`);
+
+        // Position tooltip
+        let left, top;
+        const tooltipRect = tooltip.getBoundingClientRect();
+        
+        switch (position) {
+          case 'top':
+            left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+            top = rect.top - tooltipRect.height - 20;
+            break;
+          case 'bottom':
+            left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+            top = rect.bottom + 20;
+            break;
+          case 'left':
+            left = rect.left - tooltipRect.width - 20;
+            top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+            break;
+          case 'right':
+            left = rect.right + 20;
+            top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+            break;
+        }
+
+        // Ensure tooltip stays within viewport
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        if (left < 10) left = 10;
+        if (left + tooltipRect.width > viewportWidth - 10) {
+          left = viewportWidth - tooltipRect.width - 10;
+        }
+        if (top < 10) top = 10;
+        if (top + tooltipRect.height > viewportHeight - 10) {
+          top = viewportHeight - tooltipRect.height - 10;
+        }
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+      }
+
+      nextStep() {
+        this.currentStep++;
+        this.showStep();
+      }
+
+      endTutorial() {
+        this.isActive = false;
+        document.getElementById('tutorialOverlay').classList.remove('active');
+        this.markTutorialSeen();
+        this.showComplete();
+      }
+
+      showComplete() {
+        document.getElementById('tutorialComplete').style.display = 'block';
+      }
+
+      markTutorialSeen() {
+        localStorage.setItem('charityStream_tutorialSeen', 'true');
+        localStorage.removeItem('charityStream_newUser');
+      }
+
+      // Public method to reset tutorial (for testing)
+      resetTutorial() {
+        localStorage.removeItem('charityStream_tutorialSeen');
+        localStorage.setItem('charityStream_newUser', 'true');
+        console.log('Tutorial reset - will show on next page load');
+      }
+    }
+
+    // Initialize tutorial manager
+    const tutorialManager = new TutorialManager();
+
+    // Make tutorial manager globally available for debugging
+    window.tutorialManager = tutorialManager;
+
+    // Check for new user status from URL parameters or other sources
+    function checkNewUserStatus() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const isNewUser = urlParams.get('newUser') === 'true' || 
+                       urlParams.get('tutorial') === 'true' ||
+                       localStorage.getItem('charityStream_newUser') === 'true';
+      
+      if (isNewUser) {
+        localStorage.setItem('charityStream_newUser', 'true');
+      }
+    }
+
+    // Run new user check on page load
+    checkNewUserStatus();
   </script>
 </body>
 </html>
