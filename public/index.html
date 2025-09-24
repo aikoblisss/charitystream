@@ -2530,6 +2530,12 @@
             // Use the video's current time for accurate tracking (excludes loading/buffering time)
             const currentTime = player.currentTime() || 0;
             const adDurationSeconds = Math.floor(Math.max(currentTime, accumulatedAdTime));
+            console.log('🔍 Ad duration calculation:', {
+              currentTime: currentTime,
+              accumulatedAdTime: accumulatedAdTime,
+              finalDuration: adDurationSeconds,
+              videoDuration: player.duration()
+            });
             completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
             isAdPlaying = false;
             currentAdTrackingId = null;

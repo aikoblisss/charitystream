@@ -865,13 +865,13 @@ const dbHelpers = {
           0 as streak_days,
           ROW_NUMBER() OVER (
             ORDER BY u.current_month_seconds DESC, 
-            u.created_at ASC
+            u.id ASC
           ) as rank_number
         FROM users u
         LEFT JOIN daily_stats ds ON u.id = ds.user_id AND ds.date = CURRENT_DATE
         WHERE u.is_active = true 
-          AND u.current_month_seconds > 0
-        ORDER BY u.current_month_seconds DESC, u.created_at ASC
+          AND u.current_month_seconds >= 60
+        ORDER BY u.current_month_seconds DESC, u.id ASC
         LIMIT $1`,
         [limit]
       );

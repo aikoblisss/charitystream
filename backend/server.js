@@ -1394,6 +1394,13 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
 
       // Update user's total and monthly watch time (record seconds every time an ad completes)
       const secondsWatched = parseInt(durationSeconds, 10) || 0;
+      console.log('🔍 Backend received ad completion:', {
+        userId: req.user.userId,
+        username: req.user.username,
+        durationSeconds: durationSeconds,
+        parsedSeconds: secondsWatched,
+        willUpdateMonthly: secondsWatched > 0
+      });
       if (secondsWatched > 0) {
         const [watchTimeErr, updatedUser] = await dbHelpers.updateWatchSeconds(req.user.userId, secondsWatched);
         if (watchTimeErr) {
