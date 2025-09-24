@@ -334,7 +334,7 @@
         
         <div class="error-actions">
           <a href="#" class="btn btn-primary" id="watchAdsBtnMain">Watch Ads</a>
-          <a href="#" class="btn btn-secondary" id="goHomeBtn">Go Home</a>
+          <a href="/advertiser.html" class="btn btn-secondary" id="partnerBtn">Partner With Us</a>
         </div>
       </div>
     </main>
@@ -412,14 +412,13 @@
       }
     }
 
-    // Go Home button functionality
-    function setupGoHomeButton() {
-      const goHomeBtn = document.getElementById('goHomeBtn');
+    // Partner With Us button functionality
+    function setupPartnerButton() {
+      const partnerBtn = document.getElementById('partnerBtn');
       
-      if (goHomeBtn) {
-        goHomeBtn.onclick = () => {
-          // For now, do nothing as requested
-          console.log('Go Home clicked - no action for now');
+      if (partnerBtn) {
+        partnerBtn.onclick = () => {
+          window.location.href = '/advertiser.html';
         };
       }
     }
@@ -448,7 +447,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       setInitialUIState();
       setupWatchAdsButtons();
-      setupGoHomeButton();
+      setupPartnerButton();
       setupLogoButton();
     });
   </script>
