@@ -3259,19 +3259,9 @@
         modal.style.display = 'none';
         this.isActive = false;
         window.isTutorialActive = false;
-        console.log('🎓 Tutorial modal hidden - video/popups can resume');
+        console.log('🎓 Tutorial modal hidden - popups can resume, video stays paused');
 
-        // Resume video playback and ads explicitly
-        if (typeof startVideoPlayback === 'function') {
-          startVideoPlayback();
-        } else if (player && typeof player.play === 'function') {
-          console.log('🎬 Resuming video playback after tutorial dismissal');
-          player.play().catch(error => {
-            console.log('Video resume failed:', error);
-          });
-        }
-
-        // Resume popup ads
+        // Resume popup ads only (video stays paused until user manually starts it)
         if (typeof resumePopupsAfterTutorial === 'function') {
           resumePopupsAfterTutorial();
         } else if (window.popupAdManager && typeof window.popupAdManager.activate === 'function') {
