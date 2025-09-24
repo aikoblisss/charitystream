@@ -350,13 +350,13 @@
                     <a href="/about.html" class="nav-link">About</a>
                     <a href="/advertise.html" class="nav-link">Advertise</a>
                     <a href="/impact.html" class="nav-link">Impact</a>
-                    <a href="/index.html" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+                    <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
                 </div>
                 <div class="nav-hidden-mobile" id="guestNav">
                     <a href="/about.html" class="nav-link">About</a>
                     <a href="/advertise.html" class="nav-link">Advertise</a>
                     <a href="/impact.html" class="nav-link">Impact</a>
-                    <a href="/index.html" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+                    <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
                 </div>
             </nav>
         </div>
@@ -534,9 +534,35 @@
             }
         }
 
+        // Logo button functionality
+        function setupLogoButton() {
+            const logoBtn = document.getElementById('logoBtn');
+            
+            if (logoBtn) {
+                logoBtn.onclick = function(e) {
+                    e.preventDefault();
+                    window.location.href = '/index.html';
+                };
+            }
+        }
+
+        // Watch Ads button functionality
+        function setupWatchAdsButtons() {
+            const watchAdsBtn = document.getElementById('watchAdsBtn');
+            
+            if (watchAdsBtn) {
+                watchAdsBtn.onclick = function(e) {
+                    e.preventDefault();
+                    window.location.href = '/index.html';
+                };
+            }
+        }
+
         // Check authentication status on page load
         document.addEventListener('DOMContentLoaded', function() {
             checkAuthStatus();
+            setupLogoButton();
+            setupWatchAdsButtons();
         });
     </script>
 </body>
