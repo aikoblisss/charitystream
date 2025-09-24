@@ -1388,7 +1388,6 @@
   <header class="header">
       <div class="header-container">
         <a href="#" class="logo" id="logoBtn">Charity Stream</a>
-        <a href="#" class="tutorial-link" id="tutorialLink">Tutorial</a>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
@@ -1656,7 +1655,6 @@
       const guestNav = document.getElementById('guestNav');
       const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
       const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
-      const tutorialLink = document.getElementById('tutorialLink');
       const charityHeader = document.getElementById('charityHeader');
       const heroSection = document.getElementById('heroSection');
       const landerHero = document.getElementById('landerHero');
@@ -1671,7 +1669,6 @@
         if (loggedInNav) loggedInNav.style.display = 'none';
         if (watchAdsBtnLoggedIn) watchAdsBtnLoggedIn.style.display = 'none';
         if (watchAdsBtnGuest) watchAdsBtnGuest.style.display = 'inline-flex';
-        if (tutorialLink) tutorialLink.style.display = 'none'; // Hide tutorial for guests
         if (charityHeader) charityHeader.style.display = 'none';
         if (landerHero) landerHero.style.display = 'block';
         if (heroSection) heroSection.style.display = 'none';
@@ -1834,7 +1831,6 @@
       document.getElementById('guestNav').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('currentUserRow').style.display = 'flex';
-      document.getElementById('tutorialLink').style.display = 'inline'; // Show tutorial for authenticated users
       
       // Username will be set by loadUserInfo() after it completes
       document.getElementById('usernameDisplay').textContent = 'Loading...';
@@ -1846,7 +1842,6 @@
       document.getElementById('guestNav').style.display = 'flex';
       document.getElementById('loginOverlay').style.display = 'flex';
       document.getElementById('currentUserRow').style.display = 'none';
-      document.getElementById('tutorialLink').style.display = 'none'; // Hide tutorial for guests
     }
 
     function goToAuth() {
@@ -3144,11 +3139,6 @@
 
       init() {
         // Set up event listeners
-        document.getElementById('tutorialLink').addEventListener('click', (e) => {
-          e.preventDefault();
-          this.startTutorial();
-        });
-
         document.getElementById('tutorialYes').addEventListener('click', () => {
           this.hideModal();
           this.startTutorial();
@@ -3179,6 +3169,12 @@
         // Check if this is a new user who hasn't seen the tutorial
         const hasSeenTutorial = localStorage.getItem('charityStream_tutorialSeen');
         const isNewUser = localStorage.getItem('charityStream_newUser');
+        
+        // For authenticated users, automatically set new user flag if they haven't seen tutorial
+        if (authToken && !hasSeenTutorial && isNewUser !== 'true') {
+          localStorage.setItem('charityStream_newUser', 'true');
+          console.log('🎓 Authenticated user detected - setting new user flag for tutorial');
+        }
         
         if (isNewUser === 'true' && !hasSeenTutorial) {
           // Show modal after a short delay to let the page load
