@@ -2180,9 +2180,10 @@
             leaderboard.forEach((user, index) => {
               const item = document.createElement('li');
               item.className = 'leaderboard-item';
+              const rankDisplay = user.rank === "-" ? "-" : `#${user.rank}`;
               item.innerHTML = `
                 <div class="leaderboard-left">
-                  <span class="rank">#${user.rank}</span>
+                  <span class="rank">${rankDisplay}</span>
                   <span class="username">${user.username}</span>
                 </div>
                 <span class="minutes">${user.minutesWatched} mins</span>
@@ -2196,7 +2197,7 @@
               item.className = 'leaderboard-item';
               item.innerHTML = `
                 <div class="leaderboard-left">
-                  <span class="rank">#${i + 1}</span>
+                  <span class="rank">-</span>
                   <span class="username">Spot is open!</span>
                 </div>
                 <span class="minutes">0 mins</span>
