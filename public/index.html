@@ -2332,10 +2332,14 @@
             
             // Auto-play when video loads (both initial and subsequent videos)
             setTimeout(() => {
-              console.log('🎬 Attempting to auto-play video...');
-              player.play().catch(error => {
-                console.log('Auto-play prevented:', error);
-              });
+              if (window.isTutorialActive) {
+                console.log('⏸ Video auto-play blocked until tutorial dismissed');
+              } else {
+                console.log('🎬 Attempting to auto-play video...');
+                player.play().catch(error => {
+                  console.log('Auto-play prevented:', error);
+                });
+              }
             }, 100);
             
             // Mark initial load as complete
@@ -3042,6 +3046,12 @@
         return;
       }
       
+      // Check if tutorial is active
+      if (window.isTutorialActive) {
+        console.log('⏸ Popup ads blocked until tutorial dismissed');
+        return;
+      }
+      
       if (player && !popupAdManager.videoPlayer) {
         popupAdManager.setVideoPlayer(player);
         popupAdManager.activate(); // Activate pop-ups for authenticated users
@@ -3055,11 +3065,11 @@
       const result = originalPlayerInit.apply(this, arguments);
       
       // Set up pop-up ad manager after player is ready (only for authenticated users and not during tutorial)
-      if (authToken && !isTutorialActive) {
+      if (authToken && !window.isTutorialActive) {
         setTimeout(() => {
           setupPopupAdWithPlayer();
         }, 1000);
-      } else if (isTutorialActive) {
+      } else if (window.isTutorialActive) {
         console.log('🎓 Tutorial active - pop-up ads delayed until tutorial completes');
       }
       
@@ -3251,8 +3261,23 @@
         window.isTutorialActive = false;
         console.log('🎓 Tutorial modal hidden - video/popups can resume');
 
-        // Only resume after the modal is dismissed
-        if (typeof resumePopupsAfterTutorial === 'function') resumePopupsAfterTutorial();
+        // Resume video playback and ads explicitly
+        if (typeof startVideoPlayback === 'function') {
+          startVideoPlayback();
+        } else if (player && typeof player.play === 'function') {
+          console.log('🎬 Resuming video playback after tutorial dismissal');
+          player.play().catch(error => {
+            console.log('Video resume failed:', error);
+          });
+        }
+
+        // Resume popup ads
+        if (typeof resumePopupsAfterTutorial === 'function') {
+          resumePopupsAfterTutorial();
+        } else if (window.popupAdManager && typeof window.popupAdManager.activate === 'function') {
+          console.log('📢 Resuming popup ads after tutorial dismissal');
+          window.popupAdManager.activate();
+        }
       }
 
       hideComplete() {
@@ -3396,6 +3421,17 @@
 
     // Global flag to track if tutorial is active
     let isTutorialActive = false;
+    window.isTutorialActive = false; // Initialize global flag
+
+    // Function to start video playback after tutorial dismissal
+    function startVideoPlayback() {
+      if (player && typeof player.play === 'function') {
+        console.log('🎬 Starting video playback after tutorial dismissal');
+        player.play().catch(error => {
+          console.log('Video playback start failed:', error);
+        });
+      }
+    }
 
     // Function to resume pop-up ads after tutorial completion
     function resumePopupsAfterTutorial() {
