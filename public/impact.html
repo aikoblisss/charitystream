@@ -590,8 +590,12 @@
     // Load user impact data
     async function loadUserImpact() {
       const token = localStorage.getItem('authToken');
-      if (!token) return;
+      if (!token) {
+        console.log('❌ No auth token found, skipping user impact load');
+        return;
+      }
 
+      console.log('🔄 Loading user impact data...');
       try {
         const response = await fetch('/api/user/impact', {
           headers: {
@@ -599,20 +603,51 @@
           }
         });
 
+        console.log('📡 API response status:', response.status);
         if (response.ok) {
           const result = await response.json();
           const impact = result.impact;
           
-          // Update impact stats
-          document.querySelector('.stat:nth-child(1) .stat-value').textContent = `#${impact.currentRank}`;
-          document.querySelector('.stat:nth-child(2) .stat-value').textContent = `${impact.watchTimeMinutes} mins`;
-          document.querySelector('.stat:nth-child(3) .stat-value').textContent = impact.totalAdsWatched;
-          document.querySelector('.stat:nth-child(4) .stat-value').textContent = `$${impact.donationsGenerated}`;
+          console.log('📊 User impact data received:', impact);
           
-          console.log('📊 User impact data loaded:', impact);
+          // Update impact stats
+          const rankElement = document.querySelector('.stat:nth-child(1) .stat-value');
+          const timeElement = document.querySelector('.stat:nth-child(2) .stat-value');
+          const adsElement = document.querySelector('.stat:nth-child(3) .stat-value');
+          const donationsElement = document.querySelector('.stat:nth-child(4) .stat-value');
+          
+          if (rankElement) {
+            rankElement.textContent = `#${impact.currentRank}`;
+            console.log('✅ Updated rank:', `#${impact.currentRank}`);
+          } else {
+            console.log('❌ Rank element not found');
+          }
+          
+          if (timeElement) {
+            timeElement.textContent = `${impact.watchTimeMinutes} mins`;
+            console.log('✅ Updated watch time:', `${impact.watchTimeMinutes} mins`);
+          } else {
+            console.log('❌ Time element not found');
+          }
+          
+          if (adsElement) {
+            adsElement.textContent = impact.totalAdsWatched;
+            console.log('✅ Updated ads watched:', impact.totalAdsWatched);
+          } else {
+            console.log('❌ Ads element not found');
+          }
+          
+          if (donationsElement) {
+            donationsElement.textContent = `$${impact.donationsGenerated}`;
+            console.log('✅ Updated donations:', `$${impact.donationsGenerated}`);
+          } else {
+            console.log('❌ Donations element not found');
+          }
+        } else {
+          console.error('❌ API response not OK:', response.status, response.statusText);
         }
       } catch (error) {
-        console.error('Error loading user impact:', error);
+        console.error('❌ Error loading user impact:', error);
       }
     }
 
@@ -742,31 +777,34 @@
       const token = localStorage.getItem('authToken');
       const currentUser = localStorage.getItem('currentUser');
       
+      console.log('🔍 Checking auth status...');
+      console.log('Token exists:', !!token);
+      console.log('Current user exists:', !!currentUser);
+      
       if (token && currentUser) {
         try {
           const user = JSON.parse(currentUser);
-          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
+          document.getElementById('usernameDisplay').textContent = user.username || user.email.split('@')[0];
+          console.log('✅ User authenticated:', user.username || user.email);
         } catch (error) {
           console.error('Error parsing user data:', error);
-          document.getElementById('userDisplayName').textContent = 'Guest';
+          document.getElementById('usernameDisplay').textContent = 'Guest';
         }
-        // Show authenticated content, hide sign-up prompt
-        document.getElementById('signupPrompt').style.display = 'none';
-        // Show user menu, hide sign in link
-        document.getElementById('userMenu').style.display = 'block';
-        document.getElementById('signInLink').style.display = 'none';
+        // Show authenticated content, hide guest nav
+        document.getElementById('loggedInNav').style.display = 'block';
+        document.getElementById('guestNav').style.display = 'none';
         
+        console.log('🔄 Loading dynamic data...');
         // Load dynamic data
         loadUserImpact();
         loadLeaderboard();
         loadUserRow();
       } else {
-        document.getElementById('userDisplayName').textContent = 'Guest';
-        // Show sign-up prompt, hide authenticated content
-        document.getElementById('signupPrompt').style.display = 'block';
-        // Show sign in link, hide user menu
-        document.getElementById('userMenu').style.display = 'none';
-        document.getElementById('signInLink').style.display = 'inline';
+        document.getElementById('usernameDisplay').textContent = 'Guest';
+        // Show guest nav, hide authenticated content
+        document.getElementById('loggedInNav').style.display = 'none';
+        document.getElementById('guestNav').style.display = 'block';
+        console.log('❌ User not authenticated, showing guest view');
       }
     }
 
