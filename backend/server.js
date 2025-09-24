@@ -114,6 +114,22 @@ app.use(cors({
 
 app.use(bodyParser.json());
 
+// Middleware to inject authentication context into HTML files
+app.use((req, res, next) => {
+  // Only process HTML files
+  if (req.path.endsWith('.html')) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    
+    // Store auth context for template processing
+    req.authContext = {
+      hasToken: !!token,
+      token: token
+    };
+  }
+  next();
+});
+
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 

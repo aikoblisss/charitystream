@@ -48,7 +48,95 @@
       --gray-600: #4b5563;
       --gray-700: #374151;
       --gray-800: #1f2937;
+      
+      /* Skeleton loading colors */
+      --skeleton-bg: #f3f4f6;
+      --skeleton-shine: #e5e7eb;
       --gray-900: #111827;
+    }
+
+    /* Skeleton Loading Styles */
+    .skeleton {
+      background: linear-gradient(90deg, var(--skeleton-bg) 25%, var(--skeleton-shine) 50%, var(--skeleton-bg) 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: 4px;
+      color: transparent;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .skeleton-text {
+      height: 1em;
+      width: 100%;
+      margin: 0.25em 0;
+    }
+
+    .skeleton-text.short {
+      width: 60%;
+    }
+
+    .skeleton-text.medium {
+      width: 80%;
+    }
+
+    .skeleton-number {
+      height: 1.2em;
+      width: 3em;
+      margin: 0.1em 0;
+    }
+
+    .skeleton-rank {
+      height: 1em;
+      width: 2.5em;
+      margin: 0.1em 0;
+    }
+
+    .skeleton-minutes {
+      height: 1em;
+      width: 4em;
+      margin: 0.1em 0;
+    }
+
+    .skeleton-username {
+      height: 1em;
+      width: 6em;
+      margin: 0.1em 0;
+    }
+
+    @keyframes skeleton-loading {
+      0% {
+        background-position: -200% 0;
+      }
+      100% {
+        background-position: 200% 0;
+      }
+    }
+
+    /* Hide skeleton when data is loaded */
+    .data-loaded .skeleton {
+      animation: none;
+      background: transparent;
+      color: inherit;
+    }
+
+    /* Prevent flickering during initial load */
+    .auth-dependent {
+      opacity: 0;
+      transition: opacity 0.3s ease-in-out;
+    }
+
+    .auth-dependent.loaded {
+      opacity: 1;
+    }
+
+    /* Hide content until JavaScript determines auth state */
+    .js-loading .auth-dependent {
+      opacity: 0;
+    }
+
+    .js-loaded .auth-dependent {
+      opacity: 1;
     }
 
     /* Header */
@@ -1472,72 +1560,72 @@
       <!-- Sidebar -->
       <aside class="sidebar">
         <!-- Your Impact Card -->
-        <div class="card">
+        <div class="card auth-dependent">
           <div class="card-content">
             <h2 class="card-title">Your Impact</h2>
             <dl class="metrics">
               <div class="metric-row">
                 <dt class="metric-label">Ads Watched Today</dt>
-                <dd class="metric-value" id="adsWatchedToday">0</dd>
+                <dd class="metric-value" id="adsWatchedToday"><span class="skeleton skeleton-number">0</span></dd>
               </div>
               <div class="metric-row">
                 <dt class="metric-label">Total Ads Watched</dt>
-                <dd class="metric-value" id="totalAdsWatched">0</dd>
+                <dd class="metric-value" id="totalAdsWatched"><span class="skeleton skeleton-number">0</span></dd>
               </div>
               <div class="metric-row">
                 <dt class="metric-label">Current Rank</dt>
-                <dd class="metric-value" id="currentRank">#-</dd>
+                <dd class="metric-value" id="currentRank"><span class="skeleton skeleton-rank">#-</span></dd>
               </div>
             </dl>
           </div>
         </div>
 
         <!-- Leaderboard Card -->
-        <div class="card">
+        <div class="card auth-dependent">
           <div class="card-content">
             <h2 class="card-title">Top Ad Watchers This Month</h2>
             <ul class="leaderboard">
               <li class="leaderboard-item">
                 <div class="leaderboard-left">
-                  <span class="rank">#1</span>
-                  <span class="username">Branden4Good</span>
+                  <span class="rank"><span class="skeleton skeleton-rank">#--</span></span>
+                  <span class="username"><span class="skeleton skeleton-username">Loading...</span></span>
                 </div>
-                <span class="minutes">2,517 mins</span>
+                <span class="minutes"><span class="skeleton skeleton-minutes">0 mins</span></span>
               </li>
               <li class="leaderboard-item">
                 <div class="leaderboard-left">
-                  <span class="rank">#2</span>
-                  <span class="username">HiMom11</span>
+                  <span class="rank"><span class="skeleton skeleton-rank">#--</span></span>
+                  <span class="username"><span class="skeleton skeleton-username">Loading...</span></span>
                 </div>
-                <span class="minutes">2,142 mins</span>
+                <span class="minutes"><span class="skeleton skeleton-minutes">0 mins</span></span>
               </li>
               <li class="leaderboard-item">
                 <div class="leaderboard-left">
-                  <span class="rank">#3</span>
-                  <span class="username">AdsAreAwesome</span>
+                  <span class="rank"><span class="skeleton skeleton-rank">#--</span></span>
+                  <span class="username"><span class="skeleton skeleton-username">Loading...</span></span>
                 </div>
-                <span class="minutes">1,894 mins</span>
+                <span class="minutes"><span class="skeleton skeleton-minutes">0 mins</span></span>
               </li>
               <li class="leaderboard-item">
                 <div class="leaderboard-left">
-                  <span class="rank">#4</span>
-                  <span class="username">Payit4Ward</span>
+                  <span class="rank"><span class="skeleton skeleton-rank">#--</span></span>
+                  <span class="username"><span class="skeleton skeleton-username">Loading...</span></span>
                 </div>
-                <span class="minutes">1,563 mins</span>
+                <span class="minutes"><span class="skeleton skeleton-minutes">0 mins</span></span>
               </li>
               <li class="leaderboard-item">
                 <div class="leaderboard-left">
-                  <span class="rank">#5</span>
-                  <span class="username">DrakeFan32</span>
+                  <span class="rank"><span class="skeleton skeleton-rank">#--</span></span>
+                  <span class="username"><span class="skeleton skeleton-username">Loading...</span></span>
                 </div>
-                <span class="minutes">1,244 mins</span>
+                <span class="minutes"><span class="skeleton skeleton-minutes">0 mins</span></span>
               </li>
               <li class="leaderboard-item current-user" id="currentUserRow" style="display: none;">
                 <div class="leaderboard-left">
-                  <span class="rank current-user" id="userRankDisplay">#53</span>
-                  <span class="username current-user"><span id="userLeaderboardName">You</span> (You)</span>
+                  <span class="rank current-user" id="userRankDisplay"><span class="skeleton skeleton-rank">#--</span></span>
+                  <span class="username current-user"><span id="userLeaderboardName"><span class="skeleton skeleton-username">Loading...</span></span> (You)</span>
                 </div>
-                <span class="minutes current-user" id="userMinutesDisplay">0 mins</span>
+                <span class="minutes current-user" id="userMinutesDisplay"><span class="skeleton skeleton-minutes">0 mins</span></span>
               </li>
             </ul>
           </div>
@@ -1651,6 +1739,9 @@
     function setInitialUIState() {
       console.log('🔧 setInitialUIState called, authToken:', !!authToken);
       
+      // Add loading class to prevent flickering
+      document.body.classList.add('js-loading');
+      
       const loggedInNav = document.getElementById('loggedInNav');
       const guestNav = document.getElementById('guestNav');
       const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
@@ -1718,6 +1809,18 @@
         
         console.log('👤 Set display name to:', displayName);
       }
+      
+      // Mark JavaScript as loaded and show auth-dependent content
+      setTimeout(() => {
+        document.body.classList.remove('js-loading');
+        document.body.classList.add('js-loaded');
+        
+        // Show auth-dependent content
+        const authDependentElements = document.querySelectorAll('.auth-dependent');
+        authDependentElements.forEach(element => {
+          element.classList.add('loaded');
+        });
+      }, 100);
     }
 
     // Call immediately when DOM is ready
@@ -1956,12 +2059,20 @@
           currentUser = result.user;
           localStorage.setItem('currentUser', JSON.stringify(currentUser));
           
-          // Update UI with user data
+          // Update UI with user data (remove skeleton classes)
           const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
-          document.getElementById('usernameDisplay').textContent = displayName;
-          document.getElementById('userLeaderboardName').textContent = displayName;
-          document.getElementById('totalAdsWatched').textContent = currentUser.totalMinutesWatched || 0;
-          document.getElementById('userMinutesDisplay').textContent = '0 mins'; // Will be updated by loadUserImpact()
+          const usernameElement = document.getElementById('usernameDisplay');
+          const userLeaderboardElement = document.getElementById('userLeaderboardName');
+          
+          if (usernameElement) {
+            usernameElement.innerHTML = displayName;
+            usernameElement.classList.add('data-loaded');
+          }
+          
+          if (userLeaderboardElement) {
+            userLeaderboardElement.innerHTML = displayName;
+            userLeaderboardElement.classList.add('data-loaded');
+          }
           
           // Load user impact and leaderboard data
           loadUserImpact();
@@ -2140,18 +2251,36 @@
           const result = await response.json();
           const impact = result.impact;
           
-          // Update UI with impact data
-          document.getElementById('adsWatchedToday').textContent = impact.adsWatchedToday;
-          document.getElementById('totalAdsWatched').textContent = impact.totalAdsWatched;
+          // Update UI with impact data (remove skeleton classes)
+          const adsWatchedElement = document.getElementById('adsWatchedToday');
+          const totalAdsElement = document.getElementById('totalAdsWatched');
+          const rankElement = document.getElementById('currentRank');
+          
+          if (adsWatchedElement) {
+            adsWatchedElement.innerHTML = impact.adsWatchedToday;
+            adsWatchedElement.classList.add('data-loaded');
+          }
+          
+          if (totalAdsElement) {
+            totalAdsElement.innerHTML = impact.totalAdsWatched;
+            totalAdsElement.classList.add('data-loaded');
+          }
           
           // Show dash for 0 minutes, otherwise show rank number
           const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
-          document.getElementById('currentRank').textContent = rankDisplay;
-          document.getElementById('userRankDisplay').textContent = rankDisplay;
+          if (rankElement) {
+            rankElement.innerHTML = rankDisplay;
+            rankElement.classList.add('data-loaded');
+          }
           
-          document.getElementById('userMinutesDisplay').textContent = `${impact.watchTimeMinutes} mins`;
+          document.getElementById('userMinutesDisplay').innerHTML = `${impact.watchTimeMinutes} mins`;
           
-          console.log('📊 User impact data loaded:', impact);
+          // Update user rank in leaderboard
+          const userRankElement = document.getElementById('userRankDisplay');
+          if (userRankElement) {
+            userRankElement.innerHTML = rankDisplay;
+            userRankElement.classList.add('data-loaded');
+          }
         }
       } catch (error) {
         console.error('Error loading user impact:', error);
@@ -2212,6 +2341,9 @@
             if (currentUserRow) {
               leaderboardContainer.appendChild(currentUserRow);
             }
+            
+            // Mark leaderboard as loaded
+            leaderboardContainer.classList.add('data-loaded');
           }
           
           console.log('🏆 Leaderboard data loaded:', leaderboard);
