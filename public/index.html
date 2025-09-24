@@ -2519,8 +2519,8 @@
       }
 
       scheduleNextPopup() {
-        // Schedule next pop-up between 3-15 seconds (much more frequent)
-        const delay = Math.random() * (15 - 3) + 3;
+        // Schedule next pop-up between 1-8 seconds (even more frequent)
+        const delay = Math.random() * (8 - 1) + 1;
         console.log(`📢 Next pop-up scheduled in ${Math.round(delay)} seconds`);
         
         setTimeout(() => {
