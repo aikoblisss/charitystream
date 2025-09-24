@@ -1735,6 +1735,133 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 
 // ===== SERVER STARTUP =====
 
+// ===== STRIPE INTEGRATION =====
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+// Create Stripe checkout session
+app.post('/api/subscribe/create-checkout-session', authenticateToken, async (req, res) => {
+  try {
+    const { priceId, successUrl, cancelUrl } = req.body;
+    
+    if (!priceId) {
+      return res.status(400).json({ error: 'Price ID is required' });
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1,
+        },
+      ],
+      mode: 'subscription',
+      success_url: successUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscribe?success=true`,
+      cancel_url: cancelUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscribe?canceled=true`,
+      customer_email: req.user.email,
+      metadata: {
+        userId: req.user.userId,
+        username: req.user.username
+      }
+    });
+
+    res.json({ sessionId: session.id });
+  } catch (error) {
+    console.error('❌ Stripe checkout session creation failed:', error);
+    res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+});
+
+// Get subscription status
+app.get('/api/subscription/status', authenticateToken, async (req, res) => {
+  try {
+    // For now, return a mock response - you'll implement database lookup later
+    res.json({
+      active: false,
+      subscriptionId: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false
+    });
+  } catch (error) {
+    console.error('❌ Subscription status check failed:', error);
+    res.status(500).json({ error: 'Failed to check subscription status' });
+  }
+});
+
+// ===== STRIPE WEBHOOK HANDLING =====
+
+// Stripe webhook endpoint
+app.post('/api/subscribe/webhook', express.raw({type: 'application/json'}), (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.log('❌ Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      console.log('✅ Checkout session completed:', session.id);
+      // Update user subscription status here
+      break;
+    case 'customer.subscription.created':
+      const subscription = event.data.object;
+      console.log('✅ Subscription created:', subscription.id);
+      break;
+    case 'customer.subscription.updated':
+      const updatedSubscription = event.data.object;
+      console.log('✅ Subscription updated:', updatedSubscription.id);
+      break;
+    case 'customer.subscription.deleted':
+      const deletedSubscription = event.data.object;
+      console.log('✅ Subscription deleted:', deletedSubscription.id);
+      break;
+    case 'invoice.payment_succeeded':
+      const invoice = event.data.object;
+      console.log('✅ Payment succeeded for invoice:', invoice.id);
+      break;
+    case 'invoice.payment_failed':
+      const failedInvoice = event.data.object;
+      console.log('❌ Payment failed for invoice:', failedInvoice.id);
+      break;
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  res.json({received: true});
+});
+
+// ===== CLEAN URL ROUTING =====
+// Handle clean URLs without .html extension
+const cleanUrlRoutes = {
+  '/about': 'about.html',
+  '/advertise': 'advertise.html', 
+  '/auth': 'auth.html',
+  '/impact': 'impact.html',
+  '/subscribe': 'subscribe.html',
+  '/admin': 'admin.html',
+  '/charity': 'charity.html',
+  '/lander': 'lander.html',
+  '/reset-password': 'reset-password.html',
+  '/verify-email': 'verify-email.html',
+  '/test-video': 'test-video.html',
+  '/advertiser': 'advertiser.html'
+};
+
+// Add routes for clean URLs
+Object.entries(cleanUrlRoutes).forEach(([route, file]) => {
+  app.get(route, (req, res) => {
+    res.sendFile(path.join(__dirname, '../public', file));
+  });
+});
+
 // Handle frontend routing - serve index.html for any non-API routes
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {

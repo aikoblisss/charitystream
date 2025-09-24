@@ -204,15 +204,15 @@
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-          <a href="/about.html" class="nav-link">About</a>
-          <a href="/advertise.html" class="nav-link active">Advertise</a>
-          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="/about" class="nav-link">About</a>
+          <a href="/advertise" class="nav-link active">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
-          <a href="/about.html" class="nav-link">About</a>
-          <a href="/advertise.html" class="nav-link active">Advertise</a>
-          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="/about" class="nav-link">About</a>
+          <a href="/advertise" class="nav-link active">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
@@ -226,8 +226,8 @@
         <h1 class="hero-title">Turn Your Marketing Budget Into<br><span class="hero-title-underline">Charitable Impact</span></h1>
         <p class="hero-subtitle">Skip the ad blockers, skip the waste. Reach audiences who choose to engage while funding charitable causes.</p>
         <div class="cta-buttons">
-          <a href="/advertiser.html" class="btn btn-primary">Join as a Company</a>
-          <a href="/charity.html" class="btn btn-secondary">Join as a Charity</a>
+          <a href="/advertiser" class="btn btn-primary">Join as a Company</a>
+          <a href="/charity" class="btn btn-secondary">Join as a Charity</a>
         </div>
       </div>
     </div>
@@ -396,8 +396,8 @@
       <h2 class="cta-title">Ready to make an impact?</h2>
       <p class="cta-subtitle">Turn ads into action—join companies and charities driving change.</p>
       <div class="cta-buttons">
-        <a href="/advertiser.html" class="cta-btn btn-cta-primary">Join as a Company</a>
-        <a href="/charity.html" class="cta-btn btn-cta-secondary">Join as a Charity</a>
+        <a href="/advertiser" class="cta-btn btn-cta-primary">Join as a Company</a>
+        <a href="/charity" class="cta-btn btn-cta-secondary">Join as a Charity</a>
       </div>
     </div>
   </section>
@@ -457,7 +457,7 @@
             window.location.href = '/';
           } else {
             // User is not logged in, go to sign in
-            window.location.href = '/auth.html';
+            window.location.href = '/auth';
           }
         };
       }
@@ -478,7 +478,7 @@
         watchAdsBtnGuest.onclick = function(e) {
           e.preventDefault();
           // User is not logged in, go to sign in
-          window.location.href = '/auth.html';
+          window.location.href = '/auth';
         };
       }
     });

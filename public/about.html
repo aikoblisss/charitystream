@@ -269,15 +269,15 @@
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-          <a href="/about.html" class="nav-link active">About</a>
-          <a href="/advertise.html" class="nav-link">Advertise</a>
-          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="/about" class="nav-link active">About</a>
+          <a href="/advertise" class="nav-link">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
-          <a href="/about.html" class="nav-link active">About</a>
-          <a href="/advertise.html" class="nav-link">Advertise</a>
-          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="/about" class="nav-link active">About</a>
+          <a href="/advertise" class="nav-link">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
@@ -340,7 +340,7 @@
             window.location.href = '/';
           } else {
             // User is not logged in, go to sign in
-            window.location.href = '/auth.html';
+            window.location.href = '/auth';
           }
         };
       }
@@ -361,7 +361,7 @@
         watchAdsBtnGuest.onclick = function(e) {
           e.preventDefault();
           // User is not logged in, go to sign in
-          window.location.href = '/auth.html';
+          window.location.href = '/auth';
         };
       }
 
@@ -394,7 +394,7 @@
     function logout() {
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUser');
-      window.location.href = '/auth.html';
+      window.location.href = '/auth';
     }
 
     // Close dropdown when clicking outside
