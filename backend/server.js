@@ -1862,9 +1862,20 @@ Object.entries(cleanUrlRoutes).forEach(([route, file]) => {
   });
 });
 
-// Handle frontend routing - serve index.html for any non-API routes
+// Handle frontend routing - serve index.html for any non-API routes that aren't clean URLs
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
+    // Check if this is a clean URL route
+    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/charity', '/lander', '/reset-password', '/verify-email', '/test-video', '/advertiser'];
+    
+    if (cleanUrlRoutes.includes(req.path)) {
+      // This should have been handled by the specific routes above
+      // If we reach here, something went wrong with the specific routes
+      console.log('⚠️ Clean URL route not handled:', req.path);
+      return res.status(404).send('Route not found');
+    }
+    
+    // Serve index.html for all other routes (like /, /some-other-page, etc.)
     res.sendFile(path.join(__dirname, '../public/index.html'));
   }
 });
