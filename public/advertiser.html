@@ -188,15 +188,15 @@
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
           <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-          <a href="/about.html" class="nav-link">About</a>
-          <a href="/advertise.html" class="nav-link active">Advertise</a>
-          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="/about" class="nav-link">About</a>
+          <a href="/advertise" class="nav-link active">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
-          <a href="/about.html" class="nav-link">About</a>
-          <a href="/advertise.html" class="nav-link active">Advertise</a>
-          <a href="/impact.html" class="nav-link">Impact</a>
+          <a href="/about" class="nav-link">About</a>
+          <a href="/advertise" class="nav-link active">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
           <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
         </div>
       </nav>
@@ -523,13 +523,13 @@
     function handleNavClick(action) {
       switch (action) {
         case 'about':
-          window.location.href = '/about.html';
+          window.location.href = '/about';
           break;
         case 'advertise':
           // Already on advertise page
           break;
         case 'impact':
-          window.location.href = '/impact.html';
+          window.location.href = '/impact';
           break;
         case 'watch':
           // Go to main landing page
@@ -720,7 +720,7 @@
     function logout() {
       localStorage.removeItem('authToken');
       localStorage.removeItem('currentUser');
-      window.location.href = '/auth.html';
+      window.location.href = '/auth';
     }
 
     // Close dropdown when clicking outside
@@ -749,7 +749,7 @@
             window.location.href = '/';
           } else {
             // User is not logged in, go to sign in
-            window.location.href = '/auth.html';
+            window.location.href = '/auth';
           }
         };
       }
@@ -765,7 +765,7 @@
             window.location.href = '/';
           } else {
             // User is not logged in, go to sign in
-            window.location.href = '/auth.html';
+            window.location.href = '/auth';
           }
         };
       }
