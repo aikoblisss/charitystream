@@ -1799,6 +1799,12 @@
       // UI state is already set by setInitialUIState()
       if (!authToken) {
         console.log('❌ No auth token found in window.onload, lander content should be showing');
+        
+        // Ensure pop-up ads are deactivated for unauthenticated users
+        if (popupAdManager) {
+          popupAdManager.deactivate();
+        }
+        
         return;
       }
       
@@ -1841,6 +1847,12 @@
       localStorage.removeItem('currentUser');
       authToken = null;
       currentUser = null;
+      
+      // Deactivate pop-up ads when user logs out
+      if (popupAdManager) {
+        popupAdManager.deactivate();
+      }
+      
       showUnauthenticatedUI();
       
       // Reinitialize video player for guests
@@ -2780,6 +2792,7 @@
         this.nextPopupId = 1;
         this.maxPopups = 10;
         this.minPopups = 0;
+        this.isActive = false; // Track if pop-ups should be active
         
         this.init();
       }
@@ -2790,8 +2803,26 @@
           this.cleanup();
         });
 
+        // Don't start scheduling pop-ups immediately - wait for authentication check
+        console.log('📢 Pop-up ad manager initialized (waiting for authentication)');
+      }
+
+      // Method to activate pop-ups (called only for authenticated users)
+      activate() {
+        if (this.isActive) return;
+        
+        this.isActive = true;
+        console.log('📢 Pop-up ads activated for authenticated user');
+        
         // Start scheduling pop-ups with higher frequency
         this.scheduleNextPopup();
+      }
+
+      // Method to deactivate pop-ups (called when user logs out)
+      deactivate() {
+        this.isActive = false;
+        this.cleanup();
+        console.log('📢 Pop-up ads deactivated');
       }
 
       setVideoPlayer(player) {
@@ -2799,6 +2830,12 @@
       }
 
       scheduleNextPopup() {
+        // Only schedule if pop-ups are active (user is authenticated)
+        if (!this.isActive) {
+          console.log('📢 Pop-up scheduling skipped - not authenticated');
+          return;
+        }
+        
         // Schedule next pop-up between 1-8 seconds (even more frequent)
         const delay = Math.random() * (8 - 1) + 1;
         console.log(`📢 Next pop-up scheduled in ${Math.round(delay)} seconds`);
@@ -2982,15 +3019,23 @@
     // Initialize pop-up ad manager
     const popupAdManager = new PopupAdManager();
 
-    // Set up video player reference when it's initialized
+    // Set up video player reference when it's initialized (only for authenticated users)
     let originalInitializeVideoPlayer = null;
     let originalInitializeVideoPlayerForGuests = null;
 
     // Override the video player initialization to set up pop-up ad manager
     function setupPopupAdWithPlayer() {
+      // Only set up pop-up ads for authenticated users
+      if (!authToken) {
+        console.log('📢 Pop-up ads disabled - user not authenticated');
+        popupAdManager.deactivate();
+        return;
+      }
+      
       if (player && !popupAdManager.videoPlayer) {
         popupAdManager.setVideoPlayer(player);
-        console.log('📢 Pop-up ad manager connected to video player');
+        popupAdManager.activate(); // Activate pop-ups for authenticated users
+        console.log('📢 Pop-up ad manager connected to video player and activated');
       }
     }
 
@@ -2999,10 +3044,12 @@
     initializeVideoPlayer = function() {
       const result = originalPlayerInit.apply(this, arguments);
       
-      // Set up pop-up ad manager after player is ready
-      setTimeout(() => {
-        setupPopupAdWithPlayer();
-      }, 1000);
+      // Set up pop-up ad manager after player is ready (only for authenticated users)
+      if (authToken) {
+        setTimeout(() => {
+          setupPopupAdWithPlayer();
+        }, 1000);
+      }
       
       return result;
     };
@@ -3012,10 +3059,8 @@
     initializeVideoPlayerForGuests = function() {
       const result = originalGuestPlayerInit.apply(this, arguments);
       
-      // Set up pop-up ad manager after player is ready
-      setTimeout(() => {
-        setupPopupAdWithPlayer();
-      }, 1000);
+      // Ensure pop-up ads are deactivated for guest users
+      popupAdManager.deactivate();
       
       return result;
     };
