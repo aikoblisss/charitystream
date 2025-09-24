@@ -2335,10 +2335,18 @@
               if (window.isTutorialActive) {
                 console.log('⏸ Video auto-play blocked until tutorial dismissed');
               } else {
-                console.log('🎬 Attempting to auto-play video...');
-                player.play().catch(error => {
-                  console.log('Auto-play prevented:', error);
-                });
+                // Check if this is a new user who hasn't manually started playback yet
+                const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
+                const hasUserStartedPlayback = localStorage.getItem('charityStream_userStartedPlayback') === 'true';
+                
+                if (isNewUser && !hasUserStartedPlayback) {
+                  console.log('⏸ New user - video stays paused until user clicks play');
+                } else {
+                  console.log('🎬 Attempting to auto-play video...');
+                  player.play().catch(error => {
+                    console.log('Auto-play prevented:', error);
+                  });
+                }
               }
             }, 100);
             
@@ -2598,6 +2606,9 @@
             e.stopPropagation();
             
             console.log('🎯 Play button clicked - starting video');
+            
+            // Mark that user has manually started playback (for new users)
+            localStorage.setItem('charityStream_userStartedPlayback', 'true');
             
             // Ensure smooth playback
             setTimeout(() => {
@@ -3258,9 +3269,9 @@
         modal.style.display = 'none';
         this.isActive = false;
         window.isTutorialActive = false;
-        console.log('🎓 Tutorial modal hidden - popups can resume');
+        console.log('🎓 Tutorial modal hidden - popups can resume, video stays paused until user clicks play');
 
-        // Resume popup ads
+        // Resume popup ads only (video stays paused until user manually starts it)
         if (typeof resumePopupsAfterTutorial === 'function') {
           resumePopupsAfterTutorial();
         } else if (window.popupAdManager && typeof window.popupAdManager.activate === 'function') {
@@ -3268,15 +3279,11 @@
           window.popupAdManager.activate();
         }
 
-        // For new users, start video playback after tutorial dismissal
+        // For new users, clear the tutorial flag so video transitions work normally
+        // but don't start the current video - it stays paused until user clicks play
         const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
-        if (isNewUser && player && typeof player.play === 'function') {
-          console.log('🎬 Starting video playback for new user after tutorial dismissal');
-          setTimeout(() => {
-            player.play().catch(error => {
-              console.log('Video playback start failed:', error);
-            });
-          }, 500); // Small delay to ensure everything is ready
+        if (isNewUser) {
+          console.log('🎓 New user tutorial dismissed - video transitions enabled, current video stays paused');
         }
       }
 
@@ -3395,20 +3402,16 @@
         document.getElementById('tutorialOverlay').classList.remove('active');
         this.markTutorialSeen();
         this.showComplete();
-        console.log('🎓 Tutorial ended - video/popups can resume');
+        console.log('🎓 Tutorial ended - video stays paused until user clicks play');
         
         // Resume pop-up ads after tutorial completion
         if (typeof resumePopupsAfterTutorial === 'function') resumePopupsAfterTutorial();
 
-        // For new users, start video playback after tutorial completion
+        // For new users, clear the tutorial flag so video transitions work normally
+        // but don't start the current video - it stays paused until user clicks play
         const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
-        if (isNewUser && player && typeof player.play === 'function') {
-          console.log('🎬 Starting video playback for new user after tutorial completion');
-          setTimeout(() => {
-            player.play().catch(error => {
-              console.log('Video playback start failed:', error);
-            });
-          }, 500); // Small delay to ensure everything is ready
+        if (isNewUser) {
+          console.log('🎓 New user tutorial completed - video transitions enabled, current video stays paused');
         }
       }
 
