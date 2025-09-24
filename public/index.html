@@ -3055,11 +3055,13 @@
     initializeVideoPlayer = function() {
       const result = originalPlayerInit.apply(this, arguments);
       
-      // Set up pop-up ad manager after player is ready (only for authenticated users)
-      if (authToken) {
+      // Set up pop-up ad manager after player is ready (only for authenticated users and not during tutorial)
+      if (authToken && !isTutorialActive) {
         setTimeout(() => {
           setupPopupAdWithPlayer();
         }, 1000);
+      } else if (isTutorialActive) {
+        console.log('🎓 Tutorial active - pop-up ads delayed until tutorial completes');
       }
       
       return result;
@@ -3188,10 +3190,17 @@
 
       showModal() {
         document.getElementById('tutorialModal').style.display = 'block';
+        isTutorialActive = true;
+        console.log('🎓 Tutorial modal shown - video/popups paused');
       }
 
       hideModal() {
         document.getElementById('tutorialModal').style.display = 'none';
+        isTutorialActive = false;
+        console.log('🎓 Tutorial modal hidden - video/popups can resume');
+        
+        // Resume pop-up ads after tutorial dismissal
+        resumePopupsAfterTutorial();
       }
 
       hideComplete() {
@@ -3201,8 +3210,10 @@
       startTutorial() {
         this.isActive = true;
         this.currentStep = 0;
+        isTutorialActive = true;
         document.getElementById('tutorialOverlay').classList.add('active');
         this.showStep();
+        console.log('🎓 Tutorial started - video/popups paused');
       }
 
       showStep() {
@@ -3295,9 +3306,14 @@
 
       endTutorial() {
         this.isActive = false;
+        isTutorialActive = false;
         document.getElementById('tutorialOverlay').classList.remove('active');
         this.markTutorialSeen();
         this.showComplete();
+        console.log('🎓 Tutorial ended - video/popups can resume');
+        
+        // Resume pop-up ads after tutorial completion
+        resumePopupsAfterTutorial();
       }
 
       showComplete() {
@@ -3323,15 +3339,31 @@
     // Make tutorial manager globally available for debugging
     window.tutorialManager = tutorialManager;
 
+    // Global flag to track if tutorial is active
+    let isTutorialActive = false;
+
+    // Function to resume pop-up ads after tutorial completion
+    function resumePopupsAfterTutorial() {
+      if (authToken && popupAdManager && !popupAdManager.isActive) {
+        console.log('🎓 Tutorial completed - resuming pop-up ads');
+        setTimeout(() => {
+          setupPopupAdWithPlayer();
+        }, 1000);
+      }
+    }
+
     // Check for new user status from URL parameters or other sources
     function checkNewUserStatus() {
       const urlParams = new URLSearchParams(window.location.search);
       const isNewUser = urlParams.get('newUser') === 'true' || 
                        urlParams.get('tutorial') === 'true' ||
+                       urlParams.get('signup') === 'true' ||
+                       urlParams.get('registered') === 'true' ||
                        localStorage.getItem('charityStream_newUser') === 'true';
       
       if (isNewUser) {
         localStorage.setItem('charityStream_newUser', 'true');
+        console.log('🎓 New user detected - tutorial will be offered');
       }
     }
 
