@@ -1013,9 +1013,108 @@
   .frame-scaler { position: relative; width: 100%; }
   .frame-inner { transform-origin: top center; }
 }
+    /* Pop-up Ad Styles */
+    .popup-ad {
+      position: fixed;
+      width: 384px;
+      height: 384px;
+      background-color: #ffffff;
+      border: 3px solid #2F7D31;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      z-index: 10000;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+    }
+
+    .popup-ad.show {
+      display: flex;
+    }
+
+    .popup-close-btn {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      width: 32px;
+      height: 32px;
+      background-color: #dc2626;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.2s;
+    }
+
+    .popup-close-btn:hover {
+      background-color: #b91c1c;
+    }
+
+    .popup-content {
+      text-align: center;
+      padding: 20px;
+    }
+
+    .popup-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2F7D31;
+      margin-bottom: 20px;
+    }
+
+    .popup-timer {
+      font-size: 48px;
+      font-weight: 800;
+      color: #dc2626;
+      margin-bottom: 10px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .popup-subtitle {
+      font-size: 16px;
+      color: #6b7280;
+      font-weight: 500;
+    }
+
+    /* Responsive popup */
+    @media (max-width: 768px) {
+      .popup-ad {
+        width: 320px;
+        height: 320px;
+      }
+
+      .popup-title {
+        font-size: 20px;
+      }
+
+      .popup-timer {
+        font-size: 40px;
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Pop-up Ad -->
+  <div id="popupAd" class="popup-ad">
+    <button id="popupCloseBtn" class="popup-close-btn">×</button>
+    <div class="popup-content">
+      <div class="popup-title">Pop up ad</div>
+      <div id="popupTimer" class="popup-timer">15</div>
+      <div class="popup-subtitle">seconds remaining</div>
+    </div>
+  </div>
+
   <!-- Top Nav -->
   <header class="header">
     <div class="header-container">
@@ -2403,6 +2502,217 @@
       setTimeout(fit, 600);
     })();
 
+    // Pop-up Ad System
+    class PopupAdManager {
+      constructor() {
+        this.popupAd = document.getElementById('popupAd');
+        this.popupCloseBtn = document.getElementById('popupCloseBtn');
+        this.popupTimer = document.getElementById('popupTimer');
+        this.videoPlayer = null;
+        
+        this.isPopupActive = false;
+        this.popupTimerInterval = null;
+        this.scheduleTimer = null;
+        this.currentCountdown = 15;
+        
+        this.init();
+      }
+
+      init() {
+        // Set up close button
+        this.popupCloseBtn.addEventListener('click', () => {
+          this.closePopup();
+        });
+
+        // Set up navigation cleanup
+        window.addEventListener('beforeunload', () => {
+          this.cleanup();
+        });
+
+        // Start scheduling pop-ups
+        this.scheduleNextPopup();
+      }
+
+      setVideoPlayer(player) {
+        this.videoPlayer = player;
+      }
+
+      scheduleNextPopup() {
+        // Clear any existing schedule timer
+        if (this.scheduleTimer) {
+          clearTimeout(this.scheduleTimer);
+        }
+
+        // Schedule next pop-up between 15-60 seconds
+        const delay = Math.random() * (60 - 15) + 15;
+        console.log(`📢 Next pop-up scheduled in ${Math.round(delay)} seconds`);
+        
+        this.scheduleTimer = setTimeout(() => {
+          this.showPopup();
+        }, delay * 1000);
+      }
+
+      showPopup() {
+        // Don't show if already active or video is paused
+        if (this.isPopupActive) {
+          console.log('📢 Pop-up already active, skipping');
+          this.scheduleNextPopup();
+          return;
+        }
+
+        // Check if video player exists and is not paused
+        if (this.videoPlayer && this.videoPlayer.paused()) {
+          console.log('📢 Video is paused, skipping pop-up');
+          this.scheduleNextPopup();
+          return;
+        }
+
+        console.log('📢 Showing pop-up ad');
+        this.isPopupActive = true;
+        this.currentCountdown = 15;
+
+        // Position pop-up randomly but ensure it's fully visible
+        this.positionPopup();
+
+        // Show pop-up
+        this.popupAd.classList.add('show');
+        this.updateTimerDisplay();
+
+        // Start countdown
+        this.popupTimerInterval = setInterval(() => {
+          this.currentCountdown--;
+          this.updateTimerDisplay();
+
+          if (this.currentCountdown <= 0) {
+            this.closePopup(true); // true = auto-close
+          }
+        }, 1000);
+      }
+
+      positionPopup() {
+        const popup = this.popupAd;
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const popupWidth = 384;
+        const popupHeight = 384;
+
+        // Calculate random position ensuring popup stays within viewport
+        const maxX = Math.max(0, viewportWidth - popupWidth);
+        const maxY = Math.max(0, viewportHeight - popupHeight);
+
+        const randomX = Math.random() * maxX;
+        const randomY = Math.random() * maxY;
+
+        popup.style.left = `${randomX}px`;
+        popup.style.top = `${randomY}px`;
+      }
+
+      updateTimerDisplay() {
+        this.popupTimer.textContent = this.currentCountdown;
+      }
+
+      closePopup(isAutoClose = false) {
+        if (!this.isPopupActive) return;
+
+        console.log(`📢 Closing pop-up ad (${isAutoClose ? 'auto-close' : 'manual'})`);
+        
+        this.isPopupActive = false;
+        this.popupAd.classList.remove('show');
+
+        // Clear countdown timer
+        if (this.popupTimerInterval) {
+          clearInterval(this.popupTimerInterval);
+          this.popupTimerInterval = null;
+        }
+
+        // If auto-closed, pause the video
+        if (isAutoClose && this.videoPlayer) {
+          console.log('📢 Auto-closing pop-up, pausing video');
+          this.videoPlayer.pause();
+        }
+
+        // Schedule next pop-up
+        this.scheduleNextPopup();
+      }
+
+      cleanup() {
+        console.log('📢 Cleaning up pop-up ad system');
+        
+        if (this.scheduleTimer) {
+          clearTimeout(this.scheduleTimer);
+          this.scheduleTimer = null;
+        }
+
+        if (this.popupTimerInterval) {
+          clearInterval(this.popupTimerInterval);
+          this.popupTimerInterval = null;
+        }
+
+        this.isPopupActive = false;
+        this.popupAd.classList.remove('show');
+      }
+
+      // Public method to pause pop-ups (useful for debugging)
+      pausePopups() {
+        if (this.scheduleTimer) {
+          clearTimeout(this.scheduleTimer);
+          this.scheduleTimer = null;
+        }
+        console.log('📢 Pop-up scheduling paused');
+      }
+
+      // Public method to resume pop-ups
+      resumePopups() {
+        if (!this.scheduleTimer && !this.isPopupActive) {
+          this.scheduleNextPopup();
+          console.log('📢 Pop-up scheduling resumed');
+        }
+      }
+    }
+
+    // Initialize pop-up ad manager
+    const popupAdManager = new PopupAdManager();
+
+    // Set up video player reference when it's initialized
+    let originalInitializeVideoPlayer = null;
+    let originalInitializeVideoPlayerForGuests = null;
+
+    // Override the video player initialization to set up pop-up ad manager
+    function setupPopupAdWithPlayer() {
+      if (player && !popupAdManager.videoPlayer) {
+        popupAdManager.setVideoPlayer(player);
+        console.log('📢 Pop-up ad manager connected to video player');
+      }
+    }
+
+    // Hook into existing video player initialization
+    const originalPlayerInit = initializeVideoPlayer;
+    initializeVideoPlayer = function() {
+      const result = originalPlayerInit.apply(this, arguments);
+      
+      // Set up pop-up ad manager after player is ready
+      setTimeout(() => {
+        setupPopupAdWithPlayer();
+      }, 1000);
+      
+      return result;
+    };
+
+    // Also hook into guest player initialization
+    const originalGuestPlayerInit = initializeVideoPlayerForGuests;
+    initializeVideoPlayerForGuests = function() {
+      const result = originalGuestPlayerInit.apply(this, arguments);
+      
+      // Set up pop-up ad manager after player is ready
+      setTimeout(() => {
+        setupPopupAdWithPlayer();
+      }, 1000);
+      
+      return result;
+    };
+
+    // Make popupAdManager globally available for debugging
+    window.popupAdManager = popupAdManager;
   </script>
 </body>
 </html>
