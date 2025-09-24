@@ -1395,13 +1395,13 @@
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -1654,7 +1654,8 @@
       
       const loggedInNav = document.getElementById('loggedInNav');
       const guestNav = document.getElementById('guestNav');
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
+      const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
+      const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
       const tutorialLink = document.getElementById('tutorialLink');
       const charityHeader = document.getElementById('charityHeader');
       const heroSection = document.getElementById('heroSection');
@@ -1668,7 +1669,8 @@
         // Show lander content
         if (guestNav) guestNav.style.display = 'flex';
         if (loggedInNav) loggedInNav.style.display = 'none';
-        if (watchAdsBtn) watchAdsBtn.style.display = 'none';
+        if (watchAdsBtnLoggedIn) watchAdsBtnLoggedIn.style.display = 'none';
+        if (watchAdsBtnGuest) watchAdsBtnGuest.style.display = 'inline-flex';
         if (tutorialLink) tutorialLink.style.display = 'none'; // Hide tutorial for guests
         if (charityHeader) charityHeader.style.display = 'none';
         if (landerHero) landerHero.style.display = 'block';
@@ -1699,7 +1701,8 @@
       // Show authenticated content
       if (loggedInNav) loggedInNav.style.display = 'flex';
       if (guestNav) guestNav.style.display = 'none';
-      if (watchAdsBtn) watchAdsBtn.style.display = 'inline-flex';
+      if (watchAdsBtnLoggedIn) watchAdsBtnLoggedIn.style.display = 'inline-flex';
+      if (watchAdsBtnGuest) watchAdsBtnGuest.style.display = 'none';
       if (charityHeader) charityHeader.style.display = 'block';
       if (heroSection) heroSection.style.display = 'block';
       if (landerHero) landerHero.style.display = 'none';
@@ -1744,19 +1747,23 @@
         };
       }
 
-      // Watch Ads button functionality
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
-      if (watchAdsBtn) {
-        watchAdsBtn.onclick = function(e) {
+      // Watch Ads button functionality for logged-in users
+      const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
+      if (watchAdsBtnLoggedIn) {
+        watchAdsBtnLoggedIn.onclick = function(e) {
           e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth.html';
-          }
+          // User is logged in, go to main page
+          window.location.href = '/';
+        };
+      }
+
+      // Watch Ads button functionality for guests
+      const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
+      if (watchAdsBtnGuest) {
+        watchAdsBtnGuest.onclick = function(e) {
+          e.preventDefault();
+          // User is not logged in, go to sign in
+          window.location.href = '/auth.html';
         };
       }
     });
