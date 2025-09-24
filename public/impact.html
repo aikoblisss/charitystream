@@ -892,31 +892,33 @@
       console.log('Token exists:', !!token);
       console.log('Current user exists:', !!currentUser);
       
-      if (token && currentUser) {
-        try {
-          const user = JSON.parse(currentUser);
-          document.getElementById('usernameDisplay').textContent = user.username || user.email.split('@')[0];
-          console.log('✅ User authenticated:', user.username || user.email);
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          document.getElementById('usernameDisplay').textContent = 'Guest';
-        }
-        // Show authenticated content, hide guest nav
-        document.getElementById('loggedInNav').style.display = 'block';
-        document.getElementById('guestNav').style.display = 'none';
-        
-        console.log('🔄 Loading dynamic data...');
-        // Load dynamic data
-        loadUserImpact();
-        loadLeaderboard();
-        loadUserRow();
-      } else {
-        document.getElementById('usernameDisplay').textContent = 'Guest';
-        // Show guest nav, hide authenticated content
-        document.getElementById('loggedInNav').style.display = 'none';
-        document.getElementById('guestNav').style.display = 'block';
-        console.log('❌ User not authenticated, showing guest view');
+      if (!token || !currentUser) {
+        // User is not authenticated, redirect to login
+        console.log('❌ User not authenticated, redirecting to login');
+        window.location.href = '/auth.html';
+        return;
       }
+      
+      try {
+        const user = JSON.parse(currentUser);
+        document.getElementById('usernameDisplay').textContent = user.username || user.email.split('@')[0];
+        console.log('✅ User authenticated:', user.username || user.email);
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+        // If user data is corrupted, redirect to login
+        window.location.href = '/auth.html';
+        return;
+      }
+      
+      // Show authenticated content, hide guest nav
+      document.getElementById('loggedInNav').style.display = 'block';
+      document.getElementById('guestNav').style.display = 'none';
+      
+      console.log('🔄 Loading dynamic data...');
+      // Load dynamic data
+      loadUserImpact();
+      loadLeaderboard();
+      loadUserRow();
     }
 
     function handleNavClick(action) {

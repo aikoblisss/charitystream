@@ -207,13 +207,13 @@
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link active">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about.html" class="nav-link">About</a>
           <a href="/advertise.html" class="nav-link active">Advertise</a>
           <a href="/impact.html" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+          <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -463,18 +463,22 @@
       }
 
       // Watch Ads button functionality
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
-      if (watchAdsBtn) {
-        watchAdsBtn.onclick = function(e) {
+      const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
+      const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
+      
+      if (watchAdsBtnLoggedIn) {
+        watchAdsBtnLoggedIn.onclick = function(e) {
           e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth.html';
-          }
+          // User is logged in, go to main page
+          window.location.href = '/';
+        };
+      }
+      
+      if (watchAdsBtnGuest) {
+        watchAdsBtnGuest.onclick = function(e) {
+          e.preventDefault();
+          // User is not logged in, go to sign in
+          window.location.href = '/auth.html';
         };
       }
     });
