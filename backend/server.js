@@ -1429,7 +1429,7 @@ app.get('/api/leaderboard/monthly', async (req, res) => {
 
     res.json({
       leaderboard: leaderboard.map((user, index) => ({
-        rank: user.current_month_seconds === 0 ? "-" : user.rank_number,
+        rank: user.rank_number,
         username: user.username,
         minutesWatched: Math.floor(user.current_month_seconds / 60),
         profilePicture: user.profile_picture,

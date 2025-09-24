@@ -863,20 +863,15 @@ const dbHelpers = {
           u.created_at,
           COALESCE(ds.ads_watched, 0) as ads_watched_today,
           0 as streak_days,
-          CASE 
-            WHEN u.current_month_seconds = 0 THEN NULL
-            ELSE ROW_NUMBER() OVER (
-              ORDER BY u.current_month_seconds DESC, 
-              u.created_at ASC
-            )
-          END as rank_number
+          ROW_NUMBER() OVER (
+            ORDER BY u.current_month_seconds DESC, 
+            u.created_at ASC
+          ) as rank_number
         FROM users u
         LEFT JOIN daily_stats ds ON u.id = ds.user_id AND ds.date = CURRENT_DATE
-        WHERE u.is_active = true
-        ORDER BY 
-          CASE WHEN u.current_month_seconds = 0 THEN 1 ELSE 0 END,
-          u.current_month_seconds DESC,
-          u.created_at ASC
+        WHERE u.is_active = true 
+          AND u.current_month_seconds > 0
+        ORDER BY u.current_month_seconds DESC, u.created_at ASC
         LIMIT $1`,
         [limit]
       );

@@ -679,10 +679,9 @@
             leaderboard.forEach((user, index) => {
               const row = document.createElement('div');
               row.className = 'row';
-              const rankDisplay = user.rank === "-" ? "-" : `#${user.rank}`;
               row.innerHTML = `
                 <div class="left">
-                  <div class="rank">${rankDisplay}</div>
+                  <div class="rank">#${user.rank}</div>
                   <div>
                     <div class="title-sm">${user.username}</div>
                     <div class="meta">${user.streakDays}-day streak • Active ${Math.floor(user.accountAgeDays / 30)} months</div>
