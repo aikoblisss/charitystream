@@ -2330,17 +2330,8 @@
             clearTimeout(loadTimeout);
             console.log('✅ Video loaded successfully');
             
-            // Auto-play when video loads (both initial and subsequent videos)
-            setTimeout(() => {
-              if (window.isTutorialActive) {
-                console.log('⏸ Video auto-play blocked until tutorial dismissed');
-              } else {
-                console.log('🎬 Attempting to auto-play video...');
-                player.play().catch(error => {
-                  console.log('Auto-play prevented:', error);
-                });
-              }
-            }, 100);
+            // Video loads paused - no auto-play under any circumstances
+            console.log('🎬 Video loaded successfully - staying paused until user clicks play');
             
             // Mark initial load as complete
             if (isInitialLoad) {
@@ -3413,15 +3404,7 @@
     let isTutorialActive = false;
     window.isTutorialActive = false; // Initialize global flag
 
-    // Function to start video playback after tutorial dismissal
-    function startVideoPlayback() {
-      if (player && typeof player.play === 'function') {
-        console.log('🎬 Starting video playback after tutorial dismissal');
-        player.play().catch(error => {
-          console.log('Video playback start failed:', error);
-        });
-      }
-    }
+    // Video playback is now only user-initiated - no automatic resumption
 
     // Function to resume pop-up ads after tutorial completion
     function resumePopupsAfterTutorial() {
