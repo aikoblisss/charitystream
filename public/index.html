@@ -1105,16 +1105,6 @@
   </style>
 </head>
 <body>
-  <!-- Pop-up Ad -->
-  <div id="popupAd" class="popup-ad">
-    <button id="popupCloseBtn" class="popup-close-btn">×</button>
-    <div class="popup-content">
-      <div class="popup-title">Pop up ad</div>
-      <div id="popupTimer" class="popup-timer">15</div>
-      <div class="popup-subtitle">seconds remaining</div>
-    </div>
-  </div>
-
   <!-- Top Nav -->
   <header class="header">
     <div class="header-container">
@@ -2505,31 +2495,22 @@
     // Pop-up Ad System
     class PopupAdManager {
       constructor() {
-        this.popupAd = document.getElementById('popupAd');
-        this.popupCloseBtn = document.getElementById('popupCloseBtn');
-        this.popupTimer = document.getElementById('popupTimer');
         this.videoPlayer = null;
-        
-        this.isPopupActive = false;
-        this.popupTimerInterval = null;
-        this.scheduleTimer = null;
-        this.currentCountdown = 15;
+        this.activePopups = new Map(); // Map of popup IDs to popup objects
+        this.nextPopupId = 1;
+        this.maxPopups = 10;
+        this.minPopups = 0;
         
         this.init();
       }
 
       init() {
-        // Set up close button
-        this.popupCloseBtn.addEventListener('click', () => {
-          this.closePopup();
-        });
-
         // Set up navigation cleanup
         window.addEventListener('beforeunload', () => {
           this.cleanup();
         });
 
-        // Start scheduling pop-ups
+        // Start scheduling pop-ups with higher frequency
         this.scheduleNextPopup();
       }
 
@@ -2538,24 +2519,19 @@
       }
 
       scheduleNextPopup() {
-        // Clear any existing schedule timer
-        if (this.scheduleTimer) {
-          clearTimeout(this.scheduleTimer);
-        }
-
-        // Schedule next pop-up between 15-60 seconds
-        const delay = Math.random() * (60 - 15) + 15;
+        // Schedule next pop-up between 3-15 seconds (much more frequent)
+        const delay = Math.random() * (15 - 3) + 3;
         console.log(`📢 Next pop-up scheduled in ${Math.round(delay)} seconds`);
         
-        this.scheduleTimer = setTimeout(() => {
+        setTimeout(() => {
           this.showPopup();
         }, delay * 1000);
       }
 
       showPopup() {
-        // Don't show if already active or video is paused
-        if (this.isPopupActive) {
-          console.log('📢 Pop-up already active, skipping');
+        // Check if we've reached max popups
+        if (this.activePopups.size >= this.maxPopups) {
+          console.log('📢 Max popups reached, skipping');
           this.scheduleNextPopup();
           return;
         }
@@ -2567,30 +2543,90 @@
           return;
         }
 
-        console.log('📢 Showing pop-up ad');
-        this.isPopupActive = true;
-        this.currentCountdown = 15;
-
+        // Create new popup
+        const popupId = this.nextPopupId++;
+        const popup = this.createPopup(popupId);
+        
+        console.log(`📢 Showing pop-up ad #${popupId}`);
+        
+        // Store popup reference
+        this.activePopups.set(popupId, popup);
+        
         // Position pop-up randomly but ensure it's fully visible
-        this.positionPopup();
-
+        this.positionPopup(popup.element);
+        
         // Show pop-up
-        this.popupAd.classList.add('show');
-        this.updateTimerDisplay();
+        popup.element.classList.add('show');
+        popup.updateTimerDisplay();
 
         // Start countdown
-        this.popupTimerInterval = setInterval(() => {
-          this.currentCountdown--;
-          this.updateTimerDisplay();
+        popup.timerInterval = setInterval(() => {
+          popup.currentCountdown--;
+          popup.updateTimerDisplay();
 
-          if (this.currentCountdown <= 0) {
-            this.closePopup(true); // true = auto-close
+          if (popup.currentCountdown <= 0) {
+            this.closePopup(popupId, true); // true = auto-close
           }
         }, 1000);
+
+        // Schedule next pop-up
+        this.scheduleNextPopup();
       }
 
-      positionPopup() {
-        const popup = this.popupAd;
+      createPopup(id) {
+        // Create popup element
+        const popupElement = document.createElement('div');
+        popupElement.className = 'popup-ad';
+        popupElement.id = `popup-${id}`;
+        
+        // Create close button
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'popup-close-btn';
+        closeBtn.innerHTML = '×';
+        closeBtn.addEventListener('click', () => {
+          this.closePopup(id);
+        });
+        
+        // Create content
+        const content = document.createElement('div');
+        content.className = 'popup-content';
+        
+        const title = document.createElement('div');
+        title.className = 'popup-title';
+        title.textContent = 'Pop up ad';
+        
+        const timer = document.createElement('div');
+        timer.className = 'popup-timer';
+        timer.textContent = '15';
+        
+        const subtitle = document.createElement('div');
+        subtitle.className = 'popup-subtitle';
+        subtitle.textContent = 'seconds remaining';
+        
+        content.appendChild(title);
+        content.appendChild(timer);
+        content.appendChild(subtitle);
+        
+        popupElement.appendChild(closeBtn);
+        popupElement.appendChild(content);
+        
+        // Add to page
+        document.body.appendChild(popupElement);
+        
+        // Return popup object
+        return {
+          id: id,
+          element: popupElement,
+          timerElement: timer,
+          currentCountdown: 15,
+          timerInterval: null,
+          updateTimerDisplay: function() {
+            this.timerElement.textContent = this.currentCountdown;
+          }
+        };
+      }
+
+      positionPopup(popupElement) {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         const popupWidth = 384;
@@ -2603,70 +2639,63 @@
         const randomX = Math.random() * maxX;
         const randomY = Math.random() * maxY;
 
-        popup.style.left = `${randomX}px`;
-        popup.style.top = `${randomY}px`;
+        popupElement.style.left = `${randomX}px`;
+        popupElement.style.top = `${randomY}px`;
       }
 
-      updateTimerDisplay() {
-        this.popupTimer.textContent = this.currentCountdown;
-      }
+      closePopup(popupId, isAutoClose = false) {
+        const popup = this.activePopups.get(popupId);
+        if (!popup) return;
 
-      closePopup(isAutoClose = false) {
-        if (!this.isPopupActive) return;
-
-        console.log(`📢 Closing pop-up ad (${isAutoClose ? 'auto-close' : 'manual'})`);
+        console.log(`📢 Closing pop-up ad #${popupId} (${isAutoClose ? 'auto-close' : 'manual'})`);
         
-        this.isPopupActive = false;
-        this.popupAd.classList.remove('show');
-
         // Clear countdown timer
-        if (this.popupTimerInterval) {
-          clearInterval(this.popupTimerInterval);
-          this.popupTimerInterval = null;
+        if (popup.timerInterval) {
+          clearInterval(popup.timerInterval);
         }
+
+        // Remove from DOM
+        popup.element.remove();
+        
+        // Remove from active popups
+        this.activePopups.delete(popupId);
 
         // If auto-closed, pause the video
         if (isAutoClose && this.videoPlayer) {
           console.log('📢 Auto-closing pop-up, pausing video');
           this.videoPlayer.pause();
         }
-
-        // Schedule next pop-up
-        this.scheduleNextPopup();
       }
 
       cleanup() {
         console.log('📢 Cleaning up pop-up ad system');
         
-        if (this.scheduleTimer) {
-          clearTimeout(this.scheduleTimer);
-          this.scheduleTimer = null;
+        // Close all active popups
+        for (const [popupId, popup] of this.activePopups) {
+          if (popup.timerInterval) {
+            clearInterval(popup.timerInterval);
+          }
+          popup.element.remove();
         }
-
-        if (this.popupTimerInterval) {
-          clearInterval(this.popupTimerInterval);
-          this.popupTimerInterval = null;
-        }
-
-        this.isPopupActive = false;
-        this.popupAd.classList.remove('show');
+        
+        this.activePopups.clear();
       }
 
       // Public method to pause pop-ups (useful for debugging)
       pausePopups() {
-        if (this.scheduleTimer) {
-          clearTimeout(this.scheduleTimer);
-          this.scheduleTimer = null;
-        }
         console.log('📢 Pop-up scheduling paused');
+        // Note: This is a simplified pause - in a full implementation you'd want to store the timeout
       }
 
       // Public method to resume pop-ups
       resumePopups() {
-        if (!this.scheduleTimer && !this.isPopupActive) {
-          this.scheduleNextPopup();
-          console.log('📢 Pop-up scheduling resumed');
-        }
+        console.log('📢 Pop-up scheduling resumed');
+        this.scheduleNextPopup();
+      }
+
+      // Get current popup count
+      getPopupCount() {
+        return this.activePopups.size;
       }
     }
 
