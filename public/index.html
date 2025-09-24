@@ -2927,18 +2927,25 @@
 
       // Method to track video completion and show popup every 2-3 videos
       onVideoEnded() {
-        if (!this.isActive) return;
+        console.log('📢 onVideoEnded called, isActive:', this.isActive);
+        if (!this.isActive) {
+          console.log('📢 Popup ads not active, skipping video count');
+          return;
+        }
         
         this.videoCount++;
-        console.log(`📢 Video count: ${this.videoCount}`);
+        console.log(`📢 Video count: ${this.videoCount}, popup interval: ${this.popupInterval}`);
         
         // Show popup every 2-3 videos (random interval)
         if (this.videoCount >= this.popupInterval) {
+          console.log('📢 Time to show popup!');
           this.showPopup();
           // Reset count and set next interval (2-3 videos)
           this.videoCount = 0;
           this.popupInterval = Math.floor(Math.random() * 2) + 2; // 2 or 3
           console.log(`📢 Next popup will show after ${this.popupInterval} videos`);
+        } else {
+          console.log(`📢 Need ${this.popupInterval - this.videoCount} more videos before popup`);
         }
       }
 
@@ -2949,11 +2956,19 @@
           return;
         }
 
-        // Check if video player exists
-        if (!this.videoPlayer) {
-          console.log('📢 No video player, skipping popup');
+        // Check if video player exists - try multiple ways to get the player
+        let videoPlayer = this.videoPlayer;
+        if (!videoPlayer && typeof player !== 'undefined' && player) {
+          console.log('📢 Using global player reference as fallback');
+          videoPlayer = player;
+        }
+        
+        if (!videoPlayer) {
+          console.log('📢 No video player available, skipping popup');
           return;
         }
+
+        console.log('📢 Video player found:', !!videoPlayer, 'Ready state:', videoPlayer.readyState ? videoPlayer.readyState() : 'N/A');
 
         // Create new popup
         const popup = this.createPopup();
@@ -2969,18 +2984,18 @@
         
         // Pause video immediately when popup appears
         setTimeout(() => {
-          if (this.videoPlayer && !this.videoPlayer.paused()) {
+          if (videoPlayer && !videoPlayer.paused()) {
             console.log('📢 Attempting to pause video for popup...');
-            this.videoPlayer.pause().catch(error => {
+            videoPlayer.pause().catch(error => {
               console.log('Video pause prevented:', error);
             });
             console.log('📢 Video paused due to popup');
-          } else if (this.videoPlayer && this.videoPlayer.paused()) {
+          } else if (videoPlayer && videoPlayer.paused()) {
             console.log('📢 Video already paused when popup appeared');
           } else {
             console.log('📢 No video player available for popup pause');
           }
-        }, 50); // Small delay to ensure video player is ready
+        }, 100); // Increased delay to ensure video player is ready
       }
 
       createPopup() {
@@ -3041,20 +3056,26 @@
         // Clear current popup reference
         this.currentPopup = null;
 
-        // Resume video when popup is closed
+        // Resume video when popup is closed - try multiple ways to get the player
         setTimeout(() => {
-          if (this.videoPlayer && this.videoPlayer.paused()) {
+          let videoPlayer = this.videoPlayer;
+          if (!videoPlayer && typeof player !== 'undefined' && player) {
+            console.log('📢 Using global player reference as fallback for resume');
+            videoPlayer = player;
+          }
+          
+          if (videoPlayer && videoPlayer.paused()) {
             console.log('📢 Attempting to resume video after popup close...');
-            this.videoPlayer.play().catch(error => {
+            videoPlayer.play().catch(error => {
               console.log('Video resume prevented:', error);
             });
             console.log('📢 Video resumed after popup close');
-          } else if (this.videoPlayer && !this.videoPlayer.paused()) {
+          } else if (videoPlayer && !videoPlayer.paused()) {
             console.log('📢 Video already playing when popup closed');
           } else {
             console.log('📢 No video player available for popup resume');
           }
-        }, 50); // Small delay to ensure video player is ready
+        }, 100); // Increased delay to ensure video player is ready
       }
 
       cleanup() {
@@ -3103,15 +3124,26 @@
         return;
       }
       
-      if (player && !popupAdManager.videoPlayer) {
-        console.log('📢 Setting up popup ad manager with video player:', !!player);
-        popupAdManager.setVideoPlayer(player);
+      // Try to get the video player reference
+      let videoPlayer = player;
+      if (!videoPlayer && typeof window.player !== 'undefined') {
+        videoPlayer = window.player;
+      }
+      
+      if (videoPlayer && !popupAdManager.videoPlayer) {
+        console.log('📢 Setting up popup ad manager with video player:', !!videoPlayer);
+        console.log('📢 Video player ready state:', videoPlayer.readyState ? videoPlayer.readyState() : 'N/A');
+        popupAdManager.setVideoPlayer(videoPlayer);
         popupAdManager.activate(); // Activate pop-ups for authenticated users
         console.log('📢 Pop-up ad manager connected to video player and activated');
-      } else if (player && popupAdManager.videoPlayer) {
+      } else if (videoPlayer && popupAdManager.videoPlayer) {
         console.log('📢 Popup ad manager already has video player reference');
       } else {
-        console.log('📢 No video player available for popup setup');
+        console.log('📢 No video player available for popup setup, will retry...');
+        // Retry after a delay
+        setTimeout(() => {
+          setupPopupAdWithPlayer();
+        }, 2000);
       }
     }
 
@@ -3145,6 +3177,40 @@
 
     // Make popupAdManager globally available for debugging
     window.popupAdManager = popupAdManager;
+    
+    // Add manual test functions for debugging
+    window.testPopup = function() {
+      console.log('🧪 Manual popup test triggered');
+      if (popupAdManager) {
+        popupAdManager.showPopup();
+      } else {
+        console.log('❌ PopupAdManager not available');
+      }
+    };
+    
+    window.testPopupPause = function() {
+      console.log('🧪 Manual pause test triggered');
+      if (player && !player.paused()) {
+        player.pause().catch(error => {
+          console.log('Pause test failed:', error);
+        });
+        console.log('✅ Video paused manually');
+      } else {
+        console.log('❌ No player or already paused');
+      }
+    };
+    
+    window.testPopupResume = function() {
+      console.log('🧪 Manual resume test triggered');
+      if (player && player.paused()) {
+        player.play().catch(error => {
+          console.log('Resume test failed:', error);
+        });
+        console.log('✅ Video resumed manually');
+      } else {
+        console.log('❌ No player or already playing');
+      }
+    };
 
     // Tutorial System
     class TutorialManager {
