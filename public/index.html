@@ -1152,27 +1152,9 @@
     .popup-content {
       text-align: center;
       padding: 20px;
-    }
-
-    .popup-title {
       font-size: 24px;
       font-weight: 700;
       color: #2F7D31;
-      margin-bottom: 20px;
-    }
-
-    .popup-timer {
-      font-size: 48px;
-      font-weight: 800;
-      color: #dc2626;
-      margin-bottom: 10px;
-      font-variant-numeric: tabular-nums;
-    }
-
-    .popup-subtitle {
-      font-size: 16px;
-      color: #6b7280;
-      font-weight: 500;
     }
 
     /* Responsive popup */
@@ -1182,12 +1164,8 @@
         height: 320px;
       }
 
-      .popup-title {
+      .popup-content {
         font-size: 20px;
-      }
-
-      .popup-timer {
-        font-size: 40px;
       }
     }
 
@@ -2696,6 +2674,11 @@
             console.log(`🔄 Switching from video ${oldIndex + 1} (${playlist[oldIndex]}) to video ${currentIndex + 1} (${playlist[currentIndex]})`);
             console.log(`🔄 Next video URL: videos/${playlist[currentIndex]}_${currentQuality}.mp4`);
             
+            // Track video completion for popup ads
+            if (popupAdManager && typeof popupAdManager.onVideoEnded === 'function') {
+              popupAdManager.onVideoEnded();
+            }
+            
             // Load the next video using the same method as initial load
             loadVideoWithQuality(currentIndex);
             
@@ -2859,58 +2842,6 @@
           }
         });
 
-        player.on("ended", function () {
-          console.log(`🎬 Video ${currentIndex + 1} (${playlist[currentIndex]}) ended, switching to next video...`);
-          console.log(`🎬 Current player state:`, {
-            readyState: player.readyState(),
-            paused: player.paused(),
-            ended: player.ended(),
-            currentSrc: player.currentSrc()
-          });
-          
-          // Complete current session if exists
-          if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
-            const durationSeconds = Math.floor((Date.now() - currentVideoStartTime) / 1000);
-            if (typeof completeWatchSession === 'function') {
-              completeWatchSession(currentSessionId, durationSeconds, true, pausedCount);
-            }
-            
-            currentVideoStartTime = null;
-            sessionStartTime = null;
-            pausedCount = 0;
-            currentSessionId = null;
-          }
-          
-          if (!isQualitySwitching) {
-            // Move to next video in playlist
-            const oldIndex = currentIndex;
-            currentIndex = (currentIndex + 1) % playlist.length;
-            console.log(`🔄 Switching from video ${oldIndex + 1} (${playlist[oldIndex]}) to video ${currentIndex + 1} (${playlist[currentIndex]})`);
-            console.log(`🔄 Next video URL: videos/${playlist[currentIndex]}_${currentQuality}.mp4`);
-            
-            // Load the next video using the same method as initial load
-            loadVideoWithQuality(currentIndex);
-            
-            // Start new session for the next video (non-blocking)
-            if (authToken) {
-              startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
-                currentSessionId = sessionId;
-                currentVideoStartTime = Date.now();
-                // Reset ad tracking state for new video
-                isAdPlaying = false;
-                currentAdTrackingId = null;
-                adStartTime = null;
-                accumulatedAdTime = 0;
-                console.log('📊 New session started for next video:', sessionId);
-              }).catch(error => {
-                console.log('📊 New session failed to start (non-critical):', error);
-              });
-            }
-          } else {
-            console.log('⚠️ Quality switching in progress, skipping video switch');
-          }
-        });
-
         // Initialize first video immediately
         console.log('Video player fully initialized');
         isPlayerInitialized = true;
@@ -2955,11 +2886,10 @@
     class PopupAdManager {
       constructor() {
         this.videoPlayer = null;
-        this.activePopups = new Map(); // Map of popup IDs to popup objects
-        this.nextPopupId = 1;
-        this.maxPopups = 10;
-        this.minPopups = 0;
         this.isActive = false; // Track if pop-ups should be active
+        this.videoCount = 0; // Track number of videos played
+        this.popupInterval = 2; // Show popup every 2-3 videos
+        this.currentPopup = null; // Only one popup at a time
         
         this.init();
       }
@@ -2980,9 +2910,6 @@
         
         this.isActive = true;
         console.log('📢 Pop-up ads activated for authenticated user');
-        
-        // Start scheduling pop-ups with higher frequency
-        this.scheduleNextPopup();
       }
 
       // Method to deactivate pop-ups (called when user logs out)
@@ -2996,100 +2923,72 @@
         this.videoPlayer = player;
       }
 
-      scheduleNextPopup() {
-        // Only schedule if pop-ups are active (user is authenticated)
-        if (!this.isActive) {
-          console.log('📢 Pop-up scheduling skipped - not authenticated');
-          return;
-        }
+      // Method to track video completion and show popup every 2-3 videos
+      onVideoEnded() {
+        if (!this.isActive) return;
         
-        // Schedule next pop-up between 1-8 seconds (even more frequent)
-        const delay = Math.random() * (8 - 1) + 1;
-        console.log(`📢 Next pop-up scheduled in ${Math.round(delay)} seconds`);
+        this.videoCount++;
+        console.log(`📢 Video count: ${this.videoCount}`);
         
-        setTimeout(() => {
+        // Show popup every 2-3 videos (random interval)
+        if (this.videoCount >= this.popupInterval) {
           this.showPopup();
-        }, delay * 1000);
+          // Reset count and set next interval (2-3 videos)
+          this.videoCount = 0;
+          this.popupInterval = Math.floor(Math.random() * 2) + 2; // 2 or 3
+          console.log(`📢 Next popup will show after ${this.popupInterval} videos`);
+        }
       }
 
       showPopup() {
-        // Check if we've reached max popups
-        if (this.activePopups.size >= this.maxPopups) {
-          console.log('📢 Max popups reached, skipping');
-          this.scheduleNextPopup();
+        // Only show one popup at a time
+        if (this.currentPopup) {
+          console.log('📢 Popup already active, skipping');
           return;
         }
 
-        // Check if video player exists and is not paused
-        if (this.videoPlayer && this.videoPlayer.paused()) {
-          console.log('📢 Video is paused, skipping pop-up');
-          this.scheduleNextPopup();
+        // Check if video player exists
+        if (!this.videoPlayer) {
+          console.log('📢 No video player, skipping popup');
           return;
         }
 
         // Create new popup
-        const popupId = this.nextPopupId++;
-        const popup = this.createPopup(popupId);
+        const popup = this.createPopup();
+        this.currentPopup = popup;
         
-        console.log(`📢 Showing pop-up ad #${popupId}`);
-        
-        // Store popup reference
-        this.activePopups.set(popupId, popup);
+        console.log('📢 Showing pop-up ad');
         
         // Position pop-up randomly but ensure it's fully visible
         this.positionPopup(popup.element);
         
         // Show pop-up
         popup.element.classList.add('show');
-        popup.updateTimerDisplay();
-
-        // Start countdown
-        popup.timerInterval = setInterval(() => {
-          popup.currentCountdown--;
-          popup.updateTimerDisplay();
-
-          if (popup.currentCountdown <= 0) {
-            this.closePopup(popupId, true); // true = auto-close
-          }
-        }, 1000);
-
-        // Schedule next pop-up
-        this.scheduleNextPopup();
+        
+        // Pause video immediately when popup appears
+        if (this.videoPlayer && !this.videoPlayer.paused()) {
+          this.videoPlayer.pause();
+          console.log('📢 Video paused due to popup');
+        }
       }
 
-      createPopup(id) {
+      createPopup() {
         // Create popup element
         const popupElement = document.createElement('div');
         popupElement.className = 'popup-ad';
-        popupElement.id = `popup-${id}`;
         
         // Create close button
         const closeBtn = document.createElement('button');
         closeBtn.className = 'popup-close-btn';
         closeBtn.innerHTML = '×';
         closeBtn.addEventListener('click', () => {
-          this.closePopup(id);
+          this.closePopup();
         });
         
         // Create content
         const content = document.createElement('div');
         content.className = 'popup-content';
-        
-        const title = document.createElement('div');
-        title.className = 'popup-title';
-        title.textContent = 'Pop up ad';
-        
-        const timer = document.createElement('div');
-        timer.className = 'popup-timer';
-        timer.textContent = '15';
-        
-        const subtitle = document.createElement('div');
-        subtitle.className = 'popup-subtitle';
-        subtitle.textContent = 'seconds remaining';
-        
-        content.appendChild(title);
-        content.appendChild(timer);
-        content.appendChild(subtitle);
+        content.textContent = 'pop up';
         
         popupElement.appendChild(closeBtn);
         popupElement.appendChild(content);
@@ -3099,14 +2998,7 @@
         
         // Return popup object
         return {
-          id: id,
-          element: popupElement,
-          timerElement: timer,
-          currentCountdown: 15,
-          timerInterval: null,
-          updateTimerDisplay: function() {
-            this.timerElement.textContent = this.currentCountdown;
-          }
+          element: popupElement
         };
       }
 
@@ -3127,59 +3019,48 @@
         popupElement.style.top = `${randomY}px`;
       }
 
-      closePopup(popupId, isAutoClose = false) {
-        const popup = this.activePopups.get(popupId);
-        if (!popup) return;
+      closePopup() {
+        if (!this.currentPopup) return;
 
-        console.log(`📢 Closing pop-up ad #${popupId} (${isAutoClose ? 'auto-close' : 'manual'})`);
+        console.log('📢 Closing pop-up ad');
         
-        // Clear countdown timer
-        if (popup.timerInterval) {
-          clearInterval(popup.timerInterval);
-        }
-
         // Remove from DOM
-        popup.element.remove();
+        this.currentPopup.element.remove();
         
-        // Remove from active popups
-        this.activePopups.delete(popupId);
+        // Clear current popup reference
+        this.currentPopup = null;
 
-        // Note: Video continues playing when popup auto-closes
-        if (isAutoClose && this.videoPlayer) {
-          console.log('📢 Auto-closing pop-up, video continues playing');
+        // Resume video when popup is closed
+        if (this.videoPlayer && this.videoPlayer.paused()) {
+          this.videoPlayer.play().catch(error => {
+            console.log('Video resume prevented:', error);
+          });
+          console.log('📢 Video resumed after popup close');
         }
       }
 
       cleanup() {
         console.log('📢 Cleaning up pop-up ad system');
         
-        // Close all active popups
-        for (const [popupId, popup] of this.activePopups) {
-          if (popup.timerInterval) {
-            clearInterval(popup.timerInterval);
-          }
-          popup.element.remove();
+        // Close current popup if exists
+        if (this.currentPopup) {
+          this.currentPopup.element.remove();
+          this.currentPopup = null;
         }
-        
-        this.activePopups.clear();
       }
 
       // Public method to pause pop-ups (useful for debugging)
       pausePopups() {
-        console.log('📢 Pop-up scheduling paused');
-        // Note: This is a simplified pause - in a full implementation you'd want to store the timeout
+        console.log('📢 Pop-up ads paused');
+        this.isActive = false;
       }
 
-      // Public method to resume pop-ups
+      // Public method to resume pop-ups (useful for debugging)
       resumePopups() {
-        console.log('📢 Pop-up scheduling resumed');
-        this.scheduleNextPopup();
+        console.log('📢 Pop-up ads resumed');
+        this.isActive = true;
       }
 
-      // Get current popup count
-      getPopupCount() {
-        return this.activePopups.size;
-      }
     }
 
     // Initialize pop-up ad manager
