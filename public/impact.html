@@ -617,8 +617,9 @@
           const donationsElement = document.querySelector('.stat:nth-child(4) .stat-value');
           
           if (rankElement) {
-            rankElement.textContent = `#${impact.currentRank}`;
-            console.log('✅ Updated rank:', `#${impact.currentRank}`);
+            const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
+            rankElement.textContent = rankDisplay;
+            console.log('✅ Updated rank:', rankDisplay);
           } else {
             console.log('❌ Rank element not found');
           }
@@ -752,12 +753,14 @@
           const meRow = document.querySelector('.row.me');
           if (meRow) {
             const username = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+            const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : impact.currentRank;
+            const metaRankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
             meRow.innerHTML = `
               <div class="left">
-                <div class="rank">${impact.currentRank}</div>
+                <div class="rank">${rankDisplay}</div>
                 <div>
                   <div class="title-sm">${username} (You)</div>
-                  <div class="meta">${impact.streakDays}-day streak • Active ${Math.floor(impact.accountAgeDays / 7)} weeks • #${impact.currentRank} of ${impact.totalUsers}</div>
+                  <div class="meta">${impact.streakDays}-day streak • Active ${Math.floor(impact.accountAgeDays / 7)} weeks • ${metaRankDisplay} of ${impact.totalUsers}</div>
                 </div>
               </div>
               <div class="value">${impact.watchTimeMinutes} mins</div>

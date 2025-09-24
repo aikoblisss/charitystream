@@ -2143,9 +2143,13 @@
           // Update UI with impact data
           document.getElementById('adsWatchedToday').textContent = impact.adsWatchedToday;
           document.getElementById('totalAdsWatched').textContent = impact.totalAdsWatched;
-          document.getElementById('currentRank').textContent = `#${impact.currentRank}`;
+          
+          // Show dash for 0 minutes, otherwise show rank number
+          const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
+          document.getElementById('currentRank').textContent = rankDisplay;
+          document.getElementById('userRankDisplay').textContent = rankDisplay;
+          
           document.getElementById('userMinutesDisplay').textContent = `${impact.watchTimeMinutes} mins`;
-          document.getElementById('userRankDisplay').textContent = `#${impact.currentRank}`;
           
           console.log('📊 User impact data loaded:', impact);
         }
