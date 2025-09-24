@@ -2920,7 +2920,9 @@
       }
 
       setVideoPlayer(player) {
+        console.log('📢 Setting video player reference:', !!player);
         this.videoPlayer = player;
+        console.log('📢 Video player reference set successfully');
       }
 
       // Method to track video completion and show popup every 2-3 videos
@@ -2966,10 +2968,19 @@
         popup.element.classList.add('show');
         
         // Pause video immediately when popup appears
-        if (this.videoPlayer && !this.videoPlayer.paused()) {
-          this.videoPlayer.pause();
-          console.log('📢 Video paused due to popup');
-        }
+        setTimeout(() => {
+          if (this.videoPlayer && !this.videoPlayer.paused()) {
+            console.log('📢 Attempting to pause video for popup...');
+            this.videoPlayer.pause().catch(error => {
+              console.log('Video pause prevented:', error);
+            });
+            console.log('📢 Video paused due to popup');
+          } else if (this.videoPlayer && this.videoPlayer.paused()) {
+            console.log('📢 Video already paused when popup appeared');
+          } else {
+            console.log('📢 No video player available for popup pause');
+          }
+        }, 50); // Small delay to ensure video player is ready
       }
 
       createPopup() {
@@ -3031,12 +3042,19 @@
         this.currentPopup = null;
 
         // Resume video when popup is closed
-        if (this.videoPlayer && this.videoPlayer.paused()) {
-          this.videoPlayer.play().catch(error => {
-            console.log('Video resume prevented:', error);
-          });
-          console.log('📢 Video resumed after popup close');
-        }
+        setTimeout(() => {
+          if (this.videoPlayer && this.videoPlayer.paused()) {
+            console.log('📢 Attempting to resume video after popup close...');
+            this.videoPlayer.play().catch(error => {
+              console.log('Video resume prevented:', error);
+            });
+            console.log('📢 Video resumed after popup close');
+          } else if (this.videoPlayer && !this.videoPlayer.paused()) {
+            console.log('📢 Video already playing when popup closed');
+          } else {
+            console.log('📢 No video player available for popup resume');
+          }
+        }, 50); // Small delay to ensure video player is ready
       }
 
       cleanup() {
@@ -3086,9 +3104,14 @@
       }
       
       if (player && !popupAdManager.videoPlayer) {
+        console.log('📢 Setting up popup ad manager with video player:', !!player);
         popupAdManager.setVideoPlayer(player);
         popupAdManager.activate(); // Activate pop-ups for authenticated users
         console.log('📢 Pop-up ad manager connected to video player and activated');
+      } else if (player && popupAdManager.videoPlayer) {
+        console.log('📢 Popup ad manager already has video player reference');
+      } else {
+        console.log('📢 No video player available for popup setup');
       }
     }
 
