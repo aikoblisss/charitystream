@@ -628,7 +628,10 @@ const dbHelpers = {
   updateDailyStats: async (userId, adsWatched = 1, watchTimeSeconds = 0) => {
     try {
       await ensureTablesExist();
+      // Use UTC date to ensure consistency across timezones
       const today = new Date().toISOString().split('T')[0];
+      
+      console.log(`📊 Updating daily stats for user ${userId}, date: ${today}, ads: ${adsWatched}, seconds: ${watchTimeSeconds}`);
       
       // Try to update existing record
       const updateResult = await pool.query(
@@ -642,10 +645,12 @@ const dbHelpers = {
       );
 
       if (updateResult.rows.length > 0) {
+        console.log(`✅ Updated existing daily stats for user ${userId}: ${updateResult.rows[0].ads_watched} ads total`);
         return [null, updateResult.rows[0]];
       }
 
       // If no existing record, create new one
+      console.log(`📝 Creating new daily stats record for user ${userId}`);
       const insertResult = await pool.query(
         `INSERT INTO daily_stats (user_id, date, ads_watched, total_watch_time_seconds, streak_days)
          VALUES ($1, $2, $3, $4, 1)
@@ -653,8 +658,10 @@ const dbHelpers = {
         [userId, today, adsWatched, watchTimeSeconds]
       );
 
+      console.log(`✅ Created new daily stats for user ${userId}: ${insertResult.rows[0].ads_watched} ads`);
       return [null, insertResult.rows[0]];
     } catch (error) {
+      console.error('❌ Error updating daily stats:', error);
       return [error, null];
     }
   },
@@ -680,16 +687,118 @@ const dbHelpers = {
   getAdsWatchedToday: async (userId) => {
     try {
       await ensureTablesExist();
+      // Use UTC date to ensure consistency across timezones
       const today = new Date().toISOString().split('T')[0];
+      
+      console.log(`🔍 Getting ads watched today for user ${userId}, date: ${today}`);
+      
+      // Also check yesterday and tomorrow in case of timezone issues
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       const result = await pool.query(
         'SELECT ads_watched FROM daily_stats WHERE user_id = $1 AND date = $2',
         [userId, today]
       );
       
-      return [null, result.rows[0]?.ads_watched || 0];
+      let adsWatched = result.rows[0]?.ads_watched || 0;
+      
+      // If no data for today, check if there's data for yesterday (timezone edge case)
+      if (adsWatched === 0) {
+        const yesterdayResult = await pool.query(
+          'SELECT ads_watched FROM daily_stats WHERE user_id = $1 AND date = $2',
+          [userId, yesterday]
+        );
+        
+        if (yesterdayResult.rows[0]?.ads_watched > 0) {
+          console.log(`⚠️ Found ads from yesterday (${yesterday}) for user ${userId}, might be timezone issue`);
+          // Don't return yesterday's data, but log it for debugging
+        }
+      }
+      
+      console.log(`📊 User ${userId} has watched ${adsWatched} ads today`);
+      
+      return [null, adsWatched];
     } catch (error) {
+      console.error('❌ Error getting ads watched today:', error);
       return [error, 0];
+    }
+  },
+
+  // Manual function to restore daily stats (for recovery purposes)
+  restoreDailyStats: async (userId, adsWatched, watchTimeSeconds = 0, date = null) => {
+    try {
+      await ensureTablesExist();
+      const targetDate = date || new Date().toISOString().split('T')[0];
+      
+      console.log(`🔧 Restoring daily stats for user ${userId}, date: ${targetDate}, ads: ${adsWatched}, seconds: ${watchTimeSeconds}`);
+      
+      // Check if record exists
+      const existingResult = await pool.query(
+        'SELECT * FROM daily_stats WHERE user_id = $1 AND date = $2',
+        [userId, targetDate]
+      );
+      
+      if (existingResult.rows.length > 0) {
+        // Update existing record
+        const updateResult = await pool.query(
+          `UPDATE daily_stats 
+           SET ads_watched = $3, 
+               total_watch_time_seconds = $4,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE user_id = $1 AND date = $2
+           RETURNING *`,
+          [userId, targetDate, adsWatched, watchTimeSeconds]
+        );
+        
+        console.log(`✅ Restored existing daily stats for user ${userId}: ${updateResult.rows[0].ads_watched} ads`);
+        return [null, updateResult.rows[0]];
+      } else {
+        // Create new record
+        const insertResult = await pool.query(
+          `INSERT INTO daily_stats (user_id, date, ads_watched, total_watch_time_seconds, streak_days)
+           VALUES ($1, $2, $3, $4, 1)
+           RETURNING *`,
+          [userId, targetDate, adsWatched, watchTimeSeconds]
+        );
+        
+        console.log(`✅ Created restored daily stats for user ${userId}: ${insertResult.rows[0].ads_watched} ads`);
+        return [null, insertResult.rows[0]];
+      }
+    } catch (error) {
+      console.error('❌ Error restoring daily stats:', error);
+      return [error, null];
+    }
+  },
+
+  // Debug function to check daily stats for a user
+  debugDailyStats: async (userId) => {
+    try {
+      await ensureTablesExist();
+      const today = new Date().toISOString().split('T')[0];
+      
+      console.log(`🔍 Debug: Checking daily stats for user ${userId} on date ${today}`);
+      
+      // Get all daily stats for this user
+      const allStats = await pool.query(
+        'SELECT * FROM daily_stats WHERE user_id = $1 ORDER BY date DESC LIMIT 10',
+        [userId]
+      );
+      
+      console.log(`📊 All daily stats for user ${userId}:`, allStats.rows);
+      
+      // Get today's specific stats
+      const todayStats = await pool.query(
+        'SELECT * FROM daily_stats WHERE user_id = $1 AND date = $2',
+        [userId, today]
+      );
+      
+      console.log(`📅 Today's stats for user ${userId}:`, todayStats.rows);
+      
+      return [null, { allStats: allStats.rows, todayStats: todayStats.rows }];
+    } catch (error) {
+      console.error('❌ Error debugging daily stats:', error);
+      return [error, null];
     }
   },
 

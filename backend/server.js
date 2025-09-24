@@ -1445,6 +1445,56 @@ app.get('/api/leaderboard/monthly', async (req, res) => {
 });
 
 // Get user's impact data
+// Restore daily stats endpoint (for recovery purposes)
+app.post('/api/debug/restore-daily-stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { adsWatched, watchTimeSeconds = 0, date } = req.body;
+    
+    if (!adsWatched || adsWatched < 0) {
+      return res.status(400).json({ error: 'Invalid ads watched count' });
+    }
+    
+    const [err, restoredStats] = await dbHelpers.restoreDailyStats(userId, adsWatched, watchTimeSeconds, date);
+    
+    if (err) {
+      console.error('Error restoring daily stats:', err);
+      return res.status(500).json({ error: 'Failed to restore daily stats' });
+    }
+    
+    res.json({
+      message: 'Daily stats restored successfully',
+      restoredStats: restoredStats
+    });
+  } catch (error) {
+    console.error('Error in restore endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Debug endpoint to check daily stats
+app.get('/api/debug/daily-stats', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const [err, debugData] = await dbHelpers.debugDailyStats(userId);
+    
+    if (err) {
+      console.error('Error getting debug data:', err);
+      return res.status(500).json({ error: 'Failed to get debug data' });
+    }
+    
+    res.json({
+      userId: userId,
+      debugData: debugData,
+      currentTime: new Date().toISOString(),
+      currentDate: new Date().toISOString().split('T')[0]
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/user/impact', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
