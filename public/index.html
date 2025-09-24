@@ -2330,8 +2330,17 @@
             clearTimeout(loadTimeout);
             console.log('✅ Video loaded successfully');
             
-            // Video loads paused - no auto-play under any circumstances
-            console.log('🎬 Video loaded successfully - staying paused until user clicks play');
+            // Auto-play when video loads (both initial and subsequent videos)
+            setTimeout(() => {
+              if (window.isTutorialActive) {
+                console.log('⏸ Video auto-play blocked until tutorial dismissed');
+              } else {
+                console.log('🎬 Attempting to auto-play video...');
+                player.play().catch(error => {
+                  console.log('Auto-play prevented:', error);
+                });
+              }
+            }, 100);
             
             // Mark initial load as complete
             if (isInitialLoad) {
@@ -2982,10 +2991,9 @@
         // Remove from active popups
         this.activePopups.delete(popupId);
 
-        // If auto-closed, pause the video
+        // Note: Video continues playing when popup auto-closes
         if (isAutoClose && this.videoPlayer) {
-          console.log('📢 Auto-closing pop-up, pausing video');
-          this.videoPlayer.pause();
+          console.log('📢 Auto-closing pop-up, video continues playing');
         }
       }
 
