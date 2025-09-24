@@ -2890,6 +2890,8 @@
         this.videoCount = 0; // Track number of videos played
         this.popupInterval = 2; // Show popup every 2-3 videos
         this.currentPopup = null; // Only one popup at a time
+        this.shouldShowPopupAfterTransition = false; // Flag to show popup after video transition
+        this.pauseCheckInterval = null; // Interval to check if video stays paused
         
         this.init();
       }
@@ -2938,14 +2940,27 @@
         
         // Show popup every 2-3 videos (random interval)
         if (this.videoCount >= this.popupInterval) {
-          console.log('📢 Time to show popup!');
-          this.showPopup();
+          console.log('📢 Time to show popup! Scheduling popup for after video transition...');
+          // Don't show popup immediately - wait for next video to load and start playing
+          this.shouldShowPopupAfterTransition = true;
           // Reset count and set next interval (2-3 videos)
           this.videoCount = 0;
           this.popupInterval = Math.floor(Math.random() * 2) + 2; // 2 or 3
           console.log(`📢 Next popup will show after ${this.popupInterval} videos`);
         } else {
           console.log(`📢 Need ${this.popupInterval - this.videoCount} more videos before popup`);
+        }
+      }
+
+      // Method to check if popup should be shown after video starts playing
+      onVideoStartedPlaying() {
+        if (this.shouldShowPopupAfterTransition) {
+          console.log('📢 Video started playing, showing scheduled popup...');
+          this.shouldShowPopupAfterTransition = false;
+          // Wait a moment for video to be fully playing, then show popup
+          setTimeout(() => {
+            this.showPopup();
+          }, 2000); // Wait 2 seconds for video to be playing smoothly
         }
       }
 
@@ -2996,6 +3011,16 @@
             console.log('📢 No video player available for popup pause');
           }
         }, 100); // Increased delay to ensure video player is ready
+        
+        // Also set up a periodic check to ensure video stays paused while popup is active
+        this.pauseCheckInterval = setInterval(() => {
+          if (this.currentPopup && videoPlayer && !videoPlayer.paused()) {
+            console.log('📢 Video started playing while popup active, pausing again...');
+            videoPlayer.pause().catch(error => {
+              console.log('Video pause prevented:', error);
+            });
+          }
+        }, 500); // Check every 500ms
       }
 
       createPopup() {
@@ -3050,6 +3075,13 @@
 
         console.log('📢 Closing pop-up ad');
         
+        // Clear the pause check interval
+        if (this.pauseCheckInterval) {
+          clearInterval(this.pauseCheckInterval);
+          this.pauseCheckInterval = null;
+          console.log('📢 Cleared pause check interval');
+        }
+        
         // Remove from DOM
         this.currentPopup.element.remove();
         
@@ -3080,6 +3112,12 @@
 
       cleanup() {
         console.log('📢 Cleaning up pop-up ad system');
+        
+        // Clear pause check interval
+        if (this.pauseCheckInterval) {
+          clearInterval(this.pauseCheckInterval);
+          this.pauseCheckInterval = null;
+        }
         
         // Close current popup if exists
         if (this.currentPopup) {
@@ -3135,6 +3173,14 @@
         console.log('📢 Video player ready state:', videoPlayer.readyState ? videoPlayer.readyState() : 'N/A');
         popupAdManager.setVideoPlayer(videoPlayer);
         popupAdManager.activate(); // Activate pop-ups for authenticated users
+        
+        // Add event listener for when video starts playing to check for scheduled popups
+        videoPlayer.on("playing", () => {
+          if (popupAdManager && typeof popupAdManager.onVideoStartedPlaying === 'function') {
+            popupAdManager.onVideoStartedPlaying();
+          }
+        });
+        
         console.log('📢 Pop-up ad manager connected to video player and activated');
       } else if (videoPlayer && popupAdManager.videoPlayer) {
         console.log('📢 Popup ad manager already has video player reference');
