@@ -1741,6 +1741,37 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 // ===== STRIPE INTEGRATION =====
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
+// Create payment intent for subscription
+app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, res) => {
+  try {
+    const { priceId } = req.body;
+    
+    if (!priceId) {
+      return res.status(400).json({ error: 'Price ID is required' });
+    }
+
+    // Create payment intent for subscription
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 100, // $1.00 in cents
+      currency: 'usd',
+      customer_email: req.user.email,
+      metadata: {
+        userId: req.user.userId,
+        username: req.user.username,
+        priceId: priceId
+      },
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (error) {
+    console.error('❌ Payment intent creation failed:', error);
+    res.status(500).json({ error: 'Failed to create payment intent' });
+  }
+});
+
 // Create Stripe checkout session
 app.post('/api/subscribe/create-checkout-session', authenticateToken, async (req, res) => {
   try {
@@ -1817,6 +1848,16 @@ app.post('/api/subscribe/webhook', express.raw({type: 'application/json'}), (req
 
   // Handle the event
   switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+      console.log('✅ Payment succeeded:', paymentIntent.id);
+      // Update user subscription status here
+      // You can access paymentIntent.metadata.userId to update the user
+      break;
+    case 'payment_intent.payment_failed':
+      const failedPaymentIntent = event.data.object;
+      console.log('❌ Payment failed:', failedPaymentIntent.id);
+      break;
     case 'checkout.session.completed':
       const session = event.data.object;
       console.log('✅ Checkout session completed:', session.id);

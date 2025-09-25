@@ -536,9 +536,6 @@
                 
                 // Create Elements instance
                 elements = stripe.elements({
-                    mode: 'subscription',
-                    amount: 100, // $1.00 in cents
-                    currency: 'usd',
                     appearance: {
                         theme: 'stripe',
                         variables: {
@@ -587,26 +584,25 @@
             setLoading(true);
 
             try {
-                // Create checkout session
-                const response = await fetch('/api/subscribe/create-checkout-session', {
+                // Create payment intent for subscription
+                const response = await fetch('/api/subscribe/create-payment-intent', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${authToken}`
                     },
                     body: JSON.stringify({
-                        priceId: 'price_1SB0j80CutcpJ738SFNDJwY5',
-                        successUrl: `${window.location.origin}/subscribe?success=true`,
-                        cancelUrl: `${window.location.origin}/subscribe?canceled=true`
+                        priceId: 'price_1SB0j80CutcpJ738SFNDJwY5'
                     })
                 });
 
                 const data = await response.json();
 
-                if (data.sessionId) {
+                if (data.clientSecret) {
                     // Confirm payment with Stripe
                     const { error } = await stripe.confirmPayment({
                         elements,
+                        clientSecret: data.clientSecret,
                         confirmParams: {
                             return_url: `${window.location.origin}/subscribe?success=true`,
                         },
@@ -620,7 +616,7 @@
                         }
                     }
                 } else {
-                    throw new Error(data.error || 'Failed to create checkout session');
+                    throw new Error(data.error || 'Failed to create payment intent');
                 }
 
             } catch (error) {
