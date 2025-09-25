@@ -9,6 +9,9 @@ const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
 
+// Load environment variables from parent directory
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+
 const { initializeDatabase, dbHelpers } = require('./database-postgres');
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
@@ -1770,6 +1773,14 @@ app.post('/api/subscribe/create-checkout-session', authenticateToken, async (req
     console.error('❌ Stripe checkout session creation failed:', error);
     res.status(500).json({ error: 'Failed to create checkout session' });
   }
+});
+
+// Get Stripe publishable key (safe to expose to frontend)
+app.get('/api/stripe/config', (req, res) => {
+  res.json({
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    priceId: process.env.STRIPE_PRICE_ID
+  });
 });
 
 // Get subscription status

@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Charity Stream</title>
     
+    <!-- Stripe.js -->
+    <script src="https://js.stripe.com/v3/"></script>
+    
     <!-- Inter font -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -504,11 +507,91 @@
             e.target.value = e.target.value.replace(/\D/g, '');
         });
 
-        // Form submission
-        document.querySelector('.subscribe-btn').addEventListener('click', function(e) {
+        // Form submission with Stripe
+        document.querySelector('.subscribe-btn').addEventListener('click', async function(e) {
             e.preventDefault();
-            alert('Thank you! Your subscription helps support charity. 💚');
+            
+            const button = this;
+            const originalText = button.textContent;
+            
+            // Check if user is authenticated
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                alert('Please log in to subscribe');
+                window.location.href = '/auth';
+                return;
+            }
+            
+            // Show loading state
+            button.textContent = 'Processing...';
+            button.disabled = true;
+            
+            try {
+                // Get Stripe configuration from backend
+                const configResponse = await fetch('/api/stripe/config');
+                const config = await configResponse.json();
+                
+                if (!config.publishableKey || !config.priceId) {
+                    throw new Error('Stripe configuration not available');
+                }
+                
+                // Create checkout session
+                const response = await fetch('/api/subscribe/create-checkout-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({
+                        priceId: config.priceId,
+                        successUrl: `${window.location.origin}/subscribe?success=true`,
+                        cancelUrl: `${window.location.origin}/subscribe?canceled=true`
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.sessionId) {
+                    // Redirect to Stripe Checkout
+                    const stripe = Stripe(config.publishableKey);
+                    const { error } = await stripe.redirectToCheckout({
+                        sessionId: data.sessionId
+                    });
+                    
+                    if (error) {
+                        console.error('Stripe error:', error);
+                        alert('Payment failed. Please try again.');
+                    }
+                } else {
+                    throw new Error(data.error || 'Failed to create checkout session');
+                }
+                
+            } catch (error) {
+                console.error('Subscription error:', error);
+                alert('Something went wrong. Please try again.');
+            } finally {
+                // Reset button state
+                button.textContent = originalText;
+                button.disabled = false;
+            }
         });
+
+        // Handle Stripe checkout success/cancel
+        function handleCheckoutResult() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const success = urlParams.get('success');
+            const canceled = urlParams.get('canceled');
+            
+            if (success === 'true') {
+                alert('🎉 Subscription successful! Welcome to Charity Stream Premium!');
+                // Clear URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (canceled === 'true') {
+                alert('Subscription canceled. You can try again anytime.');
+                // Clear URL parameters
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
 
         // Authentication handling
         function checkAuthStatus() {
@@ -563,6 +646,7 @@
             checkAuthStatus();
             setupLogoButton();
             setupWatchAdsButtons();
+            handleCheckoutResult(); // Handle Stripe checkout results
         });
     </script>
 </body>
