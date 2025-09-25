@@ -1851,7 +1851,6 @@ const cleanUrlRoutes = {
   '/lander': 'lander.html',
   '/reset-password': 'reset-password.html',
   '/verify-email': 'verify-email.html',
-  '/test-video': 'test-video.html',
   '/advertiser': 'advertiser.html'
 };
 
@@ -1862,11 +1861,20 @@ Object.entries(cleanUrlRoutes).forEach(([route, file]) => {
   });
 });
 
+// Add specific routes for advertise sub-pages
+app.get('/advertise/company', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/advertiser.html'));
+});
+
+app.get('/advertise/charity', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/charity.html'));
+});
+
 // Handle frontend routing - serve index.html for any non-API routes that aren't clean URLs
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
     // Check if this is a clean URL route
-    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/charity', '/lander', '/reset-password', '/verify-email', '/test-video', '/advertiser'];
+    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/charity', '/lander', '/reset-password', '/verify-email', '/advertiser', '/advertise/company', '/advertise/charity'];
     
     if (cleanUrlRoutes.includes(req.path)) {
       // This should have been handled by the specific routes above

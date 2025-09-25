@@ -20,11 +20,19 @@
       "dest": "/public/index.html"
     },
     {
-      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|test-video|verify-email)$",
+      "src": "/advertise/company",
+      "dest": "/public/advertiser.html"
+    },
+    {
+      "src": "/advertise/charity",
+      "dest": "/public/charity.html"
+    },
+    {
+      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email)$",
       "dest": "/public/$1.html"
     },
     {
-      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|test-video|verify-email)\\.html",
+      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email)\\.html",
       "dest": "/public/$1.html"
     },
     {
