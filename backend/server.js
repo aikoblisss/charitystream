@@ -56,6 +56,7 @@ app.set('trust proxy', 1);
 // Initialize database
 initializeDatabase().catch(error => {
   console.error('❌ Database initialization failed:', error);
+  console.log('⚠️ Server will continue running without database');
 });
 
 // Session configuration - Enabled for production
@@ -80,7 +81,8 @@ app.use(helmet({
         "'unsafe-inline'", // Allow inline scripts
         "'unsafe-hashes'", // Allow inline event handlers
         "https://vjs.zencdn.net", // Allow Video.js CDN
-        "https://cdnjs.cloudflare.com" // Allow other CDNs if needed
+        "https://cdnjs.cloudflare.com", // Allow other CDNs if needed
+        "https://js.stripe.com" // Allow Stripe.js
       ],
       scriptSrcAttr: ["'unsafe-inline'"], // Specifically allow onclick handlers
       styleSrc: [
@@ -88,7 +90,8 @@ app.use(helmet({
         "'unsafe-inline'", // Allow inline styles
         "https://vjs.zencdn.net", // Allow Video.js CSS
         "https://fonts.googleapis.com", // Allow Google Fonts
-        "https://fonts.gstatic.com" // Allow Google Fonts
+        "https://fonts.gstatic.com", // Allow Google Fonts
+        "https://js.stripe.com" // Allow Stripe styles
       ],
       fontSrc: [
         "'self'",
@@ -97,7 +100,14 @@ app.use(helmet({
         "data:" // Allow data URLs for Video.js fonts
       ],
       mediaSrc: ["'self'", "data:", "blob:"], // Allow video files
-      connectSrc: ["'self'"] // Allow API calls to same origin
+      connectSrc: [
+        "'self'", // Allow API calls to same origin
+        "https://api.stripe.com" // Allow Stripe API calls
+      ],
+      frameSrc: [
+        "'self'",
+        "https://js.stripe.com" // Allow Stripe frames
+      ]
     }
   }
 }));
@@ -111,7 +121,14 @@ app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: ['http://localhost:3000', 'http://localhost:8000', 'http://127.0.0.1:5500', 'https://*.vercel.app'],
+  origin: [
+    'http://localhost:8081',    // Electron app
+    'http://localhost:8082',    // Electron fallback
+    'http://localhost:3001',    // Your existing ports
+    'https://charitystream.vercel.app',  // Vercel production
+    'https://charitystream.com',         // Custom domain (if configured)
+    'https://www.charitystream.com'      // Custom domain www (if configured)
+  ],
   credentials: true
 }));
 
@@ -370,7 +387,10 @@ app.get('/api/auth/me', authenticateToken, async (req, res) => {
         subscriptionTier: user.subscription_tier,
         profilePicture: user.profile_picture,
         emailVerified: user.email_verified,
-        authProvider: user.auth_provider
+        authProvider: user.auth_provider,
+        isPremium: user.is_premium || false,
+        premiumSince: user.premium_since,
+        stripeSubscriptionId: user.stripe_subscription_id
       }
     });
   } catch (error) {
@@ -539,7 +559,10 @@ app.post('/api/auth/setup-password', async (req, res) => {
 // Google OAuth login
 app.get('/api/auth/google', (req, res, next) => {
   const mode = req.query.mode || 'signin'; // Default to signin
+  const { redirect_uri, app_type, source } = req.query;
+  
   console.log('🔐 Google OAuth requested with mode:', mode);
+  console.log('📱 App type:', app_type, 'Source:', source);
   console.log('Environment check:');
   console.log('- GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
   console.log('- GOOGLE_CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing');
@@ -547,19 +570,241 @@ app.get('/api/auth/google', (req, res, next) => {
   console.log('- Request URL:', req.url);
   console.log('- Request headers:', req.headers);
 
-  // Store the mode in session for the callback
-  req.session.googleAuthMode = mode;
+  // Check if this is from the Electron app
+  if (app_type === 'electron' && source === 'desktop_app') {
+    console.log('📱 Electron app OAuth detected');
+    
+    // Validate required environment variables
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      console.error('❌ GOOGLE_CLIENT_ID environment variable is missing!');
+      return res.status(500).json({ 
+        error: 'Server configuration error: Google OAuth not properly configured',
+        details: 'GOOGLE_CLIENT_ID environment variable is required'
+      });
+    }
+    
+    console.log('🔍 Google OAuth Configuration Check:');
+    console.log('  - Client ID:', process.env.GOOGLE_CLIENT_ID);
+    console.log('  - Make sure these redirect URIs are registered in Google Cloud Console:');
+    console.log('    http://localhost:3001/auth/google/callback (local dev)');
+    console.log('    http://localhost:8081/auth/google/callback (Electron app)');
+    console.log('    https://charitystream.vercel.app/auth/google/callback (production)');
+    
+    // Debug: Log all input parameters
+    console.log('🔍 Debug - Input parameters:');
+    console.log('  - redirect_uri:', redirect_uri);
+    console.log('  - mode:', mode);
+    console.log('  - app_type:', app_type);
+    console.log('  - source:', source);
+    console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
+    
+    // Prepare state object
+    const stateObject = { 
+      app_type: 'electron', 
+      source: 'desktop_app',
+      mode: mode 
+    };
+    const encodedState = encodeURIComponent(JSON.stringify(stateObject));
+    
+    // Prepare redirect URI with fallback and validation
+    // Use environment variable for production, fallback to localhost for development
+    const isProduction = process.env.NODE_ENV === 'production';
+    const defaultRedirectUri = isProduction 
+      ? 'https://charitystream.vercel.app/auth/google/callback'
+      : 'http://localhost:8081/auth/google/callback';
+    const finalRedirectUri = redirect_uri || defaultRedirectUri;
+    
+    // Validate redirect URI format
+    try {
+      new URL(finalRedirectUri);
+    } catch (error) {
+      console.error('❌ Invalid redirect_uri format:', finalRedirectUri);
+      return res.status(400).json({ 
+        error: 'Invalid redirect_uri format' 
+      });
+    }
+    
+    // Debug: Log individual URL components
+    console.log('🔍 Debug - URL Components:');
+    console.log('  - client_id:', process.env.GOOGLE_CLIENT_ID);
+    console.log('  - redirect_uri:', finalRedirectUri);
+    console.log('  - encoded_redirect_uri:', encodeURIComponent(finalRedirectUri));
+    console.log('  - response_type: code');
+    console.log('  - scope: email profile openid');
+    console.log('  - state_object:', JSON.stringify(stateObject));
+    console.log('  - encoded_state:', encodedState);
+    
+    // For Electron app, redirect to Google OAuth with the app's callback URL
+    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
+      `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
+      `redirect_uri=${encodeURIComponent(finalRedirectUri)}&` +
+      `response_type=code&` +
+      `scope=openid%20email%20profile&` +
+      `access_type=offline&` +
+      `prompt=consent&` +
+      `state=${encodedState}`;
+    
+    console.log('🔍 Debug - Final Google OAuth URL:');
+    console.log(googleAuthUrl);
+    
+    // Verify all required parameters are present
+    const requiredParams = ['client_id', 'redirect_uri', 'response_type', 'scope', 'access_type', 'prompt', 'state'];
+    const urlParams = new URLSearchParams(googleAuthUrl.split('?')[1]);
+    console.log('🔍 Debug - Parameter verification:');
+    requiredParams.forEach(param => {
+      const value = urlParams.get(param);
+      console.log(`  - ${param}: ${value ? '✅ Present' : '❌ Missing'} (${value || 'undefined'})`);
+    });
+    
+    console.log('🔗 Redirecting to Google OAuth for Electron app');
+    console.log('🔍 Final redirect URL length:', googleAuthUrl.length);
+    console.log('🔍 URL preview (first 200 chars):', googleAuthUrl.substring(0, 200) + '...');
+    
+    // Additional validation before redirect
+    if (googleAuthUrl.length > 2048) {
+      console.error('❌ URL too long for redirect (', googleAuthUrl.length, 'chars)');
+      return res.status(400).json({ error: 'OAuth URL too long' });
+    }
+    
+    return res.redirect(googleAuthUrl);
+  } else {
+    console.log('🌐 Web OAuth flow');
+    // Store the mode in session for the callback
+    req.session.googleAuthMode = mode;
 
-  passport.authenticate('google', {
-    scope: ['profile', 'email', 'openid'],
-    prompt: 'select_account' // Always show account chooser
-  })(req, res, next);
+    passport.authenticate('google', {
+      scope: ['profile', 'email', 'openid'],
+      prompt: 'select_account' // Always show account chooser
+    })(req, res, next);
+  }
 });
 
-// Google OAuth callback
+// Electron OAuth callback handler (separate from web OAuth)
+app.get('/auth/google/callback', async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    console.log('📱 Electron OAuth callback received');
+    
+    // Determine redirect URI based on environment
+    const isProduction = process.env.NODE_ENV === 'production';
+    const defaultRedirectUri = isProduction 
+      ? 'https://charitystream.vercel.app/auth/google/callback'
+      : 'http://localhost:8081/auth/google/callback';
+    
+    if (!code) {
+      console.error('❌ No authorization code received');
+      return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('No authorization code')}`);
+    }
+    
+    // Parse the state to check if it's from Electron app
+    let stateData = {};
+    if (state) {
+      try {
+        stateData = JSON.parse(decodeURIComponent(state));
+      } catch (error) {
+        console.error('❌ Error parsing state:', error);
+      }
+    }
+    
+    console.log('📊 State data:', stateData);
+    
+    if (stateData.app_type === 'electron') {
+      console.log('📱 Processing Electron OAuth callback');
+      
+      // Exchange code for token with Google
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET,
+          code: code,
+          grant_type: 'authorization_code',
+          redirect_uri: finalRedirectUri
+        })
+      });
+      
+      const tokenData = await tokenResponse.json();
+      
+      if (!tokenData.access_token) {
+        console.error('❌ No access token received from Google');
+        return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('Failed to get access token')}`);
+      }
+      
+      // Get user info from Google
+      const userResponse = await fetch(`https://www.googleapis.com/oauth2/v2/userinfo?access_token=${tokenData.access_token}`);
+      const googleUser = await userResponse.json();
+      
+      console.log('👤 Google user data:', { email: googleUser.email, name: googleUser.name });
+      
+      // Find or create user in your database using existing helper
+      const [err, user] = await dbHelpers.getUserByEmail(googleUser.email);
+      
+      if (err) {
+        console.error('❌ Database error:', err);
+        return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('Database error')}`);
+      }
+      
+      if (!user) {
+        console.error('❌ User not found in database:', googleUser.email);
+        return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('User not found. Please create an account first.')}`);
+      }
+      
+      // Update last login
+      await dbHelpers.updateLastLogin(user.id);
+      
+      // Generate JWT token
+      const token = jwt.sign(
+        { userId: user.id, username: user.username, email: user.email },
+        JWT_SECRET,
+        { expiresIn: '30d' }
+      );
+      
+      console.log(`✅ Electron OAuth successful for: ${user.email}`);
+      
+      // Redirect back to Electron app with token and user data
+      const redirectUrl = `${defaultRedirectUri}?` +
+        `token=${token}&` +
+        `user=${encodeURIComponent(JSON.stringify({
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          isPremium: user.is_premium || false,
+          totalMinutesWatched: user.total_minutes_watched,
+          currentMonthMinutes: user.current_month_minutes,
+          subscriptionTier: user.subscription_tier,
+          profilePicture: user.profile_picture,
+          emailVerified: user.email_verified,
+          authProvider: user.auth_provider,
+          premiumSince: user.premium_since,
+          stripeSubscriptionId: user.stripe_subscription_id
+        }))}`;
+      
+      console.log('🔗 Redirecting to Electron app with user data');
+      res.redirect(redirectUrl);
+    } else {
+      console.log('🌐 Web OAuth callback, redirecting to web flow');
+      // Fall through to the regular web OAuth flow
+      return res.redirect('/api/auth/google/callback?' + new URLSearchParams(req.query).toString());
+    }
+  } catch (error) {
+    console.error('❌ Electron OAuth callback error:', error);
+    console.error('Error stack:', error.stack);
+    
+    // Determine redirect URI based on environment for error handling
+    const isProduction = process.env.NODE_ENV === 'production';
+    const defaultRedirectUri = isProduction 
+      ? 'https://charitystream.vercel.app/auth/google/callback'
+      : 'http://localhost:8081/auth/google/callback';
+    
+    res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('Authentication failed')}`);
+  }
+});
+
+// Google OAuth callback (for web)
 app.get('/api/auth/google/callback', 
   passport.authenticate('google', { 
-    failureRedirect: `${process.env.FRONTEND_URL || 'https://stream.charity'}/auth.html?error=oauth_failed`,
+    failureRedirect: `${process.env.FRONTEND_URL || (process.env.NODE_ENV === 'production' ? 'https://charitystream.vercel.app' : 'http://localhost:3001')}/auth.html?error=oauth_failed`,
     session: false // We'll use JWT instead of sessions
   }),
   async (req, res) => {
@@ -1741,99 +1986,156 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 // ===== STRIPE INTEGRATION =====
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
-// Create payment intent for subscription
+// ===== SUBSCRIPTION ROUTES =====
+
+// Create subscription payment intent
 app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, res) => {
   try {
-    const { priceId } = req.body;
+    console.log('💳 Creating subscription for user:', req.user.userId);
+    console.log('📧 User email:', req.user.email);
     
-    if (!priceId) {
-      return res.status(400).json({ error: 'Price ID is required' });
+    // Check if Stripe is properly initialized
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ error: 'Stripe configuration missing' });
     }
 
-    // Create payment intent for subscription
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: 100, // $1.00 in cents
-      currency: 'usd',
-      customer_email: req.user.email,
-      metadata: {
-        userId: req.user.userId,
-        username: req.user.username,
-        priceId: priceId
-      },
-      automatic_payment_methods: {
-        enabled: true,
-      },
-    });
-
-    res.json({ clientSecret: paymentIntent.client_secret });
-  } catch (error) {
-    console.error('❌ Payment intent creation failed:', error);
-    res.status(500).json({ error: 'Failed to create payment intent' });
-  }
-});
-
-// Create Stripe checkout session
-app.post('/api/subscribe/create-checkout-session', authenticateToken, async (req, res) => {
-  try {
-    const { priceId, successUrl, cancelUrl } = req.body;
-    
-    if (!priceId) {
-      return res.status(400).json({ error: 'Price ID is required' });
+    if (!process.env.STRIPE_PRICE_ID) {
+      console.error('❌ STRIPE_PRICE_ID environment variable is not set');
+      return res.status(500).json({ error: 'Stripe price ID missing' });
     }
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price: priceId,
-          quantity: 1,
-        },
-      ],
-      mode: 'subscription',
-      success_url: successUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscribe?success=true`,
-      cancel_url: cancelUrl || `${process.env.FRONTEND_URL || 'http://localhost:3000'}/subscribe?canceled=true`,
-      customer_email: req.user.email,
+    console.log('🔧 Stripe secret key available:', !!process.env.STRIPE_SECRET_KEY);
+    console.log('🔧 Stripe price ID:', process.env.STRIPE_PRICE_ID);
+
+    // Get or create customer
+    let customer;
+    let customerId = null;
+
+    // Check if user already has a Stripe customer ID
+    const [userErr, user] = await dbHelpers.getUserById(req.user.userId);
+    if (userErr) {
+      console.error('❌ Error fetching user:', userErr);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+
+    if (user.stripe_customer_id) {
+      // Use existing customer
+      try {
+        customer = await stripe.customers.retrieve(user.stripe_customer_id);
+        customerId = customer.id;
+        console.log('✅ Found existing customer:', customerId);
+      } catch (error) {
+        console.log('⚠️ Existing customer not found, creating new one');
+        customerId = null;
+      }
+    }
+
+    if (!customerId) {
+      // Create new customer
+      try {
+        customer = await stripe.customers.create({
+          email: req.user.email,
+          name: req.user.username,
+          metadata: {
+            userId: req.user.userId,
+            username: req.user.username
+          }
+        });
+        customerId = customer.id;
+        console.log('✅ Created new customer:', customerId);
+
+        // Save customer ID to database
+        const [updateErr] = await dbHelpers.updateStripeCustomerId(req.user.userId, customerId);
+        if (updateErr) {
+          console.error('❌ Failed to save customer ID:', updateErr);
+        }
+      } catch (customerError) {
+        console.error('❌ Customer creation failed:', customerError);
+        return res.status(500).json({ error: 'Failed to create customer' });
+      }
+    }
+
+    console.log('🔧 Creating subscription...');
+
+    // Create subscription
+    const subscription = await stripe.subscriptions.create({
+      customer: customerId,
+      items: [{ price: process.env.STRIPE_PRICE_ID }],
+      payment_behavior: 'default_incomplete',
+      expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId: req.user.userId,
         username: req.user.username
       }
     });
 
-    res.json({ sessionId: session.id });
-  } catch (error) {
-    console.error('❌ Stripe checkout session creation failed:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
-  }
-});
+    console.log('✅ Subscription created:', subscription.id);
+    console.log('🔐 Client secret:', subscription.latest_invoice.payment_intent.client_secret);
 
-// Get Stripe publishable key (safe to expose to frontend)
-app.get('/api/stripe/config', (req, res) => {
-  res.json({
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-    priceId: process.env.STRIPE_PRICE_ID
-  });
+    // Save subscription ID to database
+    const [subUpdateErr] = await dbHelpers.updateStripeSubscriptionId(req.user.userId, subscription.id);
+    if (subUpdateErr) {
+      console.error('❌ Failed to save subscription ID:', subUpdateErr);
+    }
+
+    res.json({
+      clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+      subscriptionId: subscription.id
+    });
+  } catch (error) {
+    console.error('❌ Subscription creation failed:', error);
+    console.error('❌ Error details:', error.message);
+    console.error('❌ Error type:', error.type);
+    console.error('❌ Error code:', error.code);
+    res.status(500).json({ 
+      error: 'Failed to create subscription',
+      details: error.message,
+      type: error.type,
+      code: error.code
+    });
+  }
 });
 
 // Get subscription status
-app.get('/api/subscription/status', authenticateToken, async (req, res) => {
+app.get('/api/subscribe/status', authenticateToken, async (req, res) => {
   try {
-    // For now, return a mock response - you'll implement database lookup later
-    res.json({
-      active: false,
-      subscriptionId: null,
-      currentPeriodEnd: null,
-      cancelAtPeriodEnd: false
+    const { subscriptionId } = req.query;
+    
+    if (!subscriptionId) {
+      return res.status(400).json({ error: 'Subscription ID is required' });
+    }
+
+    console.log('🔍 Checking subscription status:', subscriptionId);
+
+    // Retrieve subscription from Stripe
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    console.log('📊 Subscription status:', subscription.status);
+
+    const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+    
+    // Update user's premium status in database
+    const [updateErr] = await dbHelpers.updatePremiumStatus(req.user.userId, isActive);
+    if (updateErr) {
+      console.error('❌ Failed to update premium status:', updateErr);
+    }
+
+    res.json({ 
+      isPremium: isActive,
+      status: subscription.status,
+      subscriptionId: subscription.id
     });
   } catch (error) {
     console.error('❌ Subscription status check failed:', error);
-    res.status(500).json({ error: 'Failed to check subscription status' });
+    res.status(500).json({ 
+      error: 'Failed to check subscription status',
+      details: error.message
+    });
   }
 });
 
-// ===== STRIPE WEBHOOK HANDLING =====
-
 // Stripe webhook endpoint
-app.post('/api/subscribe/webhook', express.raw({type: 'application/json'}), (req, res) => {
+app.post('/api/webhook', express.raw({type: 'application/json'}), (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -1846,43 +2148,44 @@ app.post('/api/subscribe/webhook', express.raw({type: 'application/json'}), (req
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  console.log('🔔 Webhook received:', event.type);
+
   // Handle the event
   switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      console.log('✅ Payment succeeded:', paymentIntent.id);
-      // Update user subscription status here
-      // You can access paymentIntent.metadata.userId to update the user
-      break;
-    case 'payment_intent.payment_failed':
-      const failedPaymentIntent = event.data.object;
-      console.log('❌ Payment failed:', failedPaymentIntent.id);
-      break;
-    case 'checkout.session.completed':
-      const session = event.data.object;
-      console.log('✅ Checkout session completed:', session.id);
-      // Update user subscription status here
-      break;
-    case 'customer.subscription.created':
-      const subscription = event.data.object;
-      console.log('✅ Subscription created:', subscription.id);
-      break;
-    case 'customer.subscription.updated':
-      const updatedSubscription = event.data.object;
-      console.log('✅ Subscription updated:', updatedSubscription.id);
-      break;
-    case 'customer.subscription.deleted':
-      const deletedSubscription = event.data.object;
-      console.log('✅ Subscription deleted:', deletedSubscription.id);
-      break;
     case 'invoice.payment_succeeded':
       const invoice = event.data.object;
       console.log('✅ Payment succeeded for invoice:', invoice.id);
+      
+      if (invoice.subscription) {
+        // Update user to premium
+        dbHelpers.updatePremiumStatusBySubscriptionId(invoice.subscription, true)
+          .then(() => console.log('✅ User updated to premium'))
+          .catch(err => console.error('❌ Failed to update premium status:', err));
+      }
       break;
+      
+    case 'customer.subscription.deleted':
+      const deletedSubscription = event.data.object;
+      console.log('❌ Subscription deleted:', deletedSubscription.id);
+      
+      // Update user to not premium
+      dbHelpers.updatePremiumStatusBySubscriptionId(deletedSubscription.id, false)
+        .then(() => console.log('✅ User updated to not premium'))
+        .catch(err => console.error('❌ Failed to update premium status:', err));
+      break;
+      
     case 'invoice.payment_failed':
       const failedInvoice = event.data.object;
       console.log('❌ Payment failed for invoice:', failedInvoice.id);
+      
+      if (failedInvoice.subscription) {
+        // Update user to not premium
+        dbHelpers.updatePremiumStatusBySubscriptionId(failedInvoice.subscription, false)
+          .then(() => console.log('✅ User updated to not premium'))
+          .catch(err => console.error('❌ Failed to update premium status:', err));
+      }
       break;
+      
     default:
       console.log(`Unhandled event type ${event.type}`);
   }
@@ -1903,7 +2206,6 @@ const cleanUrlRoutes = {
   '/lander': 'lander.html',
   '/reset-password': 'reset-password.html',
   '/verify-email': 'verify-email.html',
-  '/advertiser': 'advertiser.html'
 };
 
 // Add routes for clean URLs
@@ -1922,14 +2224,19 @@ app.get('/advertise/charity', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/charity.html'));
 });
 
+// Serve PDF files from Terms and Conditions folder
+app.use('/Terms and Conditions', express.static(path.join(__dirname, '../public/Terms and Conditions')));
+
 // Handle frontend routing - serve index.html for any non-API routes that aren't clean URLs
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
     // Check if this is a clean URL route
-    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/charity', '/lander', '/reset-password', '/verify-email', '/advertiser', '/advertise/company', '/advertise/charity'];
+    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/charity', '/lander', '/reset-password', '/verify-email', '/advertise/company', '/advertise/charity'];
     
     if (cleanUrlRoutes.includes(req.path)) {
       // This should have been handled by the specific routes above
+
+
       // If we reach here, something went wrong with the specific routes
       console.log('⚠️ Clean URL route not handled:', req.path);
       return res.status(404).send('Route not found');
@@ -1942,9 +2249,14 @@ app.get('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log('🚀 LetsWatchAds Server Started!');
-  console.log(`📡 Server running on http://localhost:${PORT}`);
-  console.log(`🎬 Frontend served at http://localhost:${PORT}`);
-  console.log(`🔐 API endpoints available at http://localhost:${PORT}/api/`);
+  if (process.env.NODE_ENV === 'production') {
+    console.log(`🌐 Production server running on port ${PORT}`);
+    console.log(`🔗 Deployed at: https://charitystream.vercel.app`);
+  } else {
+    console.log(`📡 Server running on http://localhost:${PORT}`);
+    console.log(`🎬 Frontend served at http://localhost:${PORT}`);
+  }
+  console.log(`🔐 API endpoints available at /api/`);
   console.log('\n📋 Available endpoints:');
   console.log('   POST /api/auth/register');
   console.log('   POST /api/auth/login');
@@ -1954,4 +2266,99 @@ app.listen(PORT, () => {
   console.log('   GET  /api/leaderboard');
   console.log('   GET  /api/leaderboard/my-rank');
   console.log('   GET  /api/admin/analytics');
+});
+
+// Test Stripe connection
+app.get('/api/test/stripe', (req, res) => {
+  try {
+    console.log('🔧 Testing Stripe connection...');
+    console.log('🔧 Stripe secret key available:', !!process.env.STRIPE_SECRET_KEY);
+    console.log('🔧 Stripe secret key starts with:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined');
+    console.log('🔧 Stripe publishable key available:', !!process.env.STRIPE_PUBLISHABLE_KEY);
+    console.log('🔧 Stripe publishable key starts with:', process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 7) : 'undefined');
+    console.log('🔧 Stripe price ID available:', !!process.env.STRIPE_PRICE_ID);
+    console.log('🔧 Stripe price ID:', process.env.STRIPE_PRICE_ID);
+    
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({ error: 'STRIPE_SECRET_KEY not set' });
+    }
+    
+    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
+      return res.status(500).json({ error: 'STRIPE_PUBLISHABLE_KEY not set' });
+    }
+    
+    res.json({ 
+      message: 'Stripe configuration looks good',
+      hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
+      hasPublishableKey: !!process.env.STRIPE_PUBLISHABLE_KEY,
+      hasPriceId: !!process.env.STRIPE_PRICE_ID,
+      keyPrefix: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined',
+      publishableKeyPrefix: process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 7) : 'undefined',
+      priceId: process.env.STRIPE_PRICE_ID
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Simple Stripe test
+app.get('/api/test/stripe-simple', (req, res) => {
+  try {
+    const hasSecretKey = !!process.env.STRIPE_SECRET_KEY;
+    const hasPublishableKey = !!process.env.STRIPE_PUBLISHABLE_KEY;
+    const hasPriceId = !!process.env.STRIPE_PRICE_ID;
+    
+    res.json({ 
+      hasSecretKey,
+      hasPublishableKey,
+      hasPriceId,
+      secretKeyPrefix: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined',
+      publishableKeyPrefix: process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 7) : 'undefined',
+      priceId: process.env.STRIPE_PRICE_ID
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Basic test endpoint
+app.get('/api/test/basic', (req, res) => {
+  res.json({ message: 'Server is working', timestamp: new Date().toISOString() });
+});
+
+// Minimal PaymentIntent test
+app.post('/api/test/payment-intent', authenticateToken, async (req, res) => {
+  try {
+    console.log('Testing PaymentIntent creation...');
+    
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({ error: 'No Stripe secret key' });
+    }
+    
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 100,
+      currency: 'usd',
+    });
+    
+    res.json({ success: true, id: paymentIntent.id });
+  } catch (error) {
+    console.error('PaymentIntent error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get Stripe publishable key (safe to expose to frontend)
+app.get('/api/stripe/config', (req, res) => {
+  console.log('🔧 Stripe config requested');
+  console.log('🔧 Publishable key available:', !!process.env.STRIPE_PUBLISHABLE_KEY);
+  console.log('🔧 Price ID available:', !!process.env.STRIPE_PRICE_ID);
+  
+  // Immediate response without any async operations
+  const response = {
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+    priceId: process.env.STRIPE_PRICE_ID
+  };
+  
+  console.log('✅ Sending Stripe config response');
+  res.json(response);
 });

@@ -147,7 +147,7 @@
     .header-container {
       max-width: 1320px;
       margin: 0 auto;
-      padding: 0 1rem;
+      padding: 16px 40px;
       height: 4rem;
       display: flex;
       align-items: center;
@@ -155,10 +155,9 @@
     }
 
     .logo {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.025em;
-      color: inherit;
+      font-size: 28px;
+      font-weight: 700;
+      color: #111;
       text-decoration: none;
       cursor: pointer;
       transition: color 0.2s;
@@ -172,15 +171,15 @@
       margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 1.25rem;
-      font-size: 0.9375rem;
+      gap: 32px;
+      font-size: 16px;
       color: var(--gray-700);
     }
 
     .nav-hidden-mobile {
       display: flex;
       align-items: center;
-      gap: 1.25rem;
+      gap: 32px;
     }
 
     .welcome {
@@ -192,30 +191,33 @@
     }
 
     .nav-link {
-      color: inherit;
+      color: #666;
       text-decoration: none;
-      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
     }
 
     .nav-link:hover {
       color: var(--gray-900);
     }
 
+    .nav-link:first-child {
+      color: #111;
+    }
+
     .watch-ads-btn {
-      display: inline-flex;
-      align-items: center;
-      background-color: var(--brand-600);
+      background-color: #2F7D31;
       color: white;
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 0.5rem;
-      font-weight: 500;
+      padding: 10px 20px;
+      border-radius: 6px;
       text-decoration: none;
-      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      transition: background-color 0.2s;
     }
 
     .watch-ads-btn:hover {
-      background-color: var(--brand-700);
+      background-color: #1B5E20;
     }
 
     /* FORA Charity Header */
@@ -581,6 +583,26 @@
       background-color: var(--brand-700);
     }
 
+    .popout-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background-color: #10b981;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 0.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-left: 0.75rem;
+    }
+
+    .popout-btn:hover {
+      background-color: #059669;
+    }
+
     .play-button {
       position: absolute;
       top: 50%;
@@ -845,24 +867,28 @@
     }
     
     .lander-title {
-      font-size: 56px;
-      font-weight: 700;
+      font-size: 72px;
+      font-weight: 900;
       color: #111;
       line-height: 1.1;
       margin-bottom: 6px;
+      letter-spacing: -2px;
     }
     
     .lander-title .underline {
-      text-decoration: underline;
-      text-decoration-thickness: 4px;
-      text-underline-offset: 8px;
+      background: linear-gradient(135deg, #2F7D31 0%, #4CAF50 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      text-decoration: none;
     }
     
     .lander-subtitle {
-      font-size: 56px;
-      font-weight: 700;
+      font-size: 72px;
+      font-weight: 900;
       color: #111;
       line-height: 1.1;
+      letter-spacing: -2px;
     }
     
     .lander-main {
@@ -870,12 +896,12 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 0 1rem;
+      padding: 0 40px;
       min-height: 0;
       justify-content: center;
     }
     
-    /* Lander Video Container */
+    /* Lander Video Container - UPDATED WITH PREMIUM ANIMATIONS */
     .lander-video-container {
       width: 100%;
       max-width: 1200px;
@@ -887,28 +913,67 @@
       align-items: center;
       position: relative;
       margin-bottom: 20px;
-      border: 3px solid transparent;
-      transition: border-color 0.3s ease, transform 0.3s ease;
       cursor: pointer;
       text-decoration: none;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      overflow: hidden;
+    }
+    
+    .lander-video-container::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(47, 125, 49, 0.1) 0%, rgba(27, 94, 32, 0.1) 100%);
+      opacity: 0;
+      transition: opacity 0.4s;
+    }
+    
+    .lander-video-container:hover::before {
+      opacity: 1;
     }
     
     .lander-video-container:hover {
-      border-color: #2F7D31;
-      transform: scale(1.02);
+      transform: translateY(-8px);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
     }
     
     .lander-play-button {
       width: 90px;
       height: 90px;
-      background-color: #2F7D31;
+      background: linear-gradient(135deg, #2F7D31 0%, #1B5E20 100%);
       border-radius: 50%;
       display: flex;
       justify-content: center;
       align-items: center;
       cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       box-shadow: 0 6px 20px rgba(47, 125, 49, 0.3);
+      position: relative;
+    }
+    
+    .lander-play-button::after {
+      content: '';
+      position: absolute;
+      width: 120%;
+      height: 120%;
+      border: 2px solid rgba(47, 125, 49, 0.3);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+      50% {
+        transform: scale(1.3);
+        opacity: 0;
+      }
     }
     
     .lander-video-container:hover .lander-play-button {
@@ -984,7 +1049,7 @@
       flex-shrink: 0;
     }
     
-    .lander-ticker-chip-bottom {
+    .lander-ticker-chip.bottom {
       background-color: #2F7D31;
     }
     
@@ -1018,7 +1083,26 @@
       }
     }
     
+    @media (max-width: 1200px) {
+      .lander-title, .lander-subtitle {
+        font-size: 56px;
+      }
+      
+      .lander-video-container {
+        height: 320px;
+        max-width: 800px;
+      }
+    }
+    
     @media (max-width: 768px) {
+      .header-container {
+        padding: 16px 20px;
+      }
+      
+      .lander-main {
+        padding: 0 20px;
+      }
+      
       .lander-title, .lander-subtitle {
         font-size: 42px;
       }
@@ -1026,6 +1110,19 @@
       .lander-video-container {
         height: 250px;
         margin-bottom: 40px;
+      }
+      
+      .nav {
+        gap: 16px;
+      }
+      
+      .nav-link {
+        font-size: 14px;
+      }
+      
+      .watch-ads-btn {
+        padding: 8px 16px;
+        font-size: 14px;
       }
     }
 
@@ -1456,7 +1553,6 @@
         <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       <nav class="nav">
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
-          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
@@ -1466,7 +1562,7 @@
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
+          <a href="/auth" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -1512,7 +1608,7 @@
               preload="auto"
               data-setup="{}"
             >
-              <source src="videos/video1_1080p.mp4" type="video/mp4" />
+              <source src="videos/video_1.mp4" type="video/mp4" />
               <p class="vjs-no-js">
                 To view this video please enable JavaScript, and consider upgrading to a
                 web browser that supports HTML5 video.
@@ -1530,7 +1626,7 @@
           </div>
         </div>
         <div class="video-controls">
-          <div class="quality-text">Quality: <span class="quality-number" id="currentQualityDisplay">1080p</span></div>
+          <div class="quality-text">Quality: <span class="quality-number" id="currentQualityDisplay">HD</span></div>
           <button class="upgrade-btn" onclick="window.location.href='/subscribe'">Upgrade to get pop-out player</button>
         </div>
       </section>
@@ -2118,6 +2214,40 @@
       }
     }
 
+    // Complete a watch session
+    async function completeWatchSession(sessionId, durationSeconds, completed, pausedCount) {
+      if (!authToken || !sessionId) return;
+
+      try {
+        const response = await fetch('/api/tracking/complete-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            sessionId: sessionId,
+            durationSeconds: durationSeconds,
+            completed: completed,
+            pausedCount: pausedCount || 0
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('📺 Session completed successfully:', data);
+        } else {
+          console.error('Failed to complete session:', response.status);
+        }
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          console.log('📺 Session completion request timed out (non-critical)');
+        } else {
+          console.error('Error completing session:', error);
+        }
+      }
+    }
+
     // Start a watch session
     async function startWatchSession(videoName, quality) {
       if (!authToken) return null;
@@ -2206,7 +2336,7 @@
         if (response.ok) {
           console.log('📺 Ad tracking completed:', durationSeconds, 'seconds');
           // Refresh user impact data and leaderboard
-          loadUserImpact();
+          await loadUserImpact(); // Make sure this completes before moving on
           loadLeaderboard();
         }
       } catch (error) {
@@ -2383,9 +2513,18 @@
         });
 
         const loadingIndicator = document.getElementById("loadingIndicator");
-        const playlist = ["video1", "video2", "video3"];
+        // Dynamic playlist generation - only include videos that actually exist
+        function generatePlaylist() {
+          // IMPORTANT: Update this array when you add/remove videos
+          // Current videos: video_1.mp4, video_2.mp4, video_3.mp4, video_4.mp4
+          // To add more: just add 'video_5', 'video_6', etc. to this array
+          // To remove: remove the corresponding entries from this array
+          return ['video_1', 'video_2', 'video_3', 'video_4'];
+        }
+        
+        const playlist = generatePlaylist();
         let currentIndex = 0;
-        let currentQuality = "1080p";
+        let currentQuality = "standard"; // Changed from quality-based to standard
         let isQualitySwitching = false;
         let sessionStartTime = null;
         let pausedCount = 0;
@@ -2397,20 +2536,20 @@
         let isAdPlaying = false;
         let accumulatedAdTime = 0; // Track actual playback time
 
-        function getVideoUrl(videoName, quality) {
-          return `videos/${videoName}_${quality}.mp4`;
+        function getVideoUrl(videoName) {
+          return `videos/${videoName}.mp4`;
         }
 
         function getCurrentVideoSource() {
           const videoName = playlist[currentIndex];
           return {
-            src: getVideoUrl(videoName, currentQuality),
+            src: getVideoUrl(videoName),
             type: "video/mp4"
           };
         }
 
         function updateQualityDisplay() {
-          document.getElementById('currentQualityDisplay').textContent = currentQuality;
+          document.getElementById('currentQualityDisplay').textContent = "HD";
         }
 
         function loadVideoWithQuality(index) {
@@ -2421,27 +2560,17 @@
           
           console.log(`🎬 loadVideoWithQuality called with index: ${index}`);
           console.log(`🎬 Current playlist:`, playlist);
-          console.log(`🎬 Current quality:`, currentQuality);
           
           currentIndex = index;
           const source = getCurrentVideoSource();
           console.log(`🎬 Loading video ${index + 1} (${playlist[index]}): ${source.src}`);
-          console.log(`🎬 Full video path: videos/${playlist[index]}_${currentQuality}.mp4`);
+          console.log(`🎬 Full video path: videos/${playlist[index]}.mp4`);
           
-          // Add error handling for video loading
+          // Load the video
           player.src(source);
           updateQualityDisplay();
           
-          // Set a timeout to check if video loaded successfully
-          const loadTimeout = setTimeout(() => {
-            if (player.readyState() === 0) {
-              console.warn('Video failed to load, trying next video...');
-              loadVideoWithQuality((index + 1) % playlist.length);
-            }
-          }, 5000);
-          
           player.one('loadeddata', () => {
-            clearTimeout(loadTimeout);
             console.log('✅ Video loaded successfully');
             
             // Auto-play when video loads (both initial and subsequent videos)
@@ -2472,7 +2601,8 @@
           
           // Start watch session non-blocking (don't wait for it)
           if (typeof startWatchSession === 'function' && authToken) {
-            startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
+            console.log('📺 Starting initial session for video:', playlist[currentIndex]);
+            startWatchSession(playlist[currentIndex], "standard").then(sessionId => {
               if (sessionId) {
                 currentSessionId = sessionId;
                 currentVideoStartTime = Date.now();
@@ -2483,10 +2613,16 @@
                 currentAdTrackingId = null;
                 adStartTime = null;
                 accumulatedAdTime = 0;
-                console.log('📊 Watch session started:', sessionId);
+                console.log('📊 Initial watch session started:', {
+                  sessionId: sessionId,
+                  videoName: playlist[currentIndex],
+                  timestamp: new Date().toISOString()
+                });
+              } else {
+                console.error('❌ Failed to start initial session - no sessionId returned');
               }
             }).catch(error => {
-              console.log('📊 Watch session failed to start (non-critical):', error);
+              console.log('📊 Initial watch session failed to start (non-critical):', error);
             });
           }
         }
@@ -2537,7 +2673,8 @@
           }
         }
 
-        player.on('play', () => {
+        // Video play event - starts ad tracking ONLY if not already tracking
+        player.on('play', function() {
           isPlaying = true;
           console.log('▶️ Video started playing');
           
@@ -2546,17 +2683,22 @@
             console.log('▶️ Video started playing, tracking begins');
           }
           
-          // Start ad tracking when video starts playing (only if not already tracking)
-          if (currentSessionId && !isAdPlaying) {
+          // Only start ad tracking if we don't already have an active tracking session
+          // (This prevents duplicate tracking when video autoplays after ended event)
+          if (currentSessionId && !isAdPlaying && !currentAdTrackingId) {
             isAdPlaying = true;
             adStartTime = Date.now();
             startAdTracking(currentSessionId).then(adTrackingId => {
-              currentAdTrackingId = adTrackingId;
-              console.log('📺 Ad tracking started for video play');
+              if (adTrackingId) {
+                currentAdTrackingId = adTrackingId;
+                console.log('📺 Ad tracking started for manual play');
+              }
             });
           } else if (isAdPlaying && currentAdTrackingId) {
-            // Resume tracking the same ad (don't start a new one)
-            console.log('📺 Ad tracking resumed (same ad)');
+            // Resume tracking the same ad (e.g., after pause)
+            console.log('📺 Ad tracking resumed (same ad, ID:', currentAdTrackingId, ')');
+          } else {
+            console.log('📺 Play event - ad tracking already active, skipping duplicate');
           }
           
           // Hide the big play button when playing - try multiple times to ensure it works
@@ -2626,7 +2768,8 @@
           }
         });
 
-        player.on("ended", function () {
+        // Video ended event - completes ad tracking and session
+        player.on("ended", async function () {
           console.log(`🎬 Video ${currentIndex + 1} (${playlist[currentIndex]}) ended, switching to next video...`);
           console.log(`🎬 Current player state:`, {
             readyState: player.readyState(),
@@ -2646,7 +2789,10 @@
               finalDuration: adDurationSeconds,
               videoDuration: player.duration()
             });
-            completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
+            
+            await completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
+            
+            // CRITICAL: Reset ad tracking state AFTER completion
             isAdPlaying = false;
             currentAdTrackingId = null;
             adStartTime = null;
@@ -2657,14 +2803,29 @@
           // Complete current session if exists
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
             const durationSeconds = Math.floor((Date.now() - currentVideoStartTime) / 1000);
+            console.log('📺 Completing session:', {
+              sessionId: currentSessionId,
+              durationSeconds: durationSeconds,
+              pausedCount: pausedCount,
+              videoName: playlist[currentIndex]
+            });
+            
             if (typeof completeWatchSession === 'function') {
-              completeWatchSession(currentSessionId, durationSeconds, true, pausedCount);
+              await completeWatchSession(currentSessionId, durationSeconds, true, pausedCount);
+            } else {
+              console.error('❌ completeWatchSession function not available!');
             }
             
             currentVideoStartTime = null;
             sessionStartTime = null;
             pausedCount = 0;
             currentSessionId = null;
+          } else {
+            console.log('📺 Skipping session completion:', {
+              isQualitySwitching: isQualitySwitching,
+              hasSessionId: !!currentSessionId,
+              hasStartTime: !!currentVideoStartTime
+            });
           }
           
           if (!isQualitySwitching) {
@@ -2672,7 +2833,7 @@
             const oldIndex = currentIndex;
             currentIndex = (currentIndex + 1) % playlist.length;
             console.log(`🔄 Switching from video ${oldIndex + 1} (${playlist[oldIndex]}) to video ${currentIndex + 1} (${playlist[currentIndex]})`);
-            console.log(`🔄 Next video URL: videos/${playlist[currentIndex]}_${currentQuality}.mp4`);
+            console.log(`🔄 Next video URL: videos/${playlist[currentIndex]}.mp4`);
             
             // Track video completion for popup ads
             if (popupAdManager && typeof popupAdManager.onVideoEnded === 'function') {
@@ -2682,20 +2843,44 @@
             // Load the next video using the same method as initial load
             loadVideoWithQuality(currentIndex);
             
-            // Start new session for the next video (non-blocking)
+            // CRITICAL FIX: Start new session AND ad tracking together for next video
             if (authToken) {
-              startWatchSession(playlist[currentIndex], currentQuality).then(sessionId => {
-                currentSessionId = sessionId;
-                currentVideoStartTime = Date.now();
-                // Reset ad tracking state for new video
-                isAdPlaying = false;
-                currentAdTrackingId = null;
-                adStartTime = null;
-                accumulatedAdTime = 0;
-                console.log('📊 New session started for next video:', sessionId);
-              }).catch(error => {
-                console.log('📊 New session failed to start (non-critical):', error);
-              });
+              console.log('📺 Starting new session AND ad tracking for video:', playlist[currentIndex]);
+              
+              try {
+                // Start new session
+                const sessionId = await startWatchSession(playlist[currentIndex], "standard");
+                
+                if (sessionId) {
+                  currentSessionId = sessionId;
+                  currentVideoStartTime = Date.now();
+                  sessionStartTime = Date.now();
+                  pausedCount = 0;
+                  
+                  // IMMEDIATELY start ad tracking for the new video (don't wait for play event)
+                  const adTrackingId = await startAdTracking(sessionId);
+                  
+                  if (adTrackingId) {
+                    currentAdTrackingId = adTrackingId;
+                    isAdPlaying = true;
+                    adStartTime = Date.now();
+                    accumulatedAdTime = 0;
+                    
+                    console.log('✅ New session AND ad tracking started for next video:', {
+                      sessionId: sessionId,
+                      adTrackingId: adTrackingId,
+                      videoName: playlist[currentIndex],
+                      timestamp: new Date().toISOString()
+                    });
+                  } else {
+                    console.error('❌ Failed to start ad tracking for new video');
+                  }
+                } else {
+                  console.error('❌ Failed to start new session - no sessionId returned');
+                }
+              } catch (error) {
+                console.error('❌ Error starting new session/ad tracking:', error);
+              }
             }
           } else {
             console.log('⚠️ Quality switching in progress, skipping video switch');
@@ -3001,9 +3186,11 @@
         setTimeout(() => {
           if (videoPlayer && !videoPlayer.paused()) {
             console.log('📢 Attempting to pause video for popup...');
-            videoPlayer.pause().catch(error => {
+            try {
+              videoPlayer.pause();
+            } catch (error) {
               console.log('Video pause prevented:', error);
-            });
+            }
             console.log('📢 Video paused due to popup');
           } else if (videoPlayer && videoPlayer.paused()) {
             console.log('📢 Video already paused when popup appeared');
@@ -3286,7 +3473,7 @@
           },
           {
             selector: '.upgrade-btn',
-            text: 'Pay $1/month to get a pop-out player, no pop-ups, 1.25x speed, and 1080p quality!',
+            text: 'Pay $1/month to get a pop-out player, no pop-ups, 1.25x speed, and premium features!',
             position: 'top'
           },
           {
@@ -3625,6 +3812,87 @@
 
     // Run new user check on page load
     checkNewUserStatus();
+
+    // Add premium status check and UI updates
+    let isPremiumUser = false;
+
+    // Check premium status on page load
+    async function checkPremiumStatus() {
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) return;
+
+        try {
+            const response = await fetch('/api/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                isPremiumUser = data.user.isPremium || false;
+                console.log('👑 Premium status:', isPremiumUser);
+                
+                if (isPremiumUser) {
+                    enablePremiumUI();
+                }
+            }
+        } catch (error) {
+            console.error('❌ Error checking premium status:', error);
+        }
+    }
+
+    // Enable premium UI features
+    function enablePremiumUI() {
+        console.log('🎉 Enabling premium features');
+        
+        // Premium users get enhanced features (pop-out, no ads, etc.)
+        // Quality is already HD for all users
+        
+        // Update quality display if element exists
+        const qualityDisplay = document.getElementById('currentQualityDisplay');
+        if (qualityDisplay) {
+            qualityDisplay.textContent = "Premium HD";
+        }
+        
+        // Add pop-out button
+        const videoControls = document.querySelector('.video-controls');
+        if (videoControls && !document.getElementById('popoutBtn')) {
+            const popoutBtn = document.createElement('button');
+            popoutBtn.id = 'popoutBtn';
+            popoutBtn.className = 'popout-btn';
+            popoutBtn.textContent = 'Pop Out';
+            popoutBtn.onclick = requestPictureInPicture;
+            videoControls.appendChild(popoutBtn);
+        }
+        
+        // Update upgrade button text
+        const upgradeBtn = document.querySelector('.upgrade-btn');
+        if (upgradeBtn) {
+            upgradeBtn.textContent = 'Premium Active';
+            upgradeBtn.style.backgroundColor = '#10b981';
+            upgradeBtn.onclick = null;
+        }
+    }
+
+    // Picture-in-Picture function
+    async function requestPictureInPicture() {
+        try {
+            if (player && player.el()) {
+                await player.el().requestPictureInPicture();
+                console.log('✅ Picture-in-Picture activated');
+            }
+        } catch (error) {
+            console.error('❌ Picture-in-Picture failed:', error);
+            showMessage('Picture-in-Picture not supported or failed', 'error');
+        }
+    }
+
+    // Update the page load event
+    document.addEventListener('DOMContentLoaded', function() {
+        // ... existing code ...
+        checkPremiumStatus(); // Add this line
+    });
   </script>
 </body>
 </html>

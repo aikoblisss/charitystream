@@ -28,6 +28,10 @@
       "dest": "/public/charity.html"
     },
     {
+      "src": "/advertise",
+      "dest": "/public/advertise.html"
+    },
+    {
       "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email)$",
       "dest": "/public/$1.html"
     },
@@ -36,8 +40,12 @@
       "dest": "/public/$1.html"
     },
     {
-      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|mp4|webm|ogg))",
+      "src": "/(.*\\.(css|js|png|jpg|jpeg|gif|svg|ico|mp4|webm|ogg|pdf))",
       "dest": "/public/$1"
+    },
+    {
+      "src": "/Terms and Conditions/(.*)",
+      "dest": "/public/Terms and Conditions/$1"
     },
     {
       "src": "/(.*)",

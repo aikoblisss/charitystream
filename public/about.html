@@ -3,261 +3,305 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>About - Charity Stream</title>
+  <title>Charity Stream - Turn Screen Time Into Lives Changed</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
-    :root {
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      font-feature-settings:'liga' 1,'calt' 1,'tnum' 1;
+      background:#ffffff;color:#111827;line-height:1.5;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
+    :root{
       --brand-primary: #2F7D31;
       --brand-600: #2F7D31;
       --brand-700: #276629;
-      --gray-50: #f9fafb;
-      --gray-100: #f3f4f6;
-      --gray-200: #e5e7eb;
-      --gray-300: #d1d5db;
-      --gray-500: #6b7280;
-      --gray-600: #4b5563;
-      --gray-700: #374151;
-      --gray-900: #111827;
+      --brand-800: #1e5620;
+      --gray-50:#f9fafb; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
+      --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-900:#111827;
+      --blue-600: #2563eb; --orange-500: #f97316;
+    }
+    .container{max-width:1200px;margin:0 auto;padding:0 1rem}
+    .header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--gray-200)}
+    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
+    .logo{font-size:1.5rem;font-weight:700;color:var(--gray-900);letter-spacing:-.025em;text-decoration:none}
+    .nav{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:.875rem}
+    .nav-hidden-mobile{display:flex;align-items:center;gap:1rem}
+    .welcome{color:var(--gray-900)}
+    .welcome-bold{font-weight:500}
+    .nav-link{color:var(--gray-700);text-decoration:none;padding:.5rem 1rem;border-radius:.375rem;transition:.2s;font-weight:500}
+    .nav-link:hover{background:var(--gray-100);color:var(--gray-900)}
+    .nav-link.active{color:var(--gray-900);font-weight:600}
+    .nav-cta{background:var(--brand-600);color:#fff;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;text-decoration:none;transition:.2s}
+    .nav-cta:hover{background:var(--brand-700);transform:translateY(-1px)}
+    .hero{padding:5rem 0 4rem;background:linear-gradient(135deg, #f8fdf9 0%, #ffffff 100%);position:relative;overflow:hidden}
+    .hero::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 50% 50%, rgba(47,125,49,.05) 0%, transparent 70%)}
+    .hero .container{position:relative;z-index:2;text-align:center;max-width:1000px}
+    .hero-eyebrow{display:inline-block;background:rgba(47,125,49,.1);color:var(--brand-700);padding:.5rem 1rem;border-radius:9999px;font-size:.875rem;font-weight:600;margin-bottom:1.5rem;border:1px solid rgba(47,125,49,.2)}
+    .hero-title{font-size:4rem;font-weight:900;color:var(--gray-900);line-height:1.05;letter-spacing:-.03em;margin-bottom:1.5rem}
+    .hero-highlight{color:var(--brand-primary);position:relative;white-space:nowrap}
+    .hero-subtitle{font-size:1.375rem;color:var(--gray-600);margin-bottom:2.5rem;line-height:1.6;max-width:800px;margin-left:auto;margin-right:auto}
+    .hero-ctas{display:flex;gap:1rem;justify-content:center;align-items:center;margin-bottom:3rem}
+    .btn{padding:1rem 2rem;border-radius:.75rem;text-decoration:none;font-weight:700;font-size:1.125rem;transition:.3s;display:inline-flex;align-items:center;gap:.5rem;cursor:pointer;border:none}
+    .btn-primary{background:var(--brand-600);color:#fff;box-shadow:0 8px 32px rgba(47,125,49,.25)}
+    .btn-primary:hover{background:var(--brand-700);transform:translateY(-3px);box-shadow:0 12px 40px rgba(47,125,49,.35)}
+    .btn-secondary{background:transparent;color:var(--brand-600);border:2px solid var(--brand-600)}
+    .btn-secondary:hover{background:var(--brand-600);color:#fff}
+    .trust-bar{display:flex;justify-content:center;align-items:center;gap:2rem;font-size:1rem;color:var(--gray-600);flex-wrap:wrap}
+    .trust-item{display:flex;align-items:center;gap:.5rem}
+    .trust-icon{width:1.25rem;height:1.25rem;background:var(--brand-600);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.75rem}
+    .live-stats{padding:1.5rem 0;background:var(--brand-primary);color:#fff}
+    .stats-ticker{display:flex;justify-content:center;align-items:center;gap:3rem;font-size:1rem;font-weight:600}
+    .stat-item{display:flex;align-items:center;gap:.5rem}
+    .stat-pulse{width:.5rem;height:.5rem;background:#22c55e;border-radius:50%;animation:pulse 2s infinite}
+    .stat-number{font-weight:900;font-variant-numeric:tabular-nums}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+    .how-it-works{padding:5rem 0;background:var(--gray-50)}
+    .hiw-header{text-align:center;margin-bottom:3rem;max-width:800px;margin-left:auto;margin-right:auto}
+    .section-title{font-size:2.5rem;font-weight:800;color:var(--gray-900);margin-bottom:1rem;line-height:1.1}
+    .section-subtitle{font-size:1.125rem;color:var(--gray-600);margin-bottom:1rem}
+    .guarantee-badge{display:inline-block;background:var(--brand-primary);color:#fff;padding:.5rem 1rem;border-radius:9999px;font-size:.875rem;font-weight:600}
+    .process-flow{display:grid;grid-template-columns:repeat(4,1fr);gap:2rem;max-width:1200px;margin:0 auto}
+    .process-step{background:#fff;padding:2.5rem 2rem;border-radius:1rem;text-align:center;border:2px solid var(--gray-100);position:relative;transition:.3s;box-shadow:0 4px 16px rgba(0,0,0,.04);display:flex;flex-direction:column;justify-content:space-between;min-height:300px}
+    .process-step:hover{transform:translateY(-4px);border-color:var(--brand-primary);box-shadow:0 8px 24px rgba(47,125,49,.15)}
+    .process-number{position:absolute;top:-1rem;left:50%;transform:translateX(-50%);width:2rem;height:2rem;background:var(--brand-primary);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.875rem}
+    .process-icon{width:3rem;height:3rem;background:linear-gradient(135deg, var(--brand-primary), #22c55e);border-radius:.75rem;margin:0 auto 1.5rem;display:flex;align-items:center;justify-content:center;font-size:1.25rem;color:#fff}
+    .process-title{font-size:1.375rem;font-weight:700;color:var(--gray-900);margin-bottom:.75rem}
+    .process-description{font-size:1.05rem;color:var(--gray-600);line-height:1.5}
+    
+    /* Value Props Section */
+    .value-props{padding:5rem 0 4rem;background:#fff}
+    .vp-header{text-align:center;margin-bottom:4rem;max-width:800px;margin-left:auto;margin-right:auto}
+    .vp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2.5rem;max-width:1200px;margin:0 auto}
+    
+    .vp-card{
+      background:#fff;
+      padding:2.5rem 2rem;
+      border-radius:1rem;
+      border:2px solid var(--gray-100);
+      transition:all .3s ease;
+      position:relative;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      box-shadow:0 2px 8px rgba(0,0,0,.04);
+      text-align:center;
+    }
+    
+    .vp-card::before{
+      content:'';
+      position:absolute;
+      top:0;
+      left:0;
+      right:0;
+      height:4px;
+      background:var(--brand-primary);
+      transition:height .3s ease;
+    }
+    
+    .vp-card:hover{
+      transform:translateY(-6px);
+      box-shadow:0 12px 32px rgba(47,125,49,.15);
+      border-color:var(--brand-primary);
+    }
+    
+    .vp-card:hover::before{
+      height:6px;
     }
 
-    *, *::before, *::after {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+    .vp-icon-wrapper{
+      width:4rem;
+      height:4rem;
+      background:linear-gradient(135deg, rgba(47,125,49,.1) 0%, rgba(47,125,49,.05) 100%);
+      border-radius:.75rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin:0 auto 1.5rem;
+      transition:all .3s ease;
     }
 
-    html, body {
-      height: 100%;
+    .vp-card:hover .vp-icon-wrapper{
+      background:linear-gradient(135deg, var(--brand-primary) 0%, #22c55e 100%);
+      transform:scale(1.05);
     }
 
-    body {
-      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-      font-feature-settings: 'liga' 1, 'calt' 1, 'tnum' 1;
-      background: #ffffff;
-      color: var(--gray-900);
-      line-height: 1.5;
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
+    .vp-icon{
+      width:2rem;
+      height:2rem;
+      fill:var(--brand-primary);
+      transition:fill .3s ease;
     }
 
-    /* Header */
-    .header {
-      border-bottom: 1px solid var(--gray-200);
-      width: 100%;
+    .vp-card:hover .vp-icon{
+      fill:#fff;
     }
 
-    .header .container {
-      height: 4rem;
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 0 1rem;
+    .vp-title{
+      font-size:1.5rem;
+      font-weight:700;
+      color:var(--gray-900);
+      margin-bottom:.75rem;
+      letter-spacing:-.01em;
+    }
+    
+    .vp-text{
+      font-size:1.05rem;
+      color:var(--gray-600);
+      line-height:1.7;
+      margin-bottom:2rem;
+      max-width:90%;
+      margin-left:auto;
+      margin-right:auto;
+      min-height:6rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    
+    .vp-features{
+      display:flex;
+      flex-direction:column;
+      gap:1.125rem;
+      margin-top:auto;
+      text-align:left;
     }
 
-    .logo {
-      font-size: 1.5rem;
-      font-weight: 600;
-      letter-spacing: -0.025em;
-      color: inherit;
-      text-decoration: none;
-      cursor: pointer;
-      transition: color 0.2s;
+    .vp-feature{
+      font-size:.95rem;
+      color:var(--gray-700);
+      display:flex;
+      align-items:flex-start;
+      gap:.875rem;
+      line-height:1.65;
+    }
+    
+    .vp-feature span{
+      padding-top:.125rem;
+    }
+    
+    .vp-feature strong{
+      color:var(--gray-900);
+      font-weight:600;
+    }
+    
+    .vp-checkmark{
+      flex-shrink:0;
+      width:1.25rem;
+      height:1.25rem;
+      background:var(--brand-primary);
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-top:.125rem;
     }
 
-    .logo:hover {
-      color: var(--brand-600);
+    .vp-checkmark::after{
+      content:'✓';
+      color:#fff;
+      font-size:.75rem;
+      font-weight:700;
     }
 
-    .nav {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
-      font-size: 0.875rem;
-      color: var(--gray-700);
+    /* Impact Section - From Your Screen to Their World */
+    .impact-section{padding:5rem 0;background:var(--gray-50)}
+    .impact-header{text-align:center;margin-bottom:2rem}
+
+    /* Inline Partners Bar */
+    .partners-bar-inline{margin-bottom:3rem;text-align:center;overflow:hidden}
+    .partners-title{font-size:.95rem;color:var(--gray-600);margin-bottom:1.5rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+    .partners-scroll{display:flex;animation:scroll 30s linear infinite;gap:3rem;align-items:center}
+    .partners-scroll:hover{animation-play-state:paused}
+    .partner-item{flex-shrink:0;font-size:.85rem;color:var(--gray-500);font-weight:600;padding:.75rem 1.5rem;background:var(--gray-50);border-radius:.5rem;border:1px solid var(--gray-200);transition:.2s;white-space:nowrap}
+    .partner-item:hover{color:var(--brand-600);border-color:var(--brand-primary);transform:translateY(-1px)}
+    .partner-item.charity{background:rgba(249,115,22,.05);border-color:rgba(249,115,22,.2)}
+    .partner-item.brand{background:rgba(47,125,49,.05);border-color:rgba(47,125,49,.2)}
+
+    @keyframes scroll {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
     }
 
-    .nav-hidden-mobile {
-      display: flex;
-      align-items: center;
-      gap: 1.5rem;
+    /* Testimonials Grid */
+    .testimonials-grid{display:grid;grid-template-columns:repeat(auto-fit, minmax(450px, 1fr));gap:2.5rem;max-width:1000px;margin-left:auto;margin-right:auto}
+    .testimonial{background:#fff;padding:3rem;border-radius:1rem;border:2px solid var(--gray-100);box-shadow:0 4px 16px rgba(0,0,0,.04);position:relative;transition:.3s}
+    .testimonial:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.12);border-color:var(--brand-primary)}
+    .testimonial::before{content:'"';position:absolute;top:1.5rem;left:2.5rem;font-size:3rem;color:var(--brand-primary);font-weight:900;opacity:.2}
+    .testimonial-text{font-size:1.125rem;color:var(--gray-700);line-height:1.6;margin-bottom:2rem;font-style:italic;padding-top:1rem}
+    .testimonial-author{display:flex;align-items:center;gap:1rem}
+    .author-avatar{width:3.5rem;height:3.5rem;border-radius:50%;background:var(--brand-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:1.1rem}
+    .author-name{font-weight:700;color:var(--gray-900);margin-bottom:.25rem;font-size:1rem}
+    .author-role{font-size:.875rem;color:var(--gray-600);margin-bottom:.5rem}
+    .author-stats{font-size:.8rem;color:var(--brand-600);font-weight:600}
+
+    /* FAQ */
+    .faq{padding:5rem 0;background:#fff}
+    .faq-header{text-align:center;margin-bottom:3rem}
+    .faq-grid{max-width:800px;margin:0 auto}
+    .faq-item{background:var(--gray-50);border-radius:.75rem;border:1px solid var(--gray-200);margin-bottom:1rem;overflow:hidden;transition:.3s}
+    .faq-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
+    .faq-question{font-size:1.25rem;font-weight:700;color:var(--gray-900);padding:1.5rem 2rem;cursor:pointer;display:flex;justify-content:space-between;align-items:center;margin:0;background:none;border:none;width:100%;text-align:left;transition:.2s}
+    .faq-question:hover{color:var(--brand-600)}
+    .faq-toggle{font-size:1.25rem;color:var(--gray-500);transition:.3s;font-weight:400}
+    .faq-item.active .faq-toggle{transform:rotate(180deg);color:var(--brand-600)}
+    .faq-answer{padding:0 2rem 1.5rem;color:var(--gray-600);line-height:1.6;display:none;font-size:1.1rem}
+    .faq-item.active .faq-answer{display:block}
+    .faq-highlight{color:var(--brand-600);font-weight:600}
+
+    /* Final CTA */
+    .final-cta{padding:5rem 0;background:linear-gradient(135deg, var(--brand-primary) 0%, var(--brand-800) 100%);color:#fff;text-align:center;position:relative}
+    .final-cta::before{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:radial-gradient(circle at 30% 70%, rgba(255,255,255,.1) 0%, transparent 70%)}
+    .final-cta .container{position:relative;z-index:2}
+    .cta-title{font-size:3rem;font-weight:900;margin-bottom:1rem;line-height:1.1}
+    .cta-subtitle{font-size:1.25rem;margin-bottom:2.5rem;opacity:.95}
+    .cta-buttons{display:flex;gap:1.5rem;justify-content:center;align-items:center;margin-bottom:2rem}
+    .btn-white{background:#fff;color:var(--brand-primary);box-shadow:0 8px 32px rgba(0,0,0,.25)}
+    .btn-white:hover{background:#f8fafc;transform:translateY(-4px);box-shadow:0 16px 48px rgba(0,0,0,.3)}
+    .btn-outline{background:transparent;color:#fff;border:2px solid #fff}
+    .btn-outline:hover{background:rgba(255,255,255,.15)}
+    .cta-guarantee{font-size:.875rem;opacity:.8}
+
+    /* Footer */
+    .footer{background:var(--brand-800);color:#d7e7de;padding:2rem 0}
+    .footer .container{display:flex;align-items:center;justify-content:space-between;gap:1rem}
+    .footer-text{font-style:italic;font-weight:600}
+    .social-icons{display:flex;gap:.75rem}
+    .social-icon{width:2.25rem;height:2.25rem;border-radius:50%;background:rgba(255,255,255,.15);display:flex;align-items:center;justify-content:center;text-decoration:none;color:#eaf3ef;font-size:.875rem;transition:.3s}
+    .social-icon:hover{background:rgba(255,255,255,.3);transform:translateY(-2px)}
+    
+    @media (max-width:1024px){
+      .hero-title{font-size:3.5rem}
+      .vp-grid{grid-template-columns:1fr;gap:2rem;max-width:600px}
+      .process-flow{grid-template-columns:repeat(2,1fr)}
+      .trust-bar{gap:1rem}
+      .stats-ticker{flex-direction:column;gap:1rem}
+      .section-title{font-size:2rem}
     }
-
-    .welcome {
-      color: var(--gray-900);
-    }
-
-    .welcome-bold {
-      font-weight: 500;
-    }
-
-    .nav-link {
-      text-decoration: none;
-      color: var(--gray-700);
-    }
-
-    .nav-link:hover {
-      color: var(--gray-900);
-    }
-
-    .nav-link.active {
-      color: var(--brand-600);
-      font-weight: 600;
-    }
-
-    .watch-ads-btn {
-      display: inline-flex;
-      align-items: center;
-      background: var(--brand-600);
-      color: #fff;
-      padding: 0.5rem 1rem;
-      border: 0;
-      border-radius: 0.5rem;
-      font-weight: 500;
-      text-decoration: none;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    .watch-ads-btn:hover {
-      background: var(--brand-700);
-    }
-
-    .watch-ads-btn.active {
-      color: var(--brand-600);
-      font-weight: 600;
-    }
-
-    .user-menu {
-      position: relative;
-    }
-
-    .user-menu-btn {
-      background: none;
-      border: none;
-      color: var(--gray-600);
-      font-size: 0.875rem;
-      cursor: pointer;
-      padding: 0.5rem 0;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-
-    .user-menu-btn:hover {
-      color: var(--gray-900);
-    }
-
-    .user-dropdown {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      background: white;
-      border: 1px solid var(--gray-200);
-      border-radius: 0.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-      padding: 0.5rem 0;
-      min-width: 120px;
-      z-index: 1000;
-    }
-
-    .logout-btn {
-      background: none;
-      border: none;
-      color: var(--gray-600);
-      font-size: 0.875rem;
-      cursor: pointer;
-      padding: 0.5rem 1rem;
-      width: 100%;
-      text-align: left;
-    }
-
-    .logout-btn:hover {
-      background: var(--gray-50);
-      color: var(--gray-900);
-    }
-
-    /* Main content */
-    .main {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: calc(100vh - 4rem);
-      padding: 2rem 1rem;
-    }
-
-    .coming-soon-card {
-      background: white;
-      border-radius: 1rem;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-      padding: 3rem 2rem;
-      text-align: center;
-      max-width: 500px;
-      width: 100%;
-      border: 2px solid var(--gray-200);
-    }
-
-    .coming-soon-icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-    }
-
-    .coming-soon-title {
-      font-size: 2rem;
-      font-weight: 800;
-      color: var(--gray-900);
-      margin-bottom: 1rem;
-      letter-spacing: -0.025em;
-    }
-
-    .coming-soon-subtitle {
-      font-size: 1.125rem;
-      color: var(--gray-600);
-      margin-bottom: 2rem;
-    }
-
-    .back-btn {
-      display: inline-flex;
-      align-items: center;
-      background: var(--brand-600);
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 600;
-      text-decoration: none;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .back-btn:hover {
-      background: var(--brand-700);
-      transform: translateY(-1px);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .nav-hidden-mobile {
-        display: none;
-      }
-
-      .header .container {
-        padding: 0 1rem;
-      }
-
-      .coming-soon-card {
-        padding: 2rem 1.5rem;
-      }
-
-      .coming-soon-title {
-        font-size: 1.75rem;
-      }
+    @media (max-width:768px){
+      .hero-title{font-size:2.75rem}
+      .hero-highlight{white-space:normal}
+      .section-title,.cta-title{font-size:2rem}
+      .process-flow,.vp-grid{grid-template-columns:1fr}
+      .hero-ctas,.cta-buttons{flex-direction:column;align-items:center;gap:1rem}
+      .nav-link:not(.nav-cta){display:none}
+      .container{padding:0 1rem}
+      .hero,.how-it-works,.value-props,.impact-section,.faq,.final-cta{padding:3rem 0}
+      .vp-card{padding:2rem 1.5rem}
+      .vp-title{font-size:1.25rem}
+      .testimonials-grid{grid-template-columns:1fr;gap:1.5rem}
+      .testimonial-text{font-size:1rem}
+      .partners-scroll{gap:1.5rem}
+      .partner-item{padding:.5rem 1rem;font-size:.8rem}
+      .vp-text{font-size:.95rem}
+      .vp-feature{font-size:.875rem}
+      .vp-header{margin-bottom:3rem}
+      .footer{padding:1.5rem 0}
+      .footer .container{flex-direction:column;text-align:center;gap:1rem}
     }
   </style>
 </head>
@@ -272,104 +316,343 @@
           <a href="/about" class="nav-link active">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
+          <a href="#" class="nav-cta" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about" class="nav-link active">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
+          <a href="/auth" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
   </header>
 
-  <!-- Main Content -->
-  <main class="main">
-    <div class="coming-soon-card">
-      <div class="coming-soon-icon">🚧</div>
-      <h1 class="coming-soon-title">About Coming Soon!</h1>
-      <p class="coming-soon-subtitle">
-        We're working hard to bring you more information about Charity Stream. 
-        Check back soon for our story, mission, and team details.
-      </p>
-      <a href="#" class="back-btn" onclick="handleNavClick('watch')">Back to Watch Ads</a>
+  <!-- Hero -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-eyebrow">Here's the Deal</div>
+      <h1 class="hero-title"><span class="hero-highlight">100% of Profit Goes to Charity</span> Always and Forever</h1>
+      <p class="hero-subtitle">Join 1,247 people transforming inevitable ad viewing into verified charitable donations. Every view generates real impact for registered nonprofits.</p>
+      
+      <div class="hero-ctas">
+        <a href="/" class="btn btn-primary">Start Making Impact →</a>
+        <a href="#partners" class="btn btn-secondary">For Partners</a>
+      </div>
+      
+      <div class="trust-bar">
+        <div class="trust-item">
+          <div class="trust-icon">✓</div>
+          <span>Transparent Monthly Impact Reports</span>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">✓</div>
+          <span>Real-Time Impact Tracking</span>
+        </div>
+        <div class="trust-item">
+          <div class="trust-icon">✓</div>
+          <span>Vetted 501(c)(3) Partners</span>
+        </div>
+      </div>
     </div>
-  </main>
+  </section>
+
+  <!-- Live Stats -->
+  <section class="live-stats">
+    <div class="container">
+      <div class="stats-ticker">
+        <div class="stat-item">
+          <div class="stat-pulse"></div>
+          <span>$<span class="stat-number">47,293</span> donated this month</span>
+        </div>
+        <div class="stat-item">
+          <div class="stat-pulse"></div>
+          <span><span class="stat-number">1,247</span> active contributors</span>
+        </div>
+        <div class="stat-item">
+          <div class="stat-pulse"></div>
+          <span><span class="stat-number">23</span> advertisers partnered</span>
+        </div>
+        <div class="stat-item">
+          <div class="stat-pulse"></div>
+          <span><span class="stat-number">200</span> lives changed and counting</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section id="how" class="how-it-works">
+    <div class="container">
+      <div class="hiw-header">
+        <h2 class="section-title">How We Turn Ads Into Impact</h2>
+        <p class="section-subtitle">Your time creates change—visible, daily, and lasting.</p>
+        <div class="guarantee-badge">100% Net Revenue Guarantee</div>
+      </div>
+      
+      <div class="process-flow">
+        <div class="process-step">
+          <div class="process-number">1</div>
+          <div class="process-icon">💼</div>
+          <h3 class="process-title">Advertisers Support</h3>
+          <p class="process-description">Brands purchase ad placements at donation-based rates</p>
+        </div>
+        
+        <div class="process-step">
+          <div class="process-number">2</div>
+          <div class="process-icon">👀</div>
+          <h3 class="process-title">Users Watch</h3>
+          <p class="process-description">Viewers choose to engage with curated ads</p>
+        </div>
+        
+        <div class="process-step">
+          <div class="process-number">3</div>
+          <div class="process-icon">💰</div>
+          <h3 class="process-title">Charities Receive</h3>
+          <p class="process-description">Net ad revenue is automatically transferred to verified organizations</p>
+        </div>
+        
+        <div class="process-step">
+          <div class="process-number">4</div>
+          <div class="process-icon">❤️</div>
+          <h3 class="process-title">Communities Thrive</h3>
+          <p class="process-description">From your screen to their world—change made daily</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Value Props Section -->
+  <section id="partners" class="value-props">
+    <div class="container">
+      <div class="vp-header">
+        <h2 class="section-title">An Ecosystem Built for Everyone</h2>
+      </div>
+      
+      <div class="vp-grid">
+        <!-- For Users Card -->
+        <div class="vp-card">
+          <div class="vp-icon-wrapper">
+            <svg class="vp-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+            </svg>
+          </div>
+          <h3 class="vp-title">For Users</h3>
+          <p class="vp-text">Turn your attention into real impact. See ads, support causes—all without spending a cent.</p>
+          <div class="vp-features">
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Turn everyday habits into extraordinary support</strong> – watch ads, change lives without spending money</span>
+            </div>
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Compete with friends on the leaderboard</strong> – make charitable impact a social experience</span>
+            </div>
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Track your real-world impact</strong> – see how your time creates lasting change</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- For Advertisers Card -->
+        <div class="vp-card">
+          <div class="vp-icon-wrapper">
+            <svg class="vp-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 11v2h4v-2h-4zm-2 6.61c.96.71 2.21 1.65 3.2 2.39.4-.53.8-1.07 1.2-1.6-.99-.74-2.24-1.68-3.2-2.4-.4.54-.8 1.08-1.2 1.61zM20.4 5.6c-.4-.53-.8-1.07-1.2-1.6-.99.74-2.24 1.68-3.2 2.4.4.53.8 1.07 1.2 1.6.96-.72 2.21-1.65 3.2-2.4zM4 9c-1.1 0-2 .9-2 2v2c0 1.1.9 2 2 2h1v4h2v-4h1l5 3V6L8 9H4zm11.5 3c0-1.33-.58-2.53-1.5-3.35v6.69c.92-.81 1.5-2.01 1.5-3.34z"/>
+            </svg>
+          </div>
+          <h3 class="vp-title">For Advertisers</h3>
+          <p class="vp-text">Lower cost. Tax-deductible. No-skip engagement with measurable CSR impact.</p>
+          <div class="vp-features">
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Premium engagement rates</strong> – verified high-intent users with 100% view-through and no ad blocking</span>
+            </div>
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Ultra-low CPM starting at $0.10</strong> – reach engaged audiences at a fraction of industry rates</span>
+            </div>
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Tax-deductible charitable giving</strong> – measurable CSR impact while driving brand awareness</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- For Charities Card -->
+        <div class="vp-card">
+          <div class="vp-icon-wrapper">
+            <svg class="vp-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+            </svg>
+          </div>
+          <h3 class="vp-title">For Charities</h3>
+          <p class="vp-text">Get featured. Get funded. Get noticed. As our weekly charity partner, 100% of net ad revenue flows directly to your mission.</p>
+          <div class="vp-features">
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>No fundraising overhead</strong> – just pure donations during your featured week</span>
+            </div>
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Platform-wide promotion</strong> – highlighted to our entire engaged community</span>
+            </div>
+            <div class="vp-feature">
+              <div class="vp-checkmark"></div>
+              <span><strong>Unrestricted funding</strong> – spend on your highest-priority initiatives</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- From Your Screen to Their World -->
+  <section class="impact-section">
+    <div class="container">
+      <div class="impact-header">
+        <h2 class="section-title">From Your Screen to Their World</h2>
+        <p class="section-subtitle">Every view creates verified change for communities worldwide</p>
+      </div>
+
+      <!-- Partners Scrolling Bar -->
+      <div class="partners-bar-inline">
+        <div class="partners-title">Trusted by Leading Organizations</div>
+        <div class="partners-scroll">
+          <!-- Brands -->
+          <div class="partner-item brand">Microsoft</div>
+          <div class="partner-item brand">Shopify</div>
+          <div class="partner-item brand">Airbnb</div>
+          <div class="partner-item brand">Spotify</div>
+          <!-- Charities -->
+          <div class="partner-item charity">Red Cross</div>
+          <div class="partner-item charity">Doctors Without Borders</div>
+          <div class="partner-item charity">Habitat for Humanity</div>
+          <div class="partner-item charity">Save the Children</div>
+          <div class="partner-item charity">World Wildlife Fund</div>
+          <!-- Duplicate for seamless scroll -->
+          <div class="partner-item brand">Microsoft</div>
+          <div class="partner-item brand">Shopify</div>
+          <div class="partner-item brand">Airbnb</div>
+          <div class="partner-item brand">Spotify</div>
+          <div class="partner-item charity">Red Cross</div>
+          <div class="partner-item charity">Doctors Without Borders</div>
+          <div class="partner-item charity">Habitat for Humanity</div>
+          <div class="partner-item charity">Save the Children</div>
+          <div class="partner-item charity">World Wildlife Fund</div>
+        </div>
+      </div>
+      
+      <!-- Testimonials -->
+      <div class="testimonials-grid">
+        <div class="testimonial">
+          <p class="testimonial-text">Charity Stream has revolutionized sustainable funding for our organization. The predictable revenue stream allows us to plan long-term projects with confidence.</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">MS</div>
+            <div class="author-info">
+              <div class="author-name">Dr. Maria Santos</div>
+              <div class="author-role">Executive Director, Clean Water Global</div>
+              <div class="author-stats">Partnership since 2024 • $12,847 received</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="testimonial">
+          <p class="testimonial-text">I used to feel guilty about screen time. Now every ad I watch helps fund education programs. It's completely changed my relationship with digital consumption.</p>
+          <div class="testimonial-author">
+            <div class="author-avatar">SC</div>
+            <div class="author-info">
+              <div class="author-name">Sarah Chen</div>
+              <div class="author-role">Software Engineer</div>
+              <div class="author-stats">2,847 ads watched • $28.47 donated • Rank #42</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section id="faq" class="faq">
+    <div class="container">
+      <div class="faq-header">
+        <h2 class="section-title">Questions, Answered</h2>
+      </div>
+      
+      <div class="faq-grid">
+        <div class="faq-item">
+          <h3 class="faq-question">Is this legitimate? How can I be sure the money actually goes to charity? <span class="faq-toggle">+</span></h3>
+          <p class="faq-answer">Yes, Charity Stream is legitimate—and we're glad the idea feels almost too good to be true. All net revenue goes to <span class="faq-highlight">verified 501(c)(3) charities</span>. We publish monthly reports with receipts, run a live donation tracker, and share partner confirmations. Don't take our word for it—check the Impact tab to hear directly from the charities we've worked with.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3 class="faq-question">How does charity stream work, and why would advertisers pay for this? <span class="faq-toggle">+</span></h3>
+          <p class="faq-answer">Charity Stream turns ad views into donations. Advertisers pay to run campaigns, viewers actively choose to engage, and all net revenue goes to verified 501(c)(3) charities selected weekly by the community. For businesses, it's <span class="faq-highlight">cheaper than traditional ads</span>, builds a socially responsible brand image, and can be a tax-deductible expense.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3 class="faq-question">How do you stay in business if you donate everything, and how do you ensure ad views are genuine? <span class="faq-toggle">+</span></h3>
+          <p class="faq-answer">Simply put, Charity Stream was built for impact, not profit. We only cover the essentials—hosting, processing, and compliance—while <span class="faq-highlight">100% of net revenue</span> goes directly to verified charities. To protect our community, we use safeguards like 2FA, fraud detection, and activity monitoring, ensuring every donation reflects genuine engagement. Because at Charity Stream, we believe value lives in what you share, not what you keep.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3 class="faq-question">What does this cost me, and how do I start? <span class="faq-toggle">+</span></h3>
+          <p class="faq-answer">It's <span class="faq-highlight">completely free</span> to make a difference—that's a promise we stand by. Just click *Start Watching* and begin making an impact right away. For those who want more, an optional $1/month premium unlocks fewer pop-ups, external browser viewing, speed controls, and 1080p quality—and even that dollar goes directly to charity. Simple as that: no strings, no catch—your time creates benefit, at zero cost to you.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3 class="faq-question">Which charities get the donations, and can I choose? <span class="faq-toggle">+</span></h3>
+          <p class="faq-answer">Donations go to <span class="faq-highlight">verified 501(c)(3) organizations</span> we've vetted for transparency, mission alignment, and impact. Each week, a featured charity is chosen through community voting, and all net donations for that week go directly to them. You'll always see which charity your views supported, and you can help shape future selections by joining the vote.</p>
+        </div>
+        
+        <div class="faq-item">
+          <h3 class="faq-question">Why not just donate money directly? <span class="faq-toggle">+</span></h3>
+          <p class="faq-answer">Direct donations are amazing, and you absolutely should if you have the means. But Charity Stream transforms something everyone controls—their screen time—and <span class="faq-highlight">monetizes it collectively for good</span> without changing your budget or routine. With leaderboards, real-time tracking, and community features, giving becomes engaging and collective, bringing in far more people than traditional donations alone would. We're building an ecosystem where brands do good publicly, charities get needed exposure, and your everyday habits help create extraordinary impact.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="final-cta">
+    <div class="container">
+      <h2 class="cta-title">Ready to Make Every Second Count?</h2>
+      <p class="cta-subtitle">Join 1,247 people transforming screen time into world-changing charitable donations</p>
+      <div class="cta-buttons">
+        <a href="/" class="btn btn-white">Start Making Impact →</a>
+        <a href="/advertise" class="btn btn-outline">Partner With Us</a>
+      </div>
+      <p class="cta-guarantee">✓ Free to join • No hidden fees • 100% net revenue to charity guaranteed</p>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-text">Stream ads, fuel impact, compete for good.</div>
+      <div class="social-icons">
+        <a href="#" class="social-icon">✉</a>
+        <a href="#" class="social-icon">in</a>
+        <a href="#" class="social-icon">X</a>
+        <a href="#" class="social-icon">●</a>
+        <a href="#" class="social-icon">◉</a>
+      </div>
+    </div>
+  </footer>
 
   <script>
-    // Check authentication status on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      checkAuthStatus();
-    });
+    // Check authentication status
+    const authToken = localStorage.getItem('authToken');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
 
-    function checkAuthStatus() {
-      const token = localStorage.getItem('authToken');
-      const currentUser = localStorage.getItem('currentUser');
-      
-      if (token && currentUser) {
-        try {
-          const user = JSON.parse(currentUser);
-          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          document.getElementById('userDisplayName').textContent = 'Guest';
-        }
-        // Show user menu, hide sign in link
-        document.getElementById('userMenu').style.display = 'block';
-        document.getElementById('signInLink').style.display = 'none';
-      } else {
-        // Show sign in link, hide user menu
-        document.getElementById('userMenu').style.display = 'none';
-        document.getElementById('signInLink').style.display = 'inline';
-      }
-    }
-
-    // Logo and Watch Ads button functionality
-    document.addEventListener('DOMContentLoaded', function() {
-      const authToken = localStorage.getItem('authToken');
-      
-      // Logo button functionality
-      const logoBtn = document.getElementById('logoBtn');
-      if (logoBtn) {
-        logoBtn.onclick = function(e) {
-          e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth';
-          }
-        };
-      }
-
-      // Watch Ads button functionality
-      const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
-      const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
-      
-      if (watchAdsBtnLoggedIn) {
-        watchAdsBtnLoggedIn.onclick = function(e) {
-          e.preventDefault();
-          // User is logged in, go to main page
-          window.location.href = '/';
-        };
-      }
-      
-      if (watchAdsBtnGuest) {
-        watchAdsBtnGuest.onclick = function(e) {
-          e.preventDefault();
-          // User is not logged in, go to sign in
-          window.location.href = '/auth';
-        };
-      }
-
-      // Set initial UI state
+    // Set initial UI state
+    function setInitialUIState() {
       const loggedInNav = document.getElementById('loggedInNav');
       const guestNav = document.getElementById('guestNav');
       const usernameDisplay = document.getElementById('usernameDisplay');
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
+      const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
 
       if (authToken && currentUser) {
         // User is logged in
@@ -384,27 +667,88 @@
         if (loggedInNav) loggedInNav.style.display = 'none';
         if (guestNav) guestNav.style.display = 'flex';
       }
+
+      // Watch Ads button functionality
+      if (watchAdsBtnLoggedIn) {
+        watchAdsBtnLoggedIn.onclick = () => {
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth';
+          }
+        };
+      }
+
+      if (watchAdsBtnGuest) {
+        watchAdsBtnGuest.onclick = () => {
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth';
+          }
+        };
+      }
+    }
+
+    // Logo button functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      const logoBtn = document.getElementById('logoBtn');
+      if (logoBtn) {
+        logoBtn.onclick = function(e) {
+          e.preventDefault();
+          
+          if (authToken) {
+            // User is logged in, go to main page
+            window.location.href = '/';
+          } else {
+            // User is not logged in, go to sign in
+            window.location.href = '/auth';
+          }
+        };
+      }
     });
 
-    function toggleUserMenu() {
-      const dropdown = document.getElementById('userDropdown');
-      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-    }
+    // Initialize page
+    document.addEventListener('DOMContentLoaded', () => {
+      setInitialUIState();
 
-    function logout() {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentUser');
-      window.location.href = '/auth';
-    }
-
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(event) {
-      const userMenu = document.querySelector('.user-menu');
-      const dropdown = document.getElementById('userDropdown');
+      // FAQ Dropdown functionality
+      const faqItems = document.querySelectorAll('.faq-item');
       
-      if (userMenu && !userMenu.contains(event.target)) {
-        dropdown.style.display = 'none';
-      }
+      faqItems.forEach(function(item) {
+        const question = item.querySelector('.faq-question');
+        const toggle = item.querySelector('.faq-toggle');
+        
+        if (question && toggle) {
+          question.addEventListener('click', function() {
+            const isActive = item.classList.contains('active');
+            
+            // Close all other FAQ items
+            faqItems.forEach(function(otherItem) {
+              if (otherItem !== item) {
+                otherItem.classList.remove('active');
+                const otherToggle = otherItem.querySelector('.faq-toggle');
+                if (otherToggle) {
+                  otherToggle.textContent = '+';
+                }
+              }
+            });
+            
+            // Toggle current item
+            if (!isActive) {
+              item.classList.add('active');
+              toggle.textContent = '−';
+            } else {
+              item.classList.remove('active');
+              toggle.textContent = '+';
+            }
+          });
+        }
+      });
     });
   </script>
 </body>

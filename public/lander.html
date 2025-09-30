@@ -48,27 +48,25 @@
             text-decoration: none;
             font-size: 16px;
             font-weight: 500;
-            transition: color 0.2s;
         }
         
-        .nav-item:hover {
-            color: #2F7D31;
-        }
-        
-        .nav-item.active {
-            color: #2F7D31;
+        .nav-item:first-child {
+            color: #111;
         }
         
         .watch-ads-btn {
-            color: #2F7D31;
+            background-color: #2F7D31;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
             text-decoration: none;
             font-weight: 600;
             font-size: 16px;
-            transition: color 0.2s;
+            transition: background-color 0.2s;
         }
         
         .watch-ads-btn:hover {
-            color: #1B5E20;
+            background-color: #1B5E20;
         }
         
         /* Main Content */
@@ -81,7 +79,7 @@
             min-height: 0;
         }
         
-        /* Title Section */
+        /* Title Section - UPDATED TYPOGRAPHY */
         .title-section {
             text-align: center;
             margin-top: 0px;
@@ -89,27 +87,31 @@
         }
         
         .title {
-            font-size: 56px;
-            font-weight: 700;
+            font-size: 72px;
+            font-weight: 900;
             color: #111;
             line-height: 1.1;
             margin-bottom: 6px;
+            letter-spacing: -2px;
         }
         
         .title .underline {
-            text-decoration: underline;
-            text-decoration-thickness: 4px;
-            text-underline-offset: 8px;
+            background: linear-gradient(135deg, #2F7D31 0%, #4CAF50 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-decoration: none;
         }
         
         .subtitle {
-            font-size: 56px;
-            font-weight: 700;
+            font-size: 72px;
+            font-weight: 900;
             color: #111;
             line-height: 1.1;
+            letter-spacing: -2px;
         }
         
-        /* Video Player */
+        /* Video Player - UPDATED WITH PREMIUM ANIMATIONS */
         .video-container {
             width: 100%;
             max-width: 1200px;
@@ -121,28 +123,67 @@
             align-items: center;
             position: relative;
             margin-bottom: 20px;
-            border: 3px solid transparent;
-            transition: border-color 0.3s ease, transform 0.3s ease;
             cursor: pointer;
             text-decoration: none;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        
+        .video-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(47, 125, 49, 0.1) 0%, rgba(27, 94, 32, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        
+        .video-container:hover::before {
+            opacity: 1;
         }
         
         .video-container:hover {
-            border-color: #2F7D31;
-            transform: scale(1.02);
+            transform: translateY(-8px);
+            box-shadow: 0 30px 80px rgba(0, 0, 0, 0.15);
         }
         
         .play-button {
             width: 90px;
             height: 90px;
-            background-color: #2F7D31;
+            background: linear-gradient(135deg, #2F7D31 0%, #1B5E20 100%);
             border-radius: 50%;
             display: flex;
             justify-content: center;
             align-items: center;
             cursor: pointer;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             box-shadow: 0 6px 20px rgba(47, 125, 49, 0.3);
+            position: relative;
+        }
+        
+        .play-button::after {
+            content: '';
+            position: absolute;
+            width: 120%;
+            height: 120%;
+            border: 2px solid rgba(47, 125, 49, 0.3);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
         }
         
         .video-container:hover .play-button {
@@ -279,6 +320,7 @@
             }
             
             .watch-ads-btn {
+                padding: 8px 16px;
                 font-size: 14px;
             }
         }
@@ -292,7 +334,7 @@
             <a href="/about" class="nav-item">About</a>
             <a href="/advertiser" class="nav-item">Advertise</a>
             <a href="/impact" class="nav-item">Impact</a>
-            <a href="#" class="watch-ads-btn" onclick="handleWatchAdsClick(event)">Watch Ads</a>
+            <a href="/auth" class="watch-ads-btn">Watch Ads</a>
         </nav>
     </header>
     
@@ -305,7 +347,7 @@
         </div>
         
         <!-- Video Player -->
-        <a href="#" class="video-container" onclick="handlePlayButtonClick(event)">
+        <a href="/auth" class="video-container">
             <div class="play-button"></div>
         </a>
         
@@ -356,21 +398,5 @@
             </div>
         </div>
     </main>
-
-    <script>
-        // Handle Watch Ads button click
-        function handleWatchAdsClick(event) {
-            event.preventDefault();
-            // Redirect to sign in page
-            window.location.href = '/auth';
-        }
-
-        // Handle play button click
-        function handlePlayButtonClick(event) {
-            event.preventDefault();
-            // Redirect to sign in page
-            window.location.href = '/auth';
-        }
-    </script>
 </body>
 </html>

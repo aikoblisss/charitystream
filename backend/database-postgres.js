@@ -14,10 +14,12 @@ async function initializeDatabase() {
       rejectUnauthorized: false,
       require: true
     },
-    connectionTimeoutMillis: 10000, // 10 seconds
-    idleTimeoutMillis: 30000, // 30 seconds
-    max: 20, // Maximum number of clients in the pool
-    min: 2   // Minimum number of clients in the pool
+    connectionTimeoutMillis: 5000, // 5 seconds (reduced)
+    idleTimeoutMillis: 10000, // 10 seconds (reduced)
+    max: 10, // Maximum number of clients in the pool (reduced)
+    min: 1,  // Minimum number of clients in the pool (reduced)
+    query_timeout: 5000, // 5 seconds query timeout
+    statement_timeout: 5000 // 5 seconds statement timeout
   });
 
   try {
@@ -56,7 +58,10 @@ async function createTables() {
       total_seconds_watched INTEGER DEFAULT 0,
       current_month_seconds INTEGER DEFAULT 0,
       subscription_tier VARCHAR(50) DEFAULT 'free',
-      auth_provider VARCHAR(50) DEFAULT 'google'
+      auth_provider VARCHAR(50) DEFAULT 'google',
+      is_premium BOOLEAN DEFAULT FALSE,
+      premium_since TIMESTAMP,
+      stripe_subscription_id VARCHAR(255)
     )
   `;
 
@@ -965,6 +970,75 @@ const dbHelpers = {
       
       console.log(`✅ Reset monthly leaderboard for ${result.rowCount} users`);
       return [null, result.rowCount];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Add these functions to the dbHelpers object
+
+  // Update Stripe customer ID
+  updateStripeCustomerId: async (userId, customerId) => {
+    try {
+      const result = await pool.query(
+        'UPDATE users SET stripe_customer_id = $1 WHERE id = $2 RETURNING *',
+        [customerId, userId]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Update Stripe subscription ID
+  updateStripeSubscriptionId: async (userId, subscriptionId) => {
+    try {
+      const result = await pool.query(
+        'UPDATE users SET stripe_subscription_id = $1 WHERE id = $2 RETURNING *',
+        [subscriptionId, userId]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Update premium status
+  updatePremiumStatus: async (userId, isPremium) => {
+    try {
+      const premiumSince = isPremium ? new Date() : null;
+      const result = await pool.query(
+        'UPDATE users SET is_premium = $1, premium_since = $2 WHERE id = $3 RETURNING *',
+        [isPremium, premiumSince, userId]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Update premium status by subscription ID
+  updatePremiumStatusBySubscriptionId: async (subscriptionId, isPremium) => {
+    try {
+      const premiumSince = isPremium ? new Date() : null;
+      const result = await pool.query(
+        'UPDATE users SET is_premium = $1, premium_since = $2 WHERE stripe_subscription_id = $3 RETURNING *',
+        [isPremium, premiumSince, subscriptionId]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Get user premium status
+  getUserPremiumStatus: async (userId) => {
+    try {
+      const result = await pool.query(
+        'SELECT is_premium, premium_since, stripe_subscription_id FROM users WHERE id = $1',
+        [userId]
+      );
+      return [null, result.rows[0]];
     } catch (error) {
       return [error, null];
     }
