@@ -32,11 +32,11 @@
       "dest": "/public/advertise.html"
     },
     {
-      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email)$",
+      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email|tutorial)$",
       "dest": "/public/$1.html"
     },
     {
-      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email)\\.html",
+      "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email|tutorial)\\.html",
       "dest": "/public/$1.html"
     },
     {

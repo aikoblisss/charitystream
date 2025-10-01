@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Charity Stream — Tutorial (Next, Exit & Play)</title>
+<style>
+  html,body { height:100%; margin:0; }
+  body { background:#000; color:#fff; font-family:system-ui,-apple-system,Segoe UI,Inter,Roboto,Arial; }
+
+  .backdrop{ position:fixed; inset:0; background:rgba(0,0,0,.75); }
+  .stage{ position:fixed; inset:0; display:grid; place-items:center; padding:18px; }
+  .frame{ position:relative; width:min(92vw,1100px); border-radius:16px; overflow:hidden; box-shadow:0 12px 36px rgba(0,0,0,.5); }
+  .shot{ display:block; width:100%; height:auto; transition: opacity 350ms ease, transform 350ms ease; }
+  .shot.is-fading{ opacity:0; transform: scale(0.995); }
+
+  /* Two hotspots: NEXT and EXIT */
+  .zone{ position:absolute; background:transparent; border:none; padding:0; margin:0; cursor:pointer; }
+  .zone:focus-visible{ outline:2px dashed #fff; outline-offset:2px; }
+  
+  /* Default positions */
+  .zone-next{ top:6%; right:8%; width:10%; height:12%; }
+  .zone-exit{ top:2%; right:2%; width:8%; height:8%; }
+
+  /* Crossfade overlay layer */
+  .frame{ position:relative; }
+  .shot-overlay{
+    position:absolute; inset:0;
+    width:100%; height:auto;
+    pointer-events:none;
+    opacity:0;
+    transition: opacity 350ms ease;
+  }
+
+  /* === Play button (only shows on final slide) === */
+  .zone-play {
+    position: absolute;
+    top: calc(50% + 35px);
+    left: calc(50% - 125px);
+    transform: translate(-50%, -50%);
+    width: 92px;
+    height: 92px;
+    border-radius: 50%;
+    background: linear-gradient(45deg, #2F7D31, #26a63a);
+    border: 1px solid #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 8px 25px rgba(47, 125, 49, 0.4);
+    transition: all 0.3s ease;
+    opacity: 0;
+    visibility: hidden;
+  }
+  .zone-play.visible { opacity:1; visibility:visible; }
+  .zone-play::before {
+    content: '';
+    width: 0;
+    height: 0;
+    border-left: 20px solid #fff;
+    border-top: 12px solid transparent;
+    border-bottom: 12px solid transparent;
+    margin-left: 4px;
+  }
+  .zone-play:hover {
+    transform: translate(-50%, -50%) scale(1.1);
+    box-shadow: 0 12px 35px rgba(47, 125, 49, 0.6);
+  }
+  .zone-play:active { transform: translate(-50%, -50%) scale(0.95); }
+
+  /* Pulsing animation */
+  .zone-play.pulsing { animation: pulse 2s infinite; }
+  .zone-play.pulsing:hover {
+    animation-play-state: paused;
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  @keyframes pulse {
+    0% {
+      transform: translate(-50%, -50%) scale(1);
+      box-shadow: 0 8px 25px rgba(47, 125, 49, 0.4), 0 0 0 0 rgba(35, 90, 37, 0.8);
+    }
+    50% {
+      transform: translate(-50%, -50%) scale(1.15);
+      box-shadow: 0 12px 35px rgba(47, 125, 49, 0.6), 0 0 0 25px rgba(35, 90, 37, 0);
+    }
+    100% {
+      transform: translate(-50%, -50%) scale(1);
+      box-shadow: 0 8px 25px rgba(47, 125, 49, 0.4), 0 0 0 0 rgba(35, 90, 37, 0);
+    }
+  }
+
+  /* Banner */
+  .cal-banner{
+    position:fixed; left:50%; top:16px; transform:translateX(-50%);
+    background:rgba(0,0,0,.85); border:1px solid rgba(255,255,255,.2);
+    padding:10px 14px; border-radius:10px; font-size:14px; z-index:99999;
+    display:none;
+  }
+  .cal-strong{ font-weight:600; }
+  .cal-muted{ opacity:.8; }
+  .cal-btn{ margin-left:10px; background:#2F7D31; color:#fff; border:none; border-radius:8px; padding:6px 10px; cursor:pointer; }
+
+</style>
+</head>
+<body>
+<div class="backdrop" id="bd"></div>
+<div class="stage" id="stage">
+  <div class="frame">
+    <img id="shot" class="shot" alt="Tutorial step" />
+    <img id="shotOverlay" class="shot shot-overlay" alt="" aria-hidden="true" />
+    <button id="hotNext" class="zone zone-next" aria-label="Next"></button>
+    <button id="hotExit" class="zone zone-exit" aria-label="Exit"></button>
+
+    <!-- Play button (appears only on last slide) -->
+    <button id="hotPlay" class="zone zone-play" aria-label="Start Stream"></button>
+  </div>
+</div>
+
+<div id="calBanner" class="cal-banner">
+  <span id="calText"></span>
+  <button id="skipBtn" class="cal-btn">Skip</button>
+</div>
+
+<script>
+// === Slides ===
+const slides = [
+  "tutorial/Wireframe - 2.png",
+  "tutorial/Wireframe - 3.png",
+  "tutorial/Wireframe - 4.png",
+  "tutorial/Wireframe - 5.png",
+  "tutorial/Wireframe - 6.png",
+  "tutorial/Wireframe - 7.png",
+  "tutorial/Wireframe - 8.png",
+  "tutorial/Wireframe - 9.png",
+  "tutorial/Wireframe - 10.png",
+];
+
+// === Elements ===
+const img      = document.getElementById("shot");
+const overlay  = document.getElementById("shotOverlay");
+const hotNext  = document.getElementById("hotNext");
+const hotExit  = document.getElementById("hotExit");
+const hotPlay  = document.getElementById("hotPlay");
+const stage    = document.getElementById("stage");
+const backdrop = document.getElementById("bd");
+const calBanner= document.getElementById("calBanner");
+const calText  = document.getElementById("calText");
+const skipBtn  = document.getElementById("skipBtn");
+
+// Preload
+slides.forEach(src => { const t = new Image(); t.src = src; });
+
+// === State ===
+let i = 0;
+let mode = "normal"; // "normal" | "cal-next" | "cal-exit"
+
+// Use updated key for two-button system
+const KEY = "cs_zones_play_v4";
+function loadZones(){ try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } }
+function saveZones(z){ localStorage.setItem(KEY, JSON.stringify(z)); }
+let pinned = loadZones();
+
+// === Render ===
+function render(){
+  fadeTo(slides[i]);
+  applyZones(i);
+  updatePlayVisibility();
+}
+
+function fadeTo(src){
+  overlay.src = src;
+  overlay.style.opacity = 0;
+  const tmp = new Image();
+  tmp.onload = () => {
+    requestAnimationFrame(() => { overlay.style.opacity = 1; });
+    setTimeout(() => {
+      img.src = src;
+      overlay.style.opacity = 0;
+    }, 350);
+  };
+  tmp.src = src;
+}
+
+function setZone(el, cfg){
+  el.style.cssText = "position:absolute;background:transparent;border:none;padding:0;margin:0;cursor:pointer;";
+  ["top","left","right","bottom","width","height","transform"].forEach(k => { if (cfg && k in cfg) el.style[k] = cfg[k]; });
+}
+
+function applyZones(idx){
+  const z = pinned[idx] || {};
+  
+  // Default positions if not calibrated
+  const defaultNext = { top:"6%", right:"8%", width:"10%", height:"12%" };
+  const defaultExit = { top:"2%", right:"2%", width:"8%", height:"8%" };
+  
+  setZone(hotNext, z.next || defaultNext);
+  setZone(hotExit, z.exit || defaultExit);
+}
+
+function go(n){ i = Math.min(Math.max(0, i+n), slides.length-1); render(); }
+function goNext(){ (i === slides.length-1) ? showFinalOptions() : go(1); }
+function closeTutorial(){ 
+  // Mark tutorial as seen and redirect back to homepage
+  localStorage.setItem('charityStream_tutorialSeen', 'true');
+  localStorage.removeItem('charityStream_newUser');
+  window.location.href = '/';
+}
+
+// === Play button logic (last slide only) ===
+function updatePlayVisibility(){
+  const isFinal = (i === slides.length - 1);
+  if (isFinal) {
+    hotPlay.classList.add("visible");
+    // Kick off pulsing shortly after showing
+    setTimeout(() => { hotPlay.classList.add("pulsing"); }, 200);
+  } else {
+    hotPlay.classList.remove("visible","pulsing");
+  }
+}
+
+function showFinalOptions(){
+  // On final slide, just show the play button (already visible)
+  // User can click play button or exit button
+}
+
+function startStream(){
+  // Stop pulse and close the tutorial immediately
+  hotPlay.classList.remove("pulsing");
+  // Mark tutorial as seen and redirect back to homepage
+  localStorage.setItem('charityStream_tutorialSeen', 'true');
+  localStorage.removeItem('charityStream_newUser');
+  window.location.href = '/';
+}
+
+// === Events ===
+hotNext.addEventListener("click", goNext);
+hotExit.addEventListener("click", closeTutorial);
+hotPlay.addEventListener("click", startStream);
+
+window.addEventListener("keydown",(e)=>{
+  if (backdrop.style.display === "none") return;
+  if (e.shiftKey && e.key.toLowerCase() === "c"){ startCalibration(); return; }
+  if (e.shiftKey && e.key.toLowerCase() === "r"){ recalibrateCurrentSlide(); return; }
+  if (e.shiftKey && e.key.toLowerCase() === "d"){ debugCurrentSlide(); return; }
+  if (mode !== "normal") return;
+  if (e.key === "ArrowRight") goNext();
+  if (e.key === "Enter")      (i === slides.length-1) ? startStream() : goNext();
+  if (e.key === "Escape")     closeTutorial();
+});
+
+// === Calibration System ===
+function startCalibration(){
+  mode = "cal-next";
+  calBanner.style.display = "block";
+  updateCalText();
+}
+
+function updateCalText(){
+  if (mode === "cal-next") {
+    calText.innerHTML = `<span class="cal-strong">Step ${i+1}/${slides.length}:</span> Click the <span class="cal-strong">Next (▶)</span> area. <span class="cal-muted">(Shift+C to cancel)</span>`;
+  } else if (mode === "cal-exit") {
+    calText.innerHTML = `<span class="cal-strong">Step ${i+1}/${slides.length}:</span> Click the <span class="cal-strong">Exit (✕)</span> area. <span class="cal-muted">(Shift+C to cancel)</span>`;
+  }
+}
+
+skipBtn.addEventListener("click", ()=>{
+  if (mode === "cal-next") {
+    // Skip next button, move to exit calibration
+    mode = "cal-exit";
+    updateCalText();
+  } else if (mode === "cal-exit") {
+    // Skip exit button, move to next slide or finish
+    if (i === slides.length-1){
+      finishCalibration();
+    } else {
+      i++; 
+      mode = "cal-next";
+      render(); 
+      updateCalText();
+    }
+  }
+});
+
+img.addEventListener("click",(e)=>{
+  if (mode !== "cal-next" && mode !== "cal-exit") return;
+  
+  const rect = img.getBoundingClientRect();
+  const x = (e.clientX - rect.left) / rect.width;
+  const y = (e.clientY - rect.top)  / rect.height;
+
+  pinned[i] = pinned[i] || {};
+
+  if (mode === "cal-next") {
+    // Calibrating Next button (larger)
+    const boxW = 0.10, boxH = 0.12;
+    const leftPct  = Math.max(0, Math.min(1 - boxW, x - boxW/2)) * 100;
+    const topPct   = Math.max(0, Math.min(1 - boxH, y - boxH/2)) * 100;
+    
+    pinned[i].next = { top:`${topPct}%`, left:`${leftPct}%`, width:`${boxW*100}%`, height:`${boxH*100}%` };
+    
+    // Move to exit calibration
+    mode = "cal-exit";
+    updateCalText();
+    
+  } else if (mode === "cal-exit") {
+    // Calibrating Exit button (smaller)
+    const boxW = 0.08, boxH = 0.08;
+    const leftPct  = Math.max(0, Math.min(1 - boxW, x - boxW/2)) * 100;
+    const topPct   = Math.max(0, Math.min(1 - boxH, y - boxH/2)) * 100;
+    
+    pinned[i].exit = { top:`${topPct}%`, left:`${leftPct}%`, width:`${boxW*100}%`, height:`${boxH*100}%` };
+    
+    // Move to next slide or finish
+    if (i === slides.length-1){
+      finishCalibration();
+    } else {
+      i++; 
+      mode = "cal-next";
+      render(); 
+      updateCalText();
+    }
+  }
+  
+  saveZones(pinned);
+  applyZones(i);
+});
+
+function finishCalibration(){
+  calBanner.style.display = "none";
+  mode = "normal";
+  render();
+}
+
+// Handle Shift+C during calibration to cancel
+window.addEventListener("keydown", (e) => {
+  if (e.shiftKey && e.key.toLowerCase() === "c" && mode !== "normal") {
+    finishCalibration();
+  }
+});
+
+// Debug functions
+function debugCurrentSlide(){
+  const z = pinned[i] || {};
+  console.log(`Slide ${i+1} zones:`, z);
+  console.log(`Next button:`, z.next || "using default");
+  console.log(`Exit button:`, z.exit || "using default");
+  
+  // Temporarily highlight the zones
+  hotNext.style.background = "rgba(0,255,0,0.3)";
+  hotExit.style.background = "rgba(255,0,0,0.3)";
+  setTimeout(() => {
+    hotNext.style.background = "transparent";
+    hotExit.style.background = "transparent";
+  }, 2000);
+}
+
+function recalibrateCurrentSlide(){
+  // Clear current slide's calibration
+  if (pinned[i]) {
+    delete pinned[i];
+    saveZones(pinned);
+  }
+  
+  // Start calibration for just this slide
+  mode = "cal-next";
+  calBanner.style.display = "block";
+  updateCalText();
+}
+
+// Start calibration if no zones saved
+if (!Object.keys(pinned).length){
+  setTimeout(startCalibration, 200);
+}
+
+// Initial render
+render();
+</script>
+</body>
+</html>

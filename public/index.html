@@ -1266,90 +1266,7 @@
       }
     }
 
-    /* Tutorial System Styles */
-    .tutorial-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
-      z-index: 10001;
-      display: none;
-    }
-
-    .tutorial-overlay.active {
-      display: block;
-    }
-
-    .tutorial-highlight {
-      position: absolute;
-      border: 3px solid #2F7D31;
-      border-radius: 8px;
-      box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 20px rgba(47, 125, 49, 0.8);
-      z-index: 10002;
-      transition: all 0.3s ease;
-    }
-
-    .tutorial-tooltip {
-      position: absolute;
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-      max-width: 300px;
-      z-index: 10003;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .tutorial-tooltip::after {
-      content: '';
-      position: absolute;
-      width: 0;
-      height: 0;
-      border: 10px solid transparent;
-    }
-
-    .tutorial-tooltip.tooltip-top::after {
-      bottom: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-top-color: white;
-    }
-
-    .tutorial-tooltip.tooltip-bottom::after {
-      top: -20px;
-      left: 50%;
-      transform: translateX(-50%);
-      border-bottom-color: white;
-    }
-
-    .tutorial-tooltip.tooltip-left::after {
-      right: -20px;
-      top: 50%;
-      transform: translateY(-50%);
-      border-left-color: white;
-    }
-
-    .tutorial-tooltip.tooltip-right::after {
-      left: -20px;
-      top: 50%;
-      transform: translateY(-50%);
-      border-right-color: white;
-    }
-
-    .tutorial-text {
-      font-size: 16px;
-      color: #333;
-      margin-bottom: 16px;
-      line-height: 1.5;
-    }
-
-    .tutorial-buttons {
-      display: flex;
-      gap: 12px;
-      justify-content: flex-end;
-    }
+    /* Tutorial System - Now handled by separate tutorial.html page */
 
     .tutorial-btn {
       padding: 8px 16px;
@@ -1520,17 +1437,7 @@
   </style>
 </head>
 <body>
-  <!-- Tutorial System -->
-  <div id="tutorialOverlay" class="tutorial-overlay">
-    <div id="tutorialHighlight" class="tutorial-highlight"></div>
-    <div id="tutorialTooltip" class="tutorial-tooltip">
-      <div class="tutorial-text" id="tutorialText"></div>
-      <div class="tutorial-buttons">
-        <button id="tutorialSkip" class="tutorial-btn tutorial-btn-secondary">Skip Tutorial</button>
-        <button id="tutorialNext" class="tutorial-btn tutorial-btn-primary">Next</button>
-      </div>
-    </div>
-  </div>
+  <!-- Tutorial System - Now handled by separate tutorial.html page -->
 
   <div id="tutorialModal" class="tutorial-modal" style="display: none;">
     <h2>Welcome to Charity Stream!</h2>
@@ -3445,63 +3352,13 @@
       }
     };
 
-    // Tutorial System
+    // Tutorial System - PNG-based
     class TutorialManager {
       constructor() {
         this.currentStep = 0;
         this.isActive = false;
-        this.tutorialSteps = [
-          {
-            selector: '.video-js .vjs-big-play-button, .video-js .vjs-play-control',
-            text: 'Simply click the play button and begin watching ads.',
-            position: 'bottom'
-          },
-          {
-            selector: '.hero-amount',
-            text: 'Total money raised for charity. See the About page for more.',
-            position: 'bottom'
-          },
-          {
-            selector: '.sidebar .board-card:first-child',
-            text: 'Track how many ads you watched today, your total ads watched, and your current rank.',
-            position: 'left'
-          },
-          {
-            selector: '.sidebar .board-card:last-child',
-            text: 'The leaderboard for top ad watchers this month plus your current standing. Get to #1 by the end of the month and win XXX (reward TBD).',
-            position: 'left'
-          },
-          {
-            selector: '.upgrade-btn',
-            text: 'Pay $1/month to get a pop-out player, no pop-ups, 1.25x speed, and premium features!',
-            position: 'top'
-          },
-          {
-            selector: '.charity-progress',
-            text: 'Our weekly charity partner progress bar.',
-            position: 'top'
-          },
-          {
-            selector: 'a[href="/about"]',
-            text: 'Learn more about Charity Stream here.',
-            position: 'bottom'
-          },
-          {
-            selector: 'a[href="/advertise"]',
-            text: 'To advertise with us, sign up here.',
-            position: 'bottom'
-          },
-          {
-            selector: 'a[href="/impact"]',
-            text: 'Track your personal impact.',
-            position: 'bottom'
-          },
-          {
-            selector: '.watch-ads-btn',
-            text: 'Click here anytime to return to this page.',
-            position: 'bottom'
-          }
-        ];
+        
+        // Tutorial now handled by separate tutorial.html page
 
         // bind methods if needed
         this.onAuthReady = this.onAuthReady.bind(this);
@@ -3538,8 +3395,8 @@
         if (yesBtn) {
           yesBtn.addEventListener('click', () => {
             this.hideModal();
-            this.startTutorial();
-            this.markTutorialSeen();
+            // Redirect to the dedicated tutorial page
+            window.location.href = '/tutorial.html';
           });
         }
 
@@ -3549,15 +3406,6 @@
             this.markTutorialSeen();
           });
         }
-
-        // other event listeners can be set up here...
-        document.getElementById('tutorialNext').addEventListener('click', () => {
-          this.nextStep();
-        });
-
-        document.getElementById('tutorialSkip').addEventListener('click', () => {
-          this.endTutorial();
-        });
 
         document.getElementById('tutorialCompleteBtn').addEventListener('click', () => {
           this.hideComplete();
@@ -3642,123 +3490,9 @@
         localStorage.removeItem('charityStream_newUser');
       }
 
-      // stub - implement actual tutorial flow
-      startTutorial() {
-        console.log('🎓 Starting tutorial...');
-        this.isActive = true;
-        this.currentStep = 0;
-        window.isTutorialActive = true;
-        document.getElementById('tutorialOverlay').classList.add('active');
-        this.showStep();
-        console.log('🎓 Tutorial started - video/popups paused');
-      }
+      // Tutorial now handled by separate tutorial.html page
 
-      showStep() {
-        if (this.currentStep >= this.tutorialSteps.length) {
-          this.endTutorial();
-          return;
-        }
-
-        const step = this.tutorialSteps[this.currentStep];
-        const element = document.querySelector(step.selector);
-
-        if (!element) {
-          console.warn(`Tutorial step ${this.currentStep}: Element not found for selector "${step.selector}"`);
-          this.nextStep();
-          return;
-        }
-
-        // Highlight the element
-        this.highlightElement(element);
-        
-        // Show tooltip
-        this.showTooltip(element, step.text, step.position);
-      }
-
-      highlightElement(element) {
-        const highlight = document.getElementById('tutorialHighlight');
-        const rect = element.getBoundingClientRect();
-        
-        highlight.style.left = `${rect.left - 3}px`;
-        highlight.style.top = `${rect.top - 3}px`;
-        highlight.style.width = `${rect.width + 6}px`;
-        highlight.style.height = `${rect.height + 6}px`;
-      }
-
-      showTooltip(element, text, position) {
-        const tooltip = document.getElementById('tutorialTooltip');
-        const tooltipText = document.getElementById('tutorialText');
-        const rect = element.getBoundingClientRect();
-        
-        tooltipText.textContent = text;
-        
-        // Remove existing position classes
-        tooltip.classList.remove('tooltip-top', 'tooltip-bottom', 'tooltip-left', 'tooltip-right');
-        tooltip.classList.add(`tooltip-${position}`);
-
-        // Position tooltip
-        let left, top;
-        const tooltipRect = tooltip.getBoundingClientRect();
-        
-        switch (position) {
-          case 'top':
-            left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
-            top = rect.top - tooltipRect.height - 20;
-            break;
-          case 'bottom':
-            left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
-            top = rect.bottom + 20;
-            break;
-          case 'left':
-            left = rect.left - tooltipRect.width - 20;
-            top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
-            break;
-          case 'right':
-            left = rect.right + 20;
-            top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
-            break;
-        }
-
-        // Ensure tooltip stays within viewport
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        
-        if (left < 10) left = 10;
-        if (left + tooltipRect.width > viewportWidth - 10) {
-          left = viewportWidth - tooltipRect.width - 10;
-        }
-        if (top < 10) top = 10;
-        if (top + tooltipRect.height > viewportHeight - 10) {
-          top = viewportHeight - tooltipRect.height - 10;
-        }
-
-        tooltip.style.left = `${left}px`;
-        tooltip.style.top = `${top}px`;
-      }
-
-      nextStep() {
-        this.currentStep++;
-        this.showStep();
-      }
-
-      endTutorial() {
-        this.isActive = false;
-        window.isTutorialActive = false;
-        document.getElementById('tutorialOverlay').classList.remove('active');
-        this.markTutorialSeen();
-        this.showComplete();
-        console.log('🎓 Tutorial ended - video stays paused until user clicks play');
-        
-        // Resume pop-up ads after tutorial completion
-        if (typeof resumePopupsAfterTutorial === 'function') resumePopupsAfterTutorial();
-
-        // For new users, clear the tutorial flag so video transitions work normally
-        // but don't start the current video - it stays paused until user clicks play
-        const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
-        if (isNewUser) {
-          console.log('🎓 New user tutorial completed - video transitions enabled, current video stays paused');
-        }
-      }
+      // Tutorial completion is now handled by tutorial.html page
 
       showComplete() {
         document.getElementById('tutorialComplete').style.display = 'block';
