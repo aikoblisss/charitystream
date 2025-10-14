@@ -32,15 +32,14 @@
     /* Header */
     .header{border-bottom:1px solid var(--gray-200);width:100%;background:#fff}
     .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:inherit;text-decoration:none;cursor:pointer;transition:.2s}
-    .logo:hover{color:var(--brand-600)}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:var(--brand-600);text-decoration:none}
     .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
     .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
     .welcome{color:var(--gray-900)}
     .welcome-bold{font-weight:500}
     .nav-link{text-decoration:none;font-weight:500;transition:.2s;color:var(--gray-700)}
-    .nav-link:hover{color:var(--gray-900)}
-    .nav-link.active{color:var(--gray-900);font-weight:600}
+    .nav-link:hover{color:var(--brand-600)}
+    .nav-link.active{color:var(--brand-600);font-weight:600}
     .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer;transition:.2s}
     .watch-ads-btn:hover{background:var(--brand-700)}
 
@@ -378,21 +377,15 @@
   <!-- Header -->
   <header class="header">
     <div class="container">
-      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+      <a href="/" class="logo">Charity Stream</a>
       <nav class="nav">
-        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
-          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
+        <div class="nav-hidden-mobile">
+          <span class="welcome">Welcome, <span class="welcome-bold">StickyHenry</span></span>
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
-          <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
+          <a href="/impact" class="nav-link active">Impact</a>
         </div>
-        <div class="nav-hidden-mobile" id="guestNav">
-          <a href="/about" class="nav-link">About</a>
-          <a href="/advertise" class="nav-link">Advertise</a>
-          <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-        </div>
+        <a href="/" class="watch-ads-btn">Watch Ads</a>
       </nav>
     </div>
   </header>
@@ -542,7 +535,7 @@
               <div style="display:flex;gap:.5rem;align-items:flex-start">
                 <input type="checkbox" id="confirm501c3" style="width:18px;height:18px;accent-color:var(--brand-600);margin-top:.125rem" required>
                 <label for="confirm501c3" style="font-size:.875rem;color:var(--gray-700);margin:0;font-weight:500;line-height:1.5">
-                  I confirm we are a registered 501(c)(3) and agree to the <a href="/Terms and Conditions/Charity Participation Community Guidlines - Working With Us to Drive Change .pdf" target="_blank" rel="noopener noreferrer" style="color:var(--brand-600);text-decoration:underline">charity partner community guidelines</a>.
+                  I confirm we are a registered 501(c)(3) and agree to the <a href="#" style="color:var(--brand-600);text-decoration:underline">charity partner community guidelines</a>.
                 </label>
               </div>
             </div>
@@ -595,7 +588,7 @@
               <span style="color:var(--brand-600);font-weight:700">52</span>
             </div>
             <div style="font-size:.75rem;color:var(--gray-600)">
-              Updated weekly • <a href="#" style="color:var(--brand-600);text-decoration:underline">See impact reports</a>
+              Updated weekly • <a href="/impact" style="color:var(--brand-600);text-decoration:underline">See impact reports</a>
             </div>
           </div>
         </div>
@@ -618,63 +611,6 @@
   </footer>
 
   <script>
-    // Check authentication status
-    const authToken = localStorage.getItem('authToken');
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-
-    // Set initial UI state
-    function setInitialUIState() {
-      const loggedInNav = document.getElementById('loggedInNav');
-      const guestNav = document.getElementById('guestNav');
-      const usernameDisplay = document.getElementById('usernameDisplay');
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
-
-      if (authToken && currentUser) {
-        // User is logged in
-        if (loggedInNav) loggedInNav.style.display = 'flex';
-        if (guestNav) guestNav.style.display = 'none';
-        
-        if (usernameDisplay && currentUser.username) {
-          usernameDisplay.textContent = currentUser.username;
-        }
-      } else {
-        // User is not logged in
-        if (loggedInNav) loggedInNav.style.display = 'none';
-        if (guestNav) guestNav.style.display = 'flex';
-      }
-
-      // Watch Ads button functionality
-      if (watchAdsBtn) {
-        watchAdsBtn.onclick = () => {
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth';
-          }
-        };
-      }
-    }
-
-    // Logo button functionality
-    document.addEventListener('DOMContentLoaded', function() {
-      const logoBtn = document.getElementById('logoBtn');
-      if (logoBtn) {
-        logoBtn.onclick = function(e) {
-          e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth';
-          }
-        };
-      }
-    });
-
     // Payment method switching
     document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
       radio.addEventListener('change', function() {
@@ -718,7 +654,7 @@
     });
 
     // Form submission
-    document.getElementById('charityForm').addEventListener('submit', function(e) {
+    document.getElementById('charityForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
       if (!document.getElementById('confirm501c3').checked) {
@@ -726,21 +662,68 @@
         return;
       }
 
+      // Get form values
+      const charityName = document.getElementById('charityName').value.trim();
+      const federalEin = document.getElementById('ein').value.trim();
+      const contactEmail = document.getElementById('email').value.trim();
+      
+      // Validate fields
+      if (!charityName || !federalEin || !contactEmail) {
+        alert('Please fill in all required fields.');
+        return;
+      }
+
       const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
       
-      if (paymentMethod === 'paypal') {
-        alert("Redirecting to PayPal for $1 payment...");
-        // In real implementation, redirect to PayPal
-      } else {
-        alert("Processing $1 payment and application...");
-        // In real implementation, process card payment
-      }
+      // Disable submit button to prevent double submission
+      const submitBtn = this.querySelector('.submit-btn');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Submitting...';
       
-      // Simulate success
-      setTimeout(() => {
-        alert("Thank you! Your application and payment have been submitted. You'll receive confirmation within 24 hours.");
-        this.reset();
-      }, 1500);
+      try {
+        // Submit to backend API
+        const response = await fetch('/api/charity/submit', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            charityName: charityName,
+            federalEin: federalEin,
+            contactEmail: contactEmail
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Success
+          console.log('✅ Charity submission successful:', data);
+          
+          if (paymentMethod === 'paypal') {
+            alert("Thank you! Your application has been submitted successfully.\n\nYou'll be redirected to PayPal for the $1 entry payment.\n\nYou'll receive confirmation within 24 hours.");
+            // In real implementation, redirect to PayPal
+          } else {
+            alert("Thank you! Your application has been submitted successfully.\n\nProcessing $1 payment...\n\nYou'll receive confirmation within 24 hours.");
+            // In real implementation, process card payment
+          }
+          
+          // Reset form
+          this.reset();
+        } else {
+          // Error from server
+          console.error('❌ Charity submission failed:', data);
+          alert('Submission failed: ' + (data.message || 'Please try again later.'));
+        }
+      } catch (error) {
+        console.error('❌ Network error:', error);
+        alert('Network error: Unable to submit application. Please check your connection and try again.');
+      } finally {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
     });
 
     // Smooth scroll to form and auto-focus
@@ -752,11 +735,6 @@
       setTimeout(() => {
         document.getElementById('charityName').focus();
       }, 800);
-    });
-
-    // Initialize page
-    document.addEventListener('DOMContentLoaded', () => {
-      setInitialUIState();
     });
   </script>
 </body>

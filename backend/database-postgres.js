@@ -108,6 +108,71 @@ async function createTables() {
     )
   `;
 
+  const createVideosTable = `
+    CREATE TABLE IF NOT EXISTS videos (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      video_url TEXT NOT NULL,
+      duration INTEGER NOT NULL,
+      is_active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      order_index INTEGER DEFAULT 0
+    )
+  `;
+
+  const createDesktopActiveSessionsTable = `
+    CREATE TABLE IF NOT EXISTS desktop_active_sessions (
+      fingerprint TEXT PRIMARY KEY,
+      last_heartbeat TIMESTAMP NOT NULL
+    )
+  `;
+
+  const createCharitiesTable = `
+    CREATE TABLE IF NOT EXISTS charities (
+      id SERIAL PRIMARY KEY,
+      charity_name TEXT NOT NULL,
+      federal_ein TEXT NOT NULL,
+      contact_email TEXT NOT NULL,
+      payment_status TEXT DEFAULT 'pending',
+      payment_id TEXT,
+      approved BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
+  const createAdvertisersTable = `
+    CREATE TABLE IF NOT EXISTS advertisers (
+      id SERIAL PRIMARY KEY,
+      company_name TEXT,
+      website_url TEXT,
+      first_name TEXT,
+      last_name TEXT,
+      email TEXT NOT NULL,
+      title_role TEXT,
+      ad_format TEXT,
+      weekly_budget_cap DECIMAL(10,2),
+      cpm_rate DECIMAL(10,2),
+      media_r2_link TEXT,
+      recurring_weekly BOOLEAN DEFAULT false,
+      approved BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
+  const createSponsorsTable = `
+    CREATE TABLE IF NOT EXISTS sponsors (
+      id SERIAL PRIMARY KEY,
+      organization TEXT NOT NULL,
+      contact_email TEXT NOT NULL,
+      website TEXT,
+      ein_tax_id TEXT,
+      sponsor_tier TEXT CHECK (sponsor_tier IN ('bronze', 'silver', 'gold', 'diamond') OR sponsor_tier IS NULL),
+      logo_r2_link TEXT,
+      approved BOOLEAN DEFAULT false,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
   try {
     await pool.query(createUsersTable);
     console.log('✅ Users table ready');
@@ -117,6 +182,16 @@ async function createTables() {
     console.log('✅ Ad tracking table ready');
     await pool.query(createDailyStatsTable);
     console.log('✅ Daily stats table ready');
+    await pool.query(createVideosTable);
+    console.log('✅ Videos table ready');
+    await pool.query(createDesktopActiveSessionsTable);
+    console.log('✅ Desktop active sessions table ready');
+    await pool.query(createCharitiesTable);
+    console.log('✅ Charities table ready');
+    await pool.query(createAdvertisersTable);
+    console.log('✅ Advertisers table ready');
+    await pool.query(createSponsorsTable);
+    console.log('✅ Sponsors table ready');
     
     // Add missing columns if they don't exist
     await addMissingColumns();
@@ -1042,7 +1117,68 @@ const dbHelpers = {
     } catch (error) {
       return [error, null];
     }
+  },
+
+  // ===== VIDEO MANAGEMENT FUNCTIONS =====
+
+  // Add video to database
+  addVideo: async (title, video_url, duration) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'INSERT INTO videos (title, video_url, duration) VALUES ($1, $2, $3) RETURNING *',
+        [title, video_url, duration]
+      );
+      return [null, result.rows[0]];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Get current active video
+  getCurrentVideo: async () => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT * FROM videos WHERE is_active = true ORDER BY order_index LIMIT 1'
+      );
+      return [null, result.rows[0] || null];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Get all active videos for playlist
+  getActiveVideos: async () => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'SELECT * FROM videos WHERE is_active = true ORDER BY order_index'
+      );
+      return [null, result.rows];
+    } catch (error) {
+      return [error, null];
+    }
+  },
+
+  // Delete a specific video
+  deleteVideo: async (videoId) => {
+    try {
+      await ensureTablesExist();
+      const result = await pool.query(
+        'DELETE FROM videos WHERE id = $1 RETURNING *',
+        [videoId]
+      );
+      return [null, result];
+    } catch (error) {
+      return [error, null];
+    }
   }
 };
 
-module.exports = { initializeDatabase, dbHelpers };
+// Export pool for direct database access in server.js
+function getPool() {
+  return pool;
+}
+
+module.exports = { initializeDatabase, dbHelpers, getPool };

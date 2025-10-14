@@ -1,3 +1,22 @@
+// ADD global unhandled rejection handler (AT THE VERY TOP)
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Unhandled Promise Rejection:', reason);
+  // Don't exit the process, just log the error
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('❌ Uncaught Exception:', error);
+  // Don't exit the process for database errors
+  if (error.message.includes('Connection terminated') || 
+      error.message.includes('database') || 
+      error.message.includes('pool')) {
+    console.log('🔌 Database-related error caught, continuing server operation');
+  } else {
+    // Only exit for critical errors
+    process.exit(1);
+  }
+});
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -8,13 +27,100 @@ const helmet = require('helmet');
 const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
+const multer = require('multer');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { Pool } = require('pg');
 
 // Load environment variables from parent directory
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
-const { initializeDatabase, dbHelpers } = require('./database-postgres');
+const { initializeDatabase, dbHelpers, getPool: getPoolFromDb } = require('./database-postgres');
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
+
+// IMPROVED pool configuration with better error handling
+const createPool = () => {
+  const newPool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    max: 20, // Increase max connections
+    idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
+    connectionTimeoutMillis: 10000, // Return error after 10 seconds if no connection
+    maxUses: 7500, // Close and replace a connection after 7500 uses
+  });
+
+  // ADD comprehensive error handling for the pool
+  newPool.on('error', (err, client) => {
+    console.error('❌ Database pool error:', err);
+    // Don't crash the server on pool errors
+  });
+
+  newPool.on('connect', (client) => {
+    console.log('🔌 New database connection established');
+  });
+
+  newPool.on('remove', (client) => {
+    console.log('🔌 Database connection removed');
+  });
+
+  return newPool;
+};
+
+let managedPool = null;
+
+// ADD pool health check and recovery
+const checkPoolHealth = async () => {
+  try {
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Pool is null, recreating...');
+      managedPool = createPool();
+      return false;
+    }
+    
+    const client = await pool.connect();
+    await client.query('SELECT 1');
+    client.release();
+    console.log('✅ Database pool health check passed');
+    return true;
+  } catch (error) {
+    console.error('❌ Database pool health check failed:', error);
+    
+    // Try to recreate the pool if it's unhealthy
+    try {
+      if (managedPool) {
+        await managedPool.end();
+      }
+      managedPool = createPool();
+      console.log('🔄 Database pool recreated');
+    } catch (recreateError) {
+      console.error('❌ Failed to recreate database pool:', recreateError);
+    }
+    
+    return false;
+  }
+};
+
+// Run health check every 30 seconds
+setInterval(checkPoolHealth, 30000);
+
+// MODIFY getPool function to handle connection issues
+function getPool() {
+  // Try managed pool first
+  if (managedPool) {
+    return managedPool;
+  }
+  
+  // Fall back to database-postgres pool
+  const dbPool = getPoolFromDb();
+  if (dbPool) {
+    return dbPool;
+  }
+  
+  // Last resort: create new pool
+  console.log('🔄 Creating new database pool...');
+  managedPool = createPool();
+  return managedPool;
+}
 
 // Email service - handle missing config gracefully
 let emailService = null;
@@ -99,7 +205,13 @@ app.use(helmet({
         "https://fonts.gstatic.com",
         "data:" // Allow data URLs for Video.js fonts
       ],
-      mediaSrc: ["'self'", "data:", "blob:"], // Allow video files
+      mediaSrc: [
+        "'self'", 
+        "data:", 
+        "blob:",
+        "https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev", // Charity stream videos R2 bucket (CORRECT)
+        "https://pub-83596556bc864db7aa93479e13f45deb.r2.dev"  // Advertiser media R2 bucket
+      ],
       connectSrc: [
         "'self'", // Allow API calls to same origin
         "https://api.stripe.com" // Allow Stripe API calls
@@ -112,10 +224,26 @@ app.use(helmet({
   }
 }));
 
-// Rate limiting
+// Rate limiting (exempt desktop detection endpoints)
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  skip: (req) => {
+    // EXEMPT desktop detection endpoints from rate limiting to prevent 429 errors
+    // NOTE: When mounted at /api/, req.path does NOT include /api/ prefix
+    const exemptPaths = [
+      '/tracking/desktop-active',
+      '/tracking/desktop-inactive',
+      '/tracking/desktop-active-status',
+      '/tracking/session-status',
+      '/tracking/cleanup-desktop-sessions'
+    ];
+    const isExempt = exemptPaths.includes(req.path);
+    if (isExempt) {
+      console.log(`✅ Exempting ${req.path} from rate limiting`);
+    }
+    return isExempt;
+  }
 });
 app.use('/api/', limiter);
 
@@ -133,6 +261,43 @@ app.use(cors({
 }));
 
 app.use(bodyParser.json());
+
+// TEMPORARY: Video proxy to bypass CORS issues while diagnosing R2
+app.get('/proxy-video/:videoName', async (req, res) => {
+  try {
+    const { videoName } = req.params;
+    const R2_URL = `https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev/${videoName}`;
+    
+    console.log(`🎬 Proxying video: ${videoName} from R2 URL: ${R2_URL}`);
+    
+    const response = await fetch(R2_URL);
+    
+    if (!response.ok) {
+      console.error(`❌ R2 returned status ${response.status} for ${videoName}`);
+      return res.status(response.status).send(`Video not found: ${videoName}`);
+    }
+    
+    console.log(`✅ Successfully fetched ${videoName} from R2 (status: ${response.status}), streaming to client`);
+    
+    // Get the video buffer
+    const buffer = await response.arrayBuffer();
+    const videoBuffer = Buffer.from(buffer);
+    
+    // Set proper headers for video streaming
+    res.setHeader('Content-Type', 'video/mp4');
+    res.setHeader('Content-Length', videoBuffer.length);
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    
+    // Send the video
+    res.send(videoBuffer);
+    
+  } catch (error) {
+    console.error('❌ Video proxy error:', error.message);
+    console.error('❌ Full error:', error);
+    res.status(500).send(`Error loading video from R2: ${error.message}`);
+  }
+});
 
 // Middleware to inject authentication context into HTML files
 app.use((req, res, next) => {
@@ -572,7 +737,7 @@ app.get('/api/auth/google', (req, res, next) => {
 
   // Check if this is from the Electron app
   if (app_type === 'electron' && source === 'desktop_app') {
-    console.log('📱 Electron app OAuth detected');
+    console.log('📱 Desktop app OAuth detected');
     
     // Validate required environment variables
     if (!process.env.GOOGLE_CLIENT_ID) {
@@ -598,21 +763,27 @@ app.get('/api/auth/google', (req, res, next) => {
     console.log('  - source:', source);
     console.log('  - GOOGLE_CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing');
     
+    // Prepare redirect URI with fallback and validation
+    // IMPORTANT: Google OAuth redirect_uri must ALWAYS be the backend URL, not the desktop app URL
+    const isProduction = process.env.NODE_ENV === 'production';
+    const backendRedirectUri = isProduction 
+      ? 'https://charitystream.vercel.app/auth/google/callback'
+      : 'http://localhost:3001/auth/google/callback';
+    
+    // For Google OAuth, we ALWAYS use the backend URL
+    const finalRedirectUri = backendRedirectUri;
+    
+    // Store the desktop app URL in state for later use
+    const desktopAppCallbackUrl = redirect_uri || 'http://localhost:8081/auth/google/callback';
+    
     // Prepare state object
     const stateObject = { 
       app_type: 'electron', 
       source: 'desktop_app',
-      mode: mode 
+      mode: mode,
+      redirect_uri: desktopAppCallbackUrl  // Store desktop app URL in state for final redirect
     };
     const encodedState = encodeURIComponent(JSON.stringify(stateObject));
-    
-    // Prepare redirect URI with fallback and validation
-    // Use environment variable for production, fallback to localhost for development
-    const isProduction = process.env.NODE_ENV === 'production';
-    const defaultRedirectUri = isProduction 
-      ? 'https://charitystream.vercel.app/auth/google/callback'
-      : 'http://localhost:8081/auth/google/callback';
-    const finalRedirectUri = redirect_uri || defaultRedirectUri;
     
     // Validate redirect URI format
     try {
@@ -627,14 +798,15 @@ app.get('/api/auth/google', (req, res, next) => {
     // Debug: Log individual URL components
     console.log('🔍 Debug - URL Components:');
     console.log('  - client_id:', process.env.GOOGLE_CLIENT_ID);
-    console.log('  - redirect_uri:', finalRedirectUri);
+    console.log('  - google_redirect_uri (backend):', finalRedirectUri);
+    console.log('  - desktop_app_callback:', desktopAppCallbackUrl);
     console.log('  - encoded_redirect_uri:', encodeURIComponent(finalRedirectUri));
     console.log('  - response_type: code');
     console.log('  - scope: email profile openid');
     console.log('  - state_object:', JSON.stringify(stateObject));
     console.log('  - encoded_state:', encodedState);
     
-    // For Electron app, redirect to Google OAuth with the app's callback URL
+    // For desktop app, redirect to Google OAuth with the app's callback URL
     const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?` +
       `client_id=${process.env.GOOGLE_CLIENT_ID}&` +
       `redirect_uri=${encodeURIComponent(finalRedirectUri)}&` +
@@ -656,7 +828,7 @@ app.get('/api/auth/google', (req, res, next) => {
       console.log(`  - ${param}: ${value ? '✅ Present' : '❌ Missing'} (${value || 'undefined'})`);
     });
     
-    console.log('🔗 Redirecting to Google OAuth for Electron app');
+    console.log('🔗 Redirecting to Google OAuth for desktop app');
     console.log('🔍 Final redirect URL length:', googleAuthUrl.length);
     console.log('🔍 URL preview (first 200 chars):', googleAuthUrl.substring(0, 200) + '...');
     
@@ -669,49 +841,91 @@ app.get('/api/auth/google', (req, res, next) => {
     return res.redirect(googleAuthUrl);
   } else {
     console.log('🌐 Web OAuth flow');
-    // Store the mode in session for the callback
-    req.session.googleAuthMode = mode;
+  // Store the mode in session for the callback
+  req.session.googleAuthMode = mode;
 
-    passport.authenticate('google', {
-      scope: ['profile', 'email', 'openid'],
-      prompt: 'select_account' // Always show account chooser
-    })(req, res, next);
+  passport.authenticate('google', {
+    scope: ['profile', 'email', 'openid'],
+    prompt: 'select_account' // Always show account chooser
+  })(req, res, next);
   }
 });
 
 // Electron OAuth callback handler (separate from web OAuth)
+// In-memory cache to prevent duplicate code processing
+const processedCodes = new Set();
+
 app.get('/auth/google/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
-    console.log('📱 Electron OAuth callback received');
+    console.log('📱 Desktop app OAuth callback received');
     
-    // Determine redirect URI based on environment
+    // Check if we've already processed this code
+    if (code && processedCodes.has(code)) {
+      console.log('⚠️ Authorization code already processed, ignoring duplicate request');
+      return res.redirect(`${finalRedirectUri}?error=${encodeURIComponent('Code already processed')}`);
+    }
+    
+    // Determine redirect URI based on environment and query params
     const isProduction = process.env.NODE_ENV === 'production';
     const defaultRedirectUri = isProduction 
       ? 'https://charitystream.vercel.app/auth/google/callback'
       : 'http://localhost:8081/auth/google/callback';
     
-    if (!code) {
-      console.error('❌ No authorization code received');
-      return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('No authorization code')}`);
-    }
-    
-    // Parse the state to check if it's from Electron app
+    // Extract redirect_uri from state parameter (stored during OAuth initiation)
+    let finalRedirectUri = defaultRedirectUri;
     let stateData = {};
     if (state) {
       try {
         stateData = JSON.parse(decodeURIComponent(state));
+        if (stateData.redirect_uri) {
+          finalRedirectUri = stateData.redirect_uri;
+          console.log('🔍 Using redirect_uri from state:', finalRedirectUri);
+        }
       } catch (error) {
-        console.error('❌ Error parsing state:', error);
+        console.log('⚠️ Could not parse state for redirect_uri, using default:', defaultRedirectUri);
       }
     }
     
+    if (!code) {
+      console.log('📱 OAuth callback without authorization code');
+      console.log('🔍 Callback query params:', req.query);
+      
+      // Check if this is an OAuth error from Google
+      if (req.query.error) {
+        console.log('🔍 Google OAuth error:', req.query.error);
+        return res.redirect(`${finalRedirectUri}?error=${encodeURIComponent(req.query.error)}`);
+      }
+      
+      // Check if this is a success response (token and user data present)
+      if (req.query.token && req.query.user) {
+        console.log('✅ OAuth success response received - desktop app callback');
+        console.log('👤 User authenticated:', JSON.parse(decodeURIComponent(req.query.user)).email);
+        console.log('🔑 Token present:', !!req.query.token);
+        
+        // Desktop app handles the callback through React routing
+        // No HTML response needed - let the desktop app handle the redirect
+        return res.status(200).send('Authentication successful - redirecting...');
+      }
+      
+      // If no code, no error, and no success data, this might be a duplicate request
+      console.log('⚠️ No authorization code, no error, no success data - possibly duplicate request');
+      return res.redirect(`${finalRedirectUri}?error=${encodeURIComponent('No authorization code received')}`);
+    }
+    
+    // State data already parsed above for redirect_uri extraction
     console.log('📊 State data:', stateData);
     
     if (stateData.app_type === 'electron') {
-      console.log('📱 Processing Electron OAuth callback');
+      console.log('📱 Processing desktop app OAuth callback');
       
       // Exchange code for token with Google
+      console.log('🔄 Exchanging code for token with Google...');
+      console.log('🔍 Token exchange parameters:');
+      console.log('  - client_id:', process.env.GOOGLE_CLIENT_ID);
+      console.log('  - redirect_uri:', finalRedirectUri);
+      console.log('  - code present:', !!code);
+      
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -724,11 +938,14 @@ app.get('/auth/google/callback', async (req, res) => {
         })
       });
       
+      console.log('📡 Token response status:', tokenResponse.status);
+      
       const tokenData = await tokenResponse.json();
       
       if (!tokenData.access_token) {
         console.error('❌ No access token received from Google');
-        return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('Failed to get access token')}`);
+        console.error('❌ Token response:', tokenData);
+        return res.redirect(`${finalRedirectUri}?error=${encodeURIComponent('Failed to get access token')}`);
       }
       
       // Get user info from Google
@@ -742,12 +959,12 @@ app.get('/auth/google/callback', async (req, res) => {
       
       if (err) {
         console.error('❌ Database error:', err);
-        return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('Database error')}`);
+        return res.redirect(`${finalRedirectUri}?error=${encodeURIComponent('Database error')}`);
       }
       
       if (!user) {
         console.error('❌ User not found in database:', googleUser.email);
-        return res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('User not found. Please create an account first.')}`);
+        return res.redirect(`${finalRedirectUri}?error=${encodeURIComponent('User not found. Please create an account first.')}`);
       }
       
       // Update last login
@@ -760,12 +977,22 @@ app.get('/auth/google/callback', async (req, res) => {
         { expiresIn: '30d' }
       );
       
-      console.log(`✅ Electron OAuth successful for: ${user.email}`);
+      console.log(`✅ Desktop app OAuth successful for: ${user.email}`);
       
-      // Redirect back to Electron app with token and user data
-      const redirectUrl = `${defaultRedirectUri}?` +
-        `token=${token}&` +
-        `user=${encodeURIComponent(JSON.stringify({
+      // Mark code as processed
+      if (code) {
+        processedCodes.add(code);
+        // Clean up old codes after 10 minutes
+        setTimeout(() => processedCodes.delete(code), 10 * 60 * 1000);
+      }
+
+      // For desktop app (electron) - ALWAYS redirect to desktop app, not backend
+      if (stateData.app_type === 'electron') {
+        const desktopAppRedirectUri = 'http://localhost:8081/auth/google/callback'; // Desktop app React server
+        console.log('✅ Electron app detected - redirecting to desktop app:', desktopAppRedirectUri);
+        
+        // Build user data object
+        const userDataForClient = {
           id: user.id,
           username: user.username,
           email: user.email,
@@ -778,26 +1005,74 @@ app.get('/auth/google/callback', async (req, res) => {
           authProvider: user.auth_provider,
           premiumSince: user.premium_since,
           stripeSubscriptionId: user.stripe_subscription_id
-        }))}`;
+        };
+
+        const redirectUrl = `${desktopAppRedirectUri}?` +
+          `token=${encodeURIComponent(token)}&` +
+          `user=${encodeURIComponent(JSON.stringify(userDataForClient))}`;
+
+        console.log('🔗 Redirecting to desktop app:', redirectUrl);
+        return res.redirect(redirectUrl);
+      }
       
-      console.log('🔗 Redirecting to Electron app with user data');
-      res.redirect(redirectUrl);
+      // For non-electron apps, use state redirect_uri
+      let desktopAppRedirectUri = 'http://localhost:8081/auth/google/callback'; // Default fallback
+      if (stateData && stateData.redirect_uri) {
+        desktopAppRedirectUri = stateData.redirect_uri;
+        console.log('✅ Using callback URL from state:', desktopAppRedirectUri);
+      } else {
+        console.log('⚠️ No redirect_uri in state, using default:', desktopAppRedirectUri);
+      }
+
+      // For non-electron apps, build user data and redirect
+      const userDataForClient = {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        isPremium: user.is_premium || false,
+        totalMinutesWatched: user.total_minutes_watched,
+        currentMonthMinutes: user.current_month_minutes,
+        subscriptionTier: user.subscription_tier,
+        profilePicture: user.profile_picture,
+        emailVerified: user.email_verified,
+        authProvider: user.auth_provider,
+        premiumSince: user.premium_since,
+        stripeSubscriptionId: user.stripe_subscription_id
+      };
+
+      // Redirect back to app with token and user data
+      const redirectUrl = `${desktopAppRedirectUri}?` +
+        `token=${encodeURIComponent(token)}&` +
+        `user=${encodeURIComponent(JSON.stringify(userDataForClient))}`;
+
+      console.log('🔗 Redirecting to app:', redirectUrl.substring(0, 100) + '...');
+      console.log('👤 User premium status:', userDataForClient.isPremium);
+
+      return res.redirect(redirectUrl);
     } else {
       console.log('🌐 Web OAuth callback, redirecting to web flow');
       // Fall through to the regular web OAuth flow
       return res.redirect('/api/auth/google/callback?' + new URLSearchParams(req.query).toString());
     }
   } catch (error) {
-    console.error('❌ Electron OAuth callback error:', error);
+    console.error('❌ OAuth callback error:', error);
     console.error('Error stack:', error.stack);
     
-    // Determine redirect URI based on environment for error handling
-    const isProduction = process.env.NODE_ENV === 'production';
-    const defaultRedirectUri = isProduction 
-      ? 'https://charitystream.vercel.app/auth/google/callback'
-      : 'http://localhost:8081/auth/google/callback';
+    // Extract redirect URI safely
+    let errorRedirectUri = 'http://localhost:8081/auth/google/callback';
+    if (req.query.state) {
+      try {
+        const stateData = JSON.parse(decodeURIComponent(req.query.state));
+        if (stateData.redirect_uri) {
+          errorRedirectUri = stateData.redirect_uri;
+        }
+      } catch (parseError) {
+        console.error('❌ Could not parse state for error redirect');
+      }
+    }
     
-    res.redirect(`${defaultRedirectUri}?error=${encodeURIComponent('Authentication failed')}`);
+    const errorMessage = error.message || 'Authentication failed';
+    res.redirect(`${errorRedirectUri}?error=${encodeURIComponent(errorMessage)}`);
   }
 });
 
@@ -1458,6 +1733,8 @@ app.post('/api/admin/migrate-verification', async (req, res) => {
   }
 });
 
+
+
 // Database reset endpoint (remove after use)
 app.post('/api/admin/reset-database', async (req, res) => {
   try {
@@ -1546,17 +1823,695 @@ app.post('/api/admin/reset-database', async (req, res) => {
   }
 });
 
+// ===== CLOUDFLARE R2 CONFIGURATION =====
+
+// Configure Cloudflare R2 (S3-compatible)
+const { ListObjectsV2Command } = require('@aws-sdk/client-s3');
+
+const r2Client = new S3Client({
+  region: 'auto',
+  endpoint: 'https://e94c5ecbf3e438d402b3fe2ad136c0fc.r2.cloudflarestorage.com',
+  credentials: {
+    accessKeyId: process.env.R2_ACCESS_KEY_ID || '9eeb17f20eafece615e6b3520faf05c0',
+    secretAccessKey: process.env.R2_SECRET_ACCESS_KEY || '86716ae1188f87ba5c6d0939a2ff19d972a0b53a6edfb0ed9fe5ba17a87cb4a4'
+  }
+});
+
+// Configure multer for file uploads (store in memory)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB max file size
+  },
+  fileFilter: (req, file, cb) => {
+    // Accept video and image files
+    const allowedMimes = ['video/mp4', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Invalid file type. Only MP4 videos and PNG/JPG images are allowed.'));
+    }
+  }
+});
+
+// ===== ADVERTISER/SPONSOR SUBMISSION ROUTE =====
+
+app.post('/api/advertiser/submit', upload.single('creative'), async (req, res) => {
+  try {
+    const {
+      companyName,
+      websiteUrl,
+      firstName,
+      lastName,
+      email,
+      jobTitle,
+      adFormat,
+      weeklyBudget,
+      cpmRate,
+      isRecurring
+    } = req.body;
+    
+    // Validate required fields
+    if (!email) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'email is required'
+      });
+    }
+    
+    console.log(`📝 Advertiser submission received from ${email}`);
+    console.log('📝 Received ad_format from frontend:', adFormat);
+    
+    // MAP frontend values to database values
+    let databaseAdFormat;
+    if (adFormat === 'static') {
+      databaseAdFormat = 'static_image'; // Map "static" → "static_image"
+    } else if (adFormat === 'video') {
+      databaseAdFormat = 'video'; // Keep "video" as is
+    } else {
+      // Handle any other values or use the original
+      databaseAdFormat = adFormat;
+    }
+    
+    console.log('📝 Using database ad_format:', databaseAdFormat);
+    
+    let mediaUrl = null;
+    
+    // Upload file to R2 if provided
+    if (req.file) {
+      try {
+        const timestamp = Date.now();
+        const filename = `${timestamp}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        
+        console.log(`📤 Uploading file to R2: ${filename}`);
+        
+        const uploadCommand = new PutObjectCommand({
+          Bucket: 'advertiser-media',
+          Key: filename,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        });
+        
+        await r2Client.send(uploadCommand);
+        
+        // Construct public URL using the correct public dev URL
+        mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${filename}`;
+        console.log(`✅ File uploaded successfully: ${mediaUrl}`);
+        
+      } catch (uploadError) {
+        console.error('❌ R2 upload error:', uploadError);
+        return res.status(500).json({
+          error: 'File upload failed',
+          message: 'Failed to upload media file to storage'
+        });
+      }
+    }
+    
+    // Get database pool
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // Insert into database
+    const result = await pool.query(
+      `INSERT INTO advertisers (
+        company_name, website_url, first_name, last_name, 
+        email, title_role, ad_format, weekly_budget_cap, cpm_rate, 
+        media_r2_link, recurring_weekly, approved, completed, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, false, CURRENT_TIMESTAMP)
+      RETURNING id, email, media_r2_link, created_at`,
+      [
+        companyName || null,
+        websiteUrl || null,
+        firstName || null,
+        lastName || null,
+        email,
+        jobTitle || null,
+        databaseAdFormat || null, // Use mapped value instead of adFormat
+        weeklyBudget ? parseFloat(weeklyBudget) : null,
+        cpmRate ? parseFloat(cpmRate) : null,
+        mediaUrl,
+        isRecurring === 'true' || isRecurring === true
+      ]
+    );
+    
+    const inserted = result.rows[0];
+    console.log(`✅ Advertiser submission saved:`, inserted);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Advertiser submission received successfully',
+      data: {
+        id: inserted.id,
+        email: inserted.email,
+        mediaUrl: inserted.media_r2_link,
+        createdAt: inserted.created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error submitting advertiser/sponsor application:', error);
+    
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to submit application. Please try again later.'
+    });
+  }
+});
+
+
+// ===== SPONSOR SUBMISSION ROUTE =====
+
+// Submit sponsor application with logo upload
+app.post('/api/sponsor/submit', upload.single('logo'), async (req, res) => {
+  try {
+    const {
+      organization,
+      contactEmail,
+      website,
+      einTaxId,
+      sponsorTier
+    } = req.body;
+    
+    // Validate required fields
+    if (!organization || !contactEmail) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'organization and contactEmail are required'
+      });
+    }
+    
+    // Validate sponsor tier if provided
+    const validTiers = ['bronze', 'silver', 'gold', 'diamond'];
+    if (sponsorTier && !validTiers.includes(sponsorTier.toLowerCase())) {
+      return res.status(400).json({
+        error: 'Invalid sponsor tier',
+        message: 'sponsorTier must be one of: bronze, silver, gold, diamond'
+      });
+    }
+    
+    console.log(`📝 Sponsor submission received from ${organization} (${contactEmail})`);
+    
+    let logoUrl = null;
+    
+    // Upload logo to R2 if provided
+    if (req.file) {
+      try {
+        const timestamp = Date.now();
+        const filename = `sponsor-${timestamp}-${req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+        
+        console.log(`📤 Uploading logo to R2: ${filename}`);
+        
+        const uploadCommand = new PutObjectCommand({
+          Bucket: 'advertiser-media',
+          Key: filename,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        });
+        
+        await r2Client.send(uploadCommand);
+        
+        // Construct public URL using the correct public dev URL
+        logoUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${filename}`;
+        console.log(`✅ Logo uploaded successfully: ${logoUrl}`);
+        
+      } catch (uploadError) {
+        console.error('❌ R2 upload error:', uploadError);
+        return res.status(500).json({
+          error: 'Logo upload failed',
+          message: 'Failed to upload logo file to storage'
+        });
+      }
+    }
+    
+    // Get database pool
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // Insert into database
+    const result = await pool.query(
+      `INSERT INTO sponsors (
+        organization, contact_email, website, ein_tax_id, sponsor_tier, 
+        logo_r2_link, approved, completed, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, false, false, CURRENT_TIMESTAMP)
+      RETURNING id, organization, contact_email, logo_r2_link, created_at`,
+      [
+        organization,
+        contactEmail,
+        website || null,
+        einTaxId || null,
+        sponsorTier ? sponsorTier.toLowerCase() : null,
+        logoUrl
+      ]
+    );
+    
+    const inserted = result.rows[0];
+    console.log(`✅ Sponsor submission saved:`, inserted);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Sponsor submission received successfully',
+      data: {
+        id: inserted.id,
+        organization: inserted.organization,
+        contactEmail: inserted.contact_email,
+        logoUrl: inserted.logo_r2_link,
+        createdAt: inserted.created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error submitting sponsor application:', error);
+    
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to submit sponsor application. Please try again later.'
+    });
+  }
+});
+
+
+// ===== CHARITY SUBMISSION ROUTE =====
+
+// Submit charity application
+app.post('/api/charity/submit', async (req, res) => {
+  try {
+    const { charityName, federalEin, contactEmail } = req.body;
+    
+    // Validate required fields
+    if (!charityName || !federalEin || !contactEmail) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        message: 'Please provide charityName, federalEin, and contactEmail' 
+      });
+    }
+    
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(contactEmail)) {
+      return res.status(400).json({ 
+        error: 'Invalid email format',
+        message: 'Please provide a valid email address' 
+      });
+    }
+    
+    // Get database pool
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    console.log('📝 Charity submission received:', { charityName, federalEin, contactEmail });
+    
+    // Insert into database
+    const result = await pool.query(
+      `INSERT INTO charities (charity_name, federal_ein, contact_email, payment_status, approved, completed, created_at)
+       VALUES ($1, $2, $3, 'pending', false, false, CURRENT_TIMESTAMP)
+       RETURNING id, charity_name, federal_ein, contact_email, created_at`,
+      [charityName, federalEin, contactEmail]
+    );
+    
+    const insertedCharity = result.rows[0];
+    console.log('✅ Charity submission saved:', insertedCharity);
+    
+    res.status(200).json({
+      success: true,
+      message: 'Charity submission received successfully',
+      data: {
+        id: insertedCharity.id,
+        charityName: insertedCharity.charity_name,
+        federalEin: insertedCharity.federal_ein,
+        contactEmail: insertedCharity.contact_email,
+        createdAt: insertedCharity.created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error submitting charity application:', error);
+    
+    // Check for duplicate entry (if you add unique constraints later)
+    if (error.code === '23505') {
+      return res.status(409).json({
+        error: 'Duplicate entry',
+        message: 'This charity has already been submitted'
+      });
+    }
+    
+    res.status(500).json({
+      error: 'Internal server error',
+      message: 'Failed to submit charity application. Please try again later.'
+    });
+  }
+});
+
 // ===== TRACKING ROUTES (Ready for your video player) =====
 
+// Device fingerprint-based desktop detection endpoints
+
+// Desktop app heartbeat (called by desktop app)
+app.post('/api/tracking/desktop-active', async (req, res) => {
+  try {
+    const { fingerprint } = req.body;
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Missing fingerprint' });
+    }
+
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+
+    await pool.query(`
+      INSERT INTO desktop_active_sessions (fingerprint, last_heartbeat)
+      VALUES ($1, NOW())
+      ON CONFLICT (fingerprint) DO UPDATE SET last_heartbeat = NOW()
+    `, [fingerprint]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Error in desktop-active:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Desktop app shutdown (called when desktop app closes)
+app.post('/api/tracking/desktop-inactive', async (req, res) => {
+  try {
+    const { fingerprint } = req.body;
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Missing fingerprint' });
+    }
+
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+
+    await pool.query(`DELETE FROM desktop_active_sessions WHERE fingerprint = $1`, [fingerprint]);
+    
+    console.log(`🔚 Desktop app deactivated for fingerprint: ${fingerprint}`);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('❌ Error in desktop-inactive:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Check if desktop app is active on this device
+app.post('/api/tracking/desktop-active-status', async (req, res) => {
+  try {
+    const { fingerprint } = req.body;
+    if (!fingerprint) {
+      return res.status(400).json({ error: 'Missing fingerprint' });
+    }
+
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+
+    // Clean up old desktop sessions (> 30 seconds old) before checking
+    await pool.query(`
+      DELETE FROM desktop_active_sessions 
+      WHERE last_heartbeat < NOW() - INTERVAL '30 seconds'
+    `);
+
+    const result = await pool.query(`
+      SELECT 1 FROM desktop_active_sessions
+      WHERE fingerprint = $1 AND last_heartbeat > NOW() - INTERVAL '10 seconds'
+    `, [fingerprint]);
+
+    const isDesktopActive = result.rowCount > 0;
+    
+    console.log(`🔍 Desktop status check for fingerprint ${fingerprint}: ${isDesktopActive ? 'ACTIVE' : 'INACTIVE'}`);
+    
+    res.json({ isDesktopActive });
+  } catch (error) {
+    console.error('❌ Error in desktop-active-status:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Session-based detection (fallback method)
+app.get('/api/tracking/session-status', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+
+    // First, auto-cleanup any stale desktop sessions older than 3 minutes
+    // This prevents false positives from crashed/force-quit desktop apps
+    await pool.query(`
+      UPDATE watch_sessions
+      SET end_time = NOW(),
+          completed = false
+      WHERE user_id = $1
+        AND end_time IS NULL
+        AND user_agent ILIKE '%electron%'
+        AND start_time < NOW() - INTERVAL '3 minutes'
+    `, [userId]);
+
+    // Now check for RECENT active desktop sessions (last 3 minutes)
+    // Check user_agent for "Electron", not device_type
+    const result = await pool.query(`
+      SELECT COUNT(*) as desktop_count
+      FROM watch_sessions
+      WHERE user_id = $1
+        AND end_time IS NULL
+        AND user_agent ILIKE '%electron%'
+        AND start_time > NOW() - INTERVAL '3 minutes'
+    `, [userId]);
+
+    const hasDesktopSession = parseInt(result.rows[0]?.desktop_count || 0) > 0;
+    
+    console.log(`🔍 Session status check for user ${userId}: ${hasDesktopSession ? 'DESKTOP ACTIVE' : 'NO DESKTOP'}`);
+    
+    res.json({ 
+      hasDesktopSession,
+      conflictDetected: hasDesktopSession
+    });
+  } catch (error) {
+    console.error('❌ Error in session-status:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Track request counts per user
+const requestCounts = new Map();
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS = 100; // Max requests per minute
+
+// MODIFY rate limiting to be less aggressive for video endpoints
+const VIDEO_RATE_LIMIT_WINDOW = 10000; // 10 seconds
+const MAX_VIDEO_REQUESTS = 20; // More generous limit for video operations
+
+// Rate limiting middleware for tracking endpoints
+function trackingRateLimit(req, res, next) {
+  const userId = req.user?.userId;
+  if (!userId) return next();
+  
+  const now = Date.now();
+  const userRequests = requestCounts.get(userId) || { count: 0, resetTime: now + RATE_LIMIT_WINDOW };
+  
+  // Reset if window expired
+  if (now > userRequests.resetTime) {
+    userRequests.count = 0;
+    userRequests.resetTime = now + RATE_LIMIT_WINDOW;
+  }
+  
+  userRequests.count++;
+  requestCounts.set(userId, userRequests);
+  
+  if (userRequests.count > MAX_REQUESTS) {
+    console.log(`⚠️ Rate limit exceeded for user ${userId}: ${userRequests.count} requests`);
+    return res.status(429).json({ 
+      error: 'Too many requests',
+      message: 'Please slow down. Try again in a minute.',
+      retryAfter: Math.ceil((userRequests.resetTime - now) / 1000)
+    });
+  }
+  
+  next();
+}
+
+// Video-specific rate limiting (more generous)
+function videoRateLimit(req, res, next) {
+  const userId = req.user?.userId;
+  if (!userId) return next();
+  
+  const now = Date.now();
+  const key = `video_${userId}`;
+  const userRequests = requestCounts.get(key) || { count: 0, resetTime: now + VIDEO_RATE_LIMIT_WINDOW };
+  
+  if (now > userRequests.resetTime) {
+    userRequests.count = 0;
+    userRequests.resetTime = now + VIDEO_RATE_LIMIT_WINDOW;
+  }
+  
+  userRequests.count++;
+  requestCounts.set(key, userRequests);
+  
+  if (userRequests.count > MAX_VIDEO_REQUESTS) {
+    return res.status(429).json({ 
+      error: 'Too many requests', 
+      message: 'Please slow down your requests',
+      retryAfter: Math.ceil((userRequests.resetTime - now) / 1000)
+    });
+  }
+  
+  next();
+}
+
+// ADD a database connection middleware for all tracking endpoints
+function withDatabaseConnection(handler) {
+  return async (req, res, next) => {
+    let client = null;
+    try {
+      const pool = getPool();
+      if (!pool) {
+        return res.status(500).json({ error: 'Database connection not available' });
+      }
+      
+      client = await pool.connect();
+      req.dbClient = client;
+      
+      // Call the handler
+      await handler(req, res, next);
+      
+    } catch (error) {
+      console.error('❌ Database connection error:', error);
+      
+      // Don't send database errors to client
+      if (error.message && (error.message.includes('database') || error.message.includes('connection'))) {
+        if (!res.headersSent) {
+          return res.status(500).json({ error: 'Database temporarily unavailable' });
+        }
+      }
+      
+      if (!res.headersSent) {
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+    } finally {
+      // ALWAYS release the client back to the pool
+      if (client) {
+        try {
+          client.release();
+        } catch (releaseError) {
+          console.error('❌ Error releasing database client:', releaseError);
+        }
+      }
+    }
+  };
+}
+
 // Start watching session
-app.post('/api/tracking/start-session', authenticateToken, async (req, res) => {
+app.post('/api/tracking/start-session', authenticateToken, videoRateLimit, async (req, res) => {
+  let client = null;
   try {
     const { videoName, quality } = req.body;
+    const userId = req.user.userId;
+    const username = req.user.username;
     const userIP = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
 
+    console.log(`🔍 Checking for active sessions for user ${username} (ID: ${userId})`);
+    
+    // Get database pool for direct queries
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // ADD connection check before querying
+    try {
+      client = await pool.connect();
+    } catch (connectionError) {
+      console.error('❌ Failed to get database connection:', connectionError);
+      return res.status(500).json({ error: 'Database temporarily unavailable' });
+    }
+    
+    // Find any incomplete sessions for this user using the connected client
+    // Only check sessions from the last 3 minutes to prevent stale sessions from blocking
+    const activeSessionsResult = await client.query(
+      `SELECT id, video_name, start_time, user_agent 
+       FROM watch_sessions 
+       WHERE user_id = $1 
+         AND end_time IS NULL 
+         AND start_time > NOW() - INTERVAL '3 minutes'`,
+      [userId]
+    );
+    
+    // Check for desktop app precedence - only treat as desktop app if user agent explicitly contains "Electron"
+    const currentUserAgent = userAgent || '';
+    const isDesktopApp = currentUserAgent.toLowerCase().includes('electron');
+    
+    if (activeSessionsResult.rows.length > 0) {
+      // Check if there's an active desktop session - only sessions with "Electron" in user agent
+      const desktopSessions = activeSessionsResult.rows.filter(session => 
+        session.user_agent && session.user_agent.toLowerCase().includes('electron')
+      );
+      
+      const hasDesktopSession = desktopSessions.length > 0;
+      
+      // Desktop app precedence rule
+      if (hasDesktopSession && !isDesktopApp) {
+        // Desktop session exists, but this is a web request - BLOCK IT
+        console.log(`🚫 Blocking web session for ${username} - desktop session active`);
+        return res.status(409).json({ 
+          error: 'Multiple watch sessions detected',
+          message: 'Desktop app is currently active. Please close the desktop app to watch on the website.',
+          conflictType: 'desktop_active',
+          hasActiveDesktopSession: true
+        });
+      }
+      
+      // If we get here, either:
+      // 1. This is a desktop app request (takes precedence)
+      // 2. No desktop sessions exist, so web session is allowed
+      
+      console.log(`⚠️ Found ${activeSessionsResult.rows.length} active session(s) for ${username}, closing them`);
+      
+      for (const session of activeSessionsResult.rows) {
+        // Ensure duration is never negative (handles timezone issues)
+        const duration = Math.max(0, Math.floor((Date.now() - new Date(session.start_time).getTime()) / 1000));
+        console.log(`🔚 Auto-completing session ${session.id} (${session.video_name}) - ${duration}s`);
+        
+        // Complete the old session using connected client
+        await client.query(
+          `UPDATE watch_sessions 
+           SET end_time = CURRENT_TIMESTAMP, 
+               duration_seconds = $2, 
+               completed = false 
+           WHERE id = $1`,
+          [session.id, duration]
+        );
+        
+        // Also close any active ad tracking for this session
+        await client.query(
+          `UPDATE ad_tracking 
+           SET ad_end_time = CURRENT_TIMESTAMP, 
+               duration_seconds = $2,
+               completed = false 
+           WHERE session_id = $1 AND ad_end_time IS NULL`,
+          [session.id, duration]
+        );
+      }
+      
+      console.log(`✅ All previous sessions closed for ${username}`);
+    }
+    
+    // Now create the new session
     const sessionData = {
-      userId: req.user.userId,
+      userId: userId,
       videoName: videoName,
       quality: quality,
       userIP: userIP,
@@ -1565,17 +2520,115 @@ app.post('/api/tracking/start-session', authenticateToken, async (req, res) => {
 
     const [err, sessionId] = await dbHelpers.createWatchSession(sessionData);
     if (err) {
-      console.error('Error creating watch session:', err);
+      console.error('❌ Failed to create session:', err);
       return res.status(500).json({ error: 'Failed to start session' });
     }
 
-    console.log(`📺 Session started: ${req.user.username} watching ${videoName} (${quality})`);
+    console.log(`✅ New session ${sessionId} started for ${username}`);
     res.json({
       sessionId: sessionId,
       message: 'Session started'
     });
   } catch (error) {
-    console.error('Error in start-session:', error);
+    console.error('❌ Error in start-session:', error);
+    
+    // Don't send database errors to client
+    if (error.message && (error.message.includes('database') || error.message.includes('connection'))) {
+      return res.status(500).json({ error: 'Service temporarily unavailable' });
+    }
+    
+    res.status(500).json({ error: 'Internal server error' });
+  } finally {
+    // ALWAYS release the client back to the pool
+    if (client) {
+      try {
+        client.release();
+      } catch (releaseError) {
+        console.error('❌ Error releasing database client:', releaseError);
+      }
+    }
+  }
+});
+
+// Clean up old desktop sessions (for debugging and manual cleanup)
+app.post('/api/tracking/cleanup-desktop-sessions', authenticateToken, trackingRateLimit, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const username = req.user.username;
+    
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    console.log(`🧹 Cleaning up old Electron app sessions for ${username}`);
+    
+    // ONLY close sessions that have "Electron" in the user agent
+    const result = await pool.query(
+      `UPDATE watch_sessions 
+       SET end_time = CURRENT_TIMESTAMP, 
+           duration_seconds = GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time))::INTEGER),
+           completed = false
+       WHERE user_id = $1 
+       AND user_agent ILIKE '%electron%'
+       AND end_time IS NULL
+       RETURNING id, video_name, duration_seconds, user_agent`,
+      [userId]
+    );
+    
+    console.log(`✅ Cleaned up ${result.rowCount} Electron app sessions`);
+    if (result.rowCount > 0) {
+      console.log('Closed sessions:', result.rows.map(r => ({
+        id: r.id,
+        video: r.video_name,
+        userAgent: r.user_agent?.substring(0, 50)
+      })));
+    }
+    
+    res.json({
+      success: true,
+      cleanedSessions: result.rowCount,
+      message: `Cleaned up ${result.rowCount} Electron app sessions`
+    });
+    
+  } catch (error) {
+    console.error('❌ Error cleaning up sessions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Debug endpoint to see all sessions for a user
+app.get('/api/debug/sessions', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const username = req.user.username;
+    
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // Get all sessions for this user from the last hour
+    const result = await pool.query(
+      `SELECT id, video_name, start_time, end_time, user_agent, user_ip, completed
+       FROM watch_sessions 
+       WHERE user_id = $1 
+       AND start_time > NOW() - INTERVAL '1 hour'
+       ORDER BY start_time DESC`,
+      [userId]
+    );
+    
+    console.log(`🔍 Debug: All sessions for ${username}:`, result.rows);
+    
+    res.json({
+      username: username,
+      userId: userId,
+      sessions: result.rows,
+      sessionCount: result.rows.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in debug sessions:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -1857,6 +2910,205 @@ app.get('/api/leaderboard', async (req, res) => {
   } catch (error) {
     console.error('Error in leaderboard:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ===== VIDEO MANAGEMENT ROUTES =====
+
+// Add video to database (admin endpoint)
+app.post('/api/admin/add-video', async (req, res) => {
+  const { title, video_url, duration } = req.body;
+  
+  try {
+    const [err, video] = await dbHelpers.addVideo(title, video_url, duration);
+    
+    if (err) {
+      console.error('❌ Error adding video:', err);
+      return res.status(500).json({ error: 'Failed to add video', details: err.message });
+    }
+    
+    console.log('✅ Video added to database:', video);
+    res.json({ success: true, video });
+  } catch (error) {
+    console.error('❌ Error adding video:', error);
+    res.status(500).json({ error: 'Failed to add video', details: error.message });
+  }
+});
+
+// Get current active video for the player
+// Updated to use first video from R2 bucket (matching desktop app behavior)
+app.get('/api/videos/current', async (req, res) => {
+  try {
+    // R2 bucket URL for charity-stream-videos
+    const R2_BUCKET_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
+    
+    // Return first video from R2 bucket as the current/starting video
+    const currentVideo = {
+      videoId: 1,
+      title: 'video_1',
+      videoUrl: `${R2_BUCKET_URL}/video_1.mp4`,
+      duration: 60
+    };
+    
+    console.log('✅ Serving current video from R2 bucket:', currentVideo.title);
+    
+    res.json(currentVideo);
+  } catch (error) {
+    console.error('❌ Error fetching current video:', error);
+    res.status(500).json({ error: 'Failed to fetch video', details: error.message });
+  }
+});
+
+// Get all active videos for looping
+// DYNAMIC: Scans charity-stream-videos R2 bucket for all video_X.mp4 files
+app.get('/api/videos/playlist', async (req, res) => {
+  try {
+    const R2_BUCKET_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
+    const CHARITY_BUCKET = 'charity-stream-videos';
+    
+    // List all video_X.mp4 files from R2 bucket
+    const listCommand = new ListObjectsV2Command({
+      Bucket: CHARITY_BUCKET
+    });
+    
+    const response = await r2Client.send(listCommand);
+    const allFiles = response.Contents || [];
+    
+    // Filter for video_X.mp4 pattern and sort numerically
+    const videoFiles = allFiles
+      .filter(file => /^video_\d+\.mp4$/.test(file.Key))
+      .map(file => {
+        const match = file.Key.match(/^video_(\d+)\.mp4$/);
+        return {
+          filename: file.Key,
+          number: parseInt(match[1]),
+          size: file.Size
+        };
+      })
+      .sort((a, b) => a.number - b.number);
+    
+    // Build playlist
+    const playlist = videoFiles.map(video => ({
+      videoId: video.number,
+      title: video.filename.replace('.mp4', ''),
+      videoUrl: `${R2_BUCKET_URL}/${video.filename}`,
+      duration: 60
+    }));
+    
+    console.log(`✅ Dynamically serving playlist: ${playlist.length} videos from R2 bucket`);
+    console.log(`   Videos: ${videoFiles.map(v => v.filename).join(', ')}`);
+    
+    res.json({
+      videos: playlist
+    });
+  } catch (error) {
+    console.error('❌ Error fetching playlist:', error);
+    
+    // Fallback to static playlist if R2 listing fails
+    const R2_BUCKET_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
+    const fallbackPlaylist = [
+      { videoId: 1, title: 'video_1', videoUrl: `${R2_BUCKET_URL}/video_1.mp4`, duration: 60 },
+      { videoId: 2, title: 'video_2', videoUrl: `${R2_BUCKET_URL}/video_2.mp4`, duration: 60 },
+      { videoId: 3, title: 'video_3', videoUrl: `${R2_BUCKET_URL}/video_3.mp4`, duration: 60 },
+      { videoId: 4, title: 'video_4', videoUrl: `${R2_BUCKET_URL}/video_4.mp4`, duration: 60 },
+      { videoId: 5, title: 'video_5', videoUrl: `${R2_BUCKET_URL}/video_5.mp4`, duration: 60 },
+      { videoId: 6, title: 'video_6', videoUrl: `${R2_BUCKET_URL}/video_6.mp4`, duration: 60 }
+    ];
+    
+    console.log('⚠️ Using fallback playlist (5 videos)');
+    res.json({ videos: fallbackPlaylist });
+  }
+});
+
+// GET endpoint to fetch advertiser info for a specific video
+app.get('/api/videos/:videoFilename/advertiser', async (req, res) => {
+  try {
+    const { videoFilename } = req.params;
+    
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    const result = await pool.query(`
+      SELECT company_name, website_url, video_filename
+      FROM video_advertiser_mappings 
+      WHERE video_filename = $1 AND is_active = true
+      LIMIT 1
+    `, [videoFilename]);
+
+    if (result.rows.length > 0) {
+      res.json({
+        hasAdvertiser: true,
+        advertiser: result.rows[0]
+      });
+    } else {
+      res.json({
+        hasAdvertiser: false,
+        advertiser: null
+      });
+    }
+  } catch (error) {
+    console.error('❌ Error fetching video advertiser:', error);
+    res.status(500).json({ error: 'Failed to fetch advertiser information' });
+  }
+});
+
+// GET endpoint to fetch all active video-advertiser mappings
+app.get('/api/videos/advertiser-mappings', async (req, res) => {
+  try {
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    const result = await pool.query(`
+      SELECT video_filename, website_url, company_name
+      FROM video_advertiser_mappings 
+      WHERE is_active = true
+      ORDER BY video_filename
+    `);
+
+    res.json({
+      mappings: result.rows
+    });
+  } catch (error) {
+    console.error('❌ Error fetching advertiser mappings:', error);
+    res.status(500).json({ error: 'Failed to fetch advertiser mappings' });
+  }
+});
+
+// Delete a specific video (admin endpoint)
+app.delete('/api/admin/delete-video/:videoId', async (req, res) => {
+  const { videoId } = req.params;
+  
+  try {
+    // Validate videoId
+    if (!videoId || isNaN(parseInt(videoId))) {
+      return res.status(400).json({ error: 'Valid video ID is required' });
+    }
+    
+    const [err, result] = await dbHelpers.deleteVideo(parseInt(videoId));
+    
+    if (err) {
+      console.error('❌ Error deleting video:', err);
+      return res.status(500).json({ error: 'Failed to delete video', details: err.message });
+    }
+    
+    if (!result || result.rowCount === 0) {
+      return res.status(404).json({ error: 'Video not found' });
+    }
+    
+    console.log('✅ Video deleted successfully:', { videoId, deletedRows: result.rowCount });
+    res.json({ 
+      success: true, 
+      message: 'Video deleted successfully',
+      videoId: parseInt(videoId),
+      deletedRows: result.rowCount
+    });
+  } catch (error) {
+    console.error('❌ Error deleting video:', error);
+    res.status(500).json({ error: 'Failed to delete video', details: error.message });
   }
 });
 
@@ -2202,7 +3454,6 @@ const cleanUrlRoutes = {
   '/impact': 'impact.html',
   '/subscribe': 'subscribe.html',
   '/admin': 'admin.html',
-  '/charity': 'charity.html',
   '/lander': 'lander.html',
   '/reset-password': 'reset-password.html',
   '/verify-email': 'verify-email.html',
@@ -2231,7 +3482,7 @@ app.use('/Terms and Conditions', express.static(path.join(__dirname, '../public/
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api/')) {
     // Check if this is a clean URL route
-    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/charity', '/lander', '/reset-password', '/verify-email', '/advertise/company', '/advertise/charity'];
+    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/lander', '/reset-password', '/verify-email', '/advertise/company', '/advertise/charity'];
     
     if (cleanUrlRoutes.includes(req.path)) {
       // This should have been handled by the specific routes above
@@ -2253,8 +3504,8 @@ app.listen(PORT, () => {
     console.log(`🌐 Production server running on port ${PORT}`);
     console.log(`🔗 Deployed at: https://charitystream.vercel.app`);
   } else {
-    console.log(`📡 Server running on http://localhost:${PORT}`);
-    console.log(`🎬 Frontend served at http://localhost:${PORT}`);
+  console.log(`📡 Server running on http://localhost:${PORT}`);
+  console.log(`🎬 Frontend served at http://localhost:${PORT}`);
   }
   console.log(`🔐 API endpoints available at /api/`);
   console.log('\n📋 Available endpoints:');

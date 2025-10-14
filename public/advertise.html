@@ -84,8 +84,7 @@
     /* -------------------- Header -------------------- */
     .header{border-bottom:1px solid var(--gray-200);width:100%}
     .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:inherit;text-decoration:none;cursor:pointer;transition:.2s}
-    .logo:hover{color:var(--brand-600)}
+    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em}
     .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
     .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
     .welcome{color:var(--gray-900)}
@@ -200,21 +199,15 @@
   <!-- Header -->
   <header class="header">
     <div class="container">
-      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+      <div class="logo">Charity Stream</div>
       <nav class="nav">
-        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
-          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
+        <div class="nav-hidden-mobile">
+          <span class="welcome">Welcome, <span class="welcome-bold">StickyHenry</span></span>
           <a href="/about" class="nav-link">About</a>
-          <a href="/advertise" class="nav-link active">Advertise</a>
-          <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
+          <a href="/advertise" class="nav-link">Advertise</a>
+          <a href="#" class="nav-link">Account</a>
         </div>
-        <div class="nav-hidden-mobile" id="guestNav">
-          <a href="/about" class="nav-link">About</a>
-          <a href="/advertise" class="nav-link active">Advertise</a>
-          <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
-        </div>
+        <a href="/" class="watch-ads-btn">Watch Ads</a>
       </nav>
     </div>
   </header>
@@ -248,7 +241,7 @@
             <div class="process-steps-title">Simple Process:</div>
             <ol>
               <li>Submit your ad with your chosen CPM rate</li>
-              <li>We review for quality and <a href="/Terms and Conditions/Advertiser Community Guidelines - Representing Your Brand With Intregrity.pdf" target="_blank" rel="noopener noreferrer" class="community-link">community guidelines</a></li>
+              <li>We review for quality and <a href="#" class="community-link">community guidelines</a></li>
               <li>Get confirmation when your ad goes live</li>
               <li>Track impact as your budget becomes charitable donations</li>
             </ol>
@@ -348,7 +341,7 @@
         </div>
 
         <div class="benefit-item">
-          <h4 class="ben-title">52 Annual Opportunities + Corporate Pipeline</h4>
+          <h4 class="benefit-title">52 Annual Opportunities + Corporate Pipeline</h4>
           <p class="benefit-text">Unlimited weekly entries. Direct exposure to corporate advertisers creates pathways for future partnerships and sponsorships.</p>
         </div>
       </div>
@@ -415,73 +408,5 @@
       </div>
     </div>
   </footer>
-
-  <script>
-    // Check authentication status
-    const authToken = localStorage.getItem('authToken');
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
-
-    // Set initial UI state
-    function setInitialUIState() {
-      const loggedInNav = document.getElementById('loggedInNav');
-      const guestNav = document.getElementById('guestNav');
-      const usernameDisplay = document.getElementById('usernameDisplay');
-
-      if (authToken && currentUser) {
-        // User is logged in
-        if (loggedInNav) loggedInNav.style.display = 'flex';
-        if (guestNav) guestNav.style.display = 'none';
-        
-        if (usernameDisplay && currentUser.username) {
-          usernameDisplay.textContent = currentUser.username;
-        }
-      } else {
-        // User is not logged in
-        if (loggedInNav) loggedInNav.style.display = 'none';
-        if (guestNav) guestNav.style.display = 'flex';
-      }
-    }
-
-    // Initialize page
-    document.addEventListener('DOMContentLoaded', () => {
-      setInitialUIState();
-
-      // Logo button functionality
-      const logoBtn = document.getElementById('logoBtn');
-      if (logoBtn) {
-        logoBtn.onclick = function(e) {
-          e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth';
-          }
-        };
-      }
-
-      // Watch Ads button functionality
-      const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
-      const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
-      
-      if (watchAdsBtnLoggedIn) {
-        watchAdsBtnLoggedIn.onclick = function(e) {
-          e.preventDefault();
-          // User is logged in, go to main page
-          window.location.href = '/';
-        };
-      }
-      
-      if (watchAdsBtnGuest) {
-        watchAdsBtnGuest.onclick = function(e) {
-          e.preventDefault();
-          // User is not logged in, go to sign in
-          window.location.href = '/auth';
-        };
-      }
-    });
-  </script>
 </body>
 </html>

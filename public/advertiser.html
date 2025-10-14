@@ -1,63 +1,440 @@
 <!DOCTYPE html>
+
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Join as a Company - Charity Stream</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-
-  <style>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Advertise - Charity Stream</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<style>
+    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+      font-feature-settings:'liga' 1,'calt' 1,'tnum' 1;
+      background:#ffffff;color:#111827;line-height:1.5;
+      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
+    }
     :root{
       --brand-primary: #2F7D31;
       --brand-600: #2F7D31;
       --brand-700: #276629;
+      --brand-800: #1e5620;
+      --brand-light: #4CAF50;
+      --brand-dark: #1e5620;
       --gray-50:#f9fafb; --gray-75:#FAFAFA; --gray-100:#f3f4f6; --gray-200:#e5e7eb;
       --gray-500:#6b7280; --gray-600:#4b5563; --gray-700:#374151; --gray-900:#111827;
-    }
-
-    *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      font-family:'Inter',ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
-      font-feature-settings:'liga' 1,'calt' 1,'tnum' 1;
-      background:#ffffff;color:var(--gray-900);line-height:1.5;
-      -webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;
     }
 
     .container{max-width:1200px;margin:0 auto;padding:0 1rem}
 
     /* Header */
-    .header{border-bottom:1px solid var(--gray-200);width:100%}
-    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem;max-width:1200px;margin:0 auto;padding:0 1rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:inherit;text-decoration:none;cursor:pointer;transition:.2s}
-    .logo:hover{color:var(--brand-600)}
-    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
-    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
-    .welcome{color:var(--gray-900)}
-    .welcome-bold{font-weight:500}
-    .nav-link{text-decoration:none;color:var(--gray-700)}
-    .nav-link:hover{color:var(--gray-900)}
-    .nav-link.active{color:var(--gray-900);font-weight:600}
-    .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer;transition:.2s}
-    .watch-ads-btn:hover{background:var(--brand-700)}
-    .watch-ads-btn.active{color:var(--brand-600);font-weight:600}
+    .header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--gray-200)}
+    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
+    .logo{font-size:1.5rem;font-weight:700;color:var(--gray-900);letter-spacing:-.025em;text-decoration:none}
+    .nav{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:.875rem}
+    .nav-link{color:var(--gray-700);text-decoration:none;padding:.5rem 1rem;border-radius:.375rem;transition:.2s;font-weight:500}
+    .nav-link:hover{background:var(--gray-100);color:var(--gray-900)}
+    .nav-cta{background:var(--brand-600);color:#fff;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;text-decoration:none;transition:.2s}
+    .nav-cta:hover{background:var(--brand-700);transform:translateY(-1px)}
 
-    .user-menu{position:relative}
-    .user-menu-btn{background:none;border:none;color:var(--gray-600);font-size:.875rem;cursor:pointer;padding:.5rem 0;display:flex;align-items:center;gap:.25rem}
-    .user-menu-btn:hover{color:var(--gray-900)}
-    .user-dropdown{position:absolute;top:100%;right:0;background:white;border:1px solid var(--gray-200);border-radius:.5rem;box-shadow:0 4px 6px -1px rgba(0,0,0,.1);padding:.5rem 0;min-width:120px;z-index:1000}
-    .logout-btn{background:none;border:none;color:var(--gray-600);font-size:.875rem;cursor:pointer;padding:.5rem 1rem;width:100%;text-align:left}
-    .logout-btn:hover{background:var(--gray-50);color:var(--gray-900)}
+    /* Hero Section */
+    .hero{
+      padding:2.5rem 0 0;
+      background:#f5f5f5;
+      position:relative;
+      overflow:hidden;
+    }
+    .hero .container{position:relative;z-index:2;text-align:center;max-width:900px;padding-bottom:0}
+    
+    .hero-eyebrow{
+      display:inline-block;
+      background:rgba(47,125,49,.1);
+      color:var(--brand-700);
+      padding:.5rem 1rem;
+      border-radius:9999px;
+      font-size:.875rem;
+      font-weight:600;
+      margin-bottom:1.5rem;
+      border:1px solid rgba(47,125,49,.2);
+    }
+    
+    .hero-title{
+      font-size:4.5rem;
+      font-weight:900;
+      color:#1a1a1a;
+      line-height:1.1;
+      letter-spacing:-.02em;
+      margin-bottom:1rem;
+    }
+    
+    .hero-highlight{
+      color:var(--brand-primary);
+      position:relative;
+    }
+    
+    .hero-subtitle{
+      font-size:1.35rem;
+      color:#666;
+      margin-bottom:1.5rem;
+      line-height:1.4;
+      max-width:700px;
+      margin-left:auto;
+      margin-right:auto;
+      font-weight:400;
+    }
+    
+    .hero-stats{
+      display:flex;
+      justify-content:center;
+      align-items:flex-start;
+      gap:5rem;
+      margin-bottom:2rem;
+      flex-wrap:wrap;
+    }
+    
+    .stat{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      gap:.5rem;
+      flex:0 0 auto;
+    }
+    
+    .stat-number{
+      font-size:4rem;
+      font-weight:900;
+      color:var(--brand-primary);
+      line-height:1;
+      height:4rem;
+      display:flex;
+      align-items:center;
+    }
+    
+    .stat-label{
+      font-size:1.05rem;
+      color:#666;
+      font-weight:500;
+      text-align:center;
+      max-width:280px;
+      line-height:1.3;
+      min-height:2.6rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    
+    .hero-cta{
+      display:inline-flex;
+      align-items:center;
+      gap:.75rem;
+      background:var(--brand-600);
+      color:#fff;
+      padding:1rem 2rem;
+      border:none;
+      border-radius:.625rem;
+      font-size:1.125rem;
+      font-weight:600;
+      text-decoration:none;
+      cursor:pointer;
+      transition:.3s;
+      box-shadow:0 2px 8px rgba(47,125,49,.2);
+      margin-bottom:2.5rem;
+    }
+    
+    .hero-cta:hover{
+      background:var(--brand-700);
+      transform:translateY(-2px);
+      box-shadow:0 4px 12px rgba(47,125,49,.3);
+    }
+    
+    /* Trust Bar */
+    .trust-bar{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:0;
+      max-width:100%;
+      width:100%;
+      margin:0;
+      background:#fff;
+      border-top:1px solid #e0e0e0;
+      border-bottom:1px solid #e0e0e0;
+      padding:1.25rem 0;
+    }
+    
+    .trust-item{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:.625rem;
+      padding:0 2.5rem;
+      border-right:1px solid #e0e0e0;
+      flex:1;
+    }
+    
+    .trust-item:last-child{
+      border-right:none;
+    }
+    
+    .trust-icon{
+      width:1.25rem;
+      height:1.25rem;
+      background:transparent;
+      border-radius:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--brand-600);
+      font-size:1.125rem;
+      font-weight:700;
+      flex-shrink:0;
+    }
+    
+    .trust-text{
+      font-size:1.05rem;
+      color:#333;
+      font-weight:400;
+      line-height:1.3;
+      text-align:left;
+      white-space:nowrap;
+    }
+
+    /* Options Section */
+    .options-section{
+      padding:4rem 0;
+      background:#fff;
+      position:relative;
+      z-index:10;
+    }
+    
+    .options-header{
+      text-align:center;
+      margin-bottom:2.5rem;
+      max-width:800px;
+      margin-left:auto;
+      margin-right:auto;
+    }
+    
+    .options-title{
+      font-size:2.75rem;
+      font-weight:800;
+      color:var(--gray-900);
+      margin-bottom:.75rem;
+      line-height:1.2;
+    }
+    
+    .options-subtitle{
+      font-size:1.125rem;
+      color:var(--gray-600);
+    }
+    
+    /* Option Cards */
+    .options-grid{
+      display:grid;
+      grid-template-columns:repeat(2, 1fr);
+      gap:2rem;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    
+    .option-card{
+      background:#fff;
+      border:2px solid var(--gray-200);
+      border-radius:1.25rem;
+      padding:2.5rem 2rem;
+      transition:all .3s ease;
+      position:relative;
+      overflow:hidden;
+    }
+    
+    .option-card::before{
+      content:'';
+      position:absolute;
+      top:0;left:0;right:0;
+      height:6px;
+      background:var(--brand-light);
+      transition:height .3s ease;
+    }
+    
+    .option-card.sponsorship::before{
+      background:var(--brand-dark);
+    }
+    
+    .option-card:hover{
+      transform:translateY(-6px);
+      box-shadow:0 16px 48px rgba(76,175,80,.15);
+      border-color:var(--brand-light);
+    }
+    
+    .option-card.sponsorship:hover{
+      border-color:var(--brand-dark);
+      box-shadow:0 16px 48px rgba(30,86,32,.15);
+    }
+    
+    .option-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:.5rem;
+      font-size:1.75rem;
+      margin-bottom:1rem;
+    }
+    
+    .option-badge-text{
+      background:rgba(76,175,80,.1);
+      color:#2e7d32;
+      padding:.5rem 1rem;
+      border-radius:.5rem;
+      font-size:.875rem;
+      font-weight:600;
+      margin-left:.5rem;
+    }
+    
+    .sponsorship .option-badge-text{
+      background:rgba(30,86,32,.1);
+      color:#1e5620;
+    }
+    
+    .option-title{
+      font-size:1.75rem;
+      font-weight:800;
+      color:var(--gray-900);
+      margin-bottom:.75rem;
+      line-height:1.2;
+    }
+    
+    .option-description{
+      font-size:1.05rem;
+      color:var(--gray-600);
+      margin-bottom:1.5rem;
+      line-height:1.6;
+    }
+    
+    .option-features{
+      display:flex;
+      flex-direction:column;
+      gap:.75rem;
+      margin-bottom:2rem;
+    }
+    
+    .option-feature{
+      display:flex;
+      align-items:flex-start;
+      gap:.75rem;
+      font-size:.95rem;
+      color:var(--gray-700);
+      line-height:1.6;
+    }
+    
+    .feature-bullet{
+      flex-shrink:0;
+      width:1.25rem;
+      height:1.25rem;
+      background:var(--brand-light);
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      margin-top:.125rem;
+      font-size:.65rem;
+      color:#fff;
+      font-weight:700;
+    }
+    
+    .sponsorship .feature-bullet{
+      background:var(--brand-dark);
+    }
+    
+    .option-cta{
+      width:100%;
+      background:var(--brand-light);
+      color:#fff;
+      padding:1rem 2rem;
+      border:none;
+      border-radius:.75rem;
+      font-size:1rem;
+      font-weight:700;
+      cursor:pointer;
+      transition:.3s;
+      text-decoration:none;
+      display:inline-block;
+      text-align:center;
+    }
+    
+    .option-cta:hover{
+      background:#43a047;
+      transform:translateY(-2px);
+      box-shadow:0 8px 24px rgba(76,175,80,.25);
+    }
+    
+    .sponsorship .option-cta{
+      background:var(--brand-dark);
+    }
+    
+    .sponsorship .option-cta:hover{
+      background:#164018;
+      box-shadow:0 8px 24px rgba(30,86,32,.25);
+    }
+
+    /* Sign-up Section */
+    .signup-section{background:#fff;padding:2.25rem 0;}
 
     /* Main layout */
     .main{display:grid;grid-template-columns:1fr 400px;gap:3rem;padding:3rem 0;max-width:1200px;margin:0 auto}
     
     /* Form section */
     .form-section{background:#fff}
-    .form-title{font-size:2.25rem;font-weight:800;color:var(--gray-900);margin-bottom:.5rem}
-    .form-subtitle{font-size:1rem;color:var(--gray-600);margin-bottom:2rem}
+
+    /* Left-aligned header toggle */
+    .header-join {
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      gap:1.5rem;
+      margin:2rem 0 1rem;
+      flex-wrap:wrap;
+    }
+    .header-join h1 {
+      font-size:2.5rem;
+      font-weight:900;
+      color:#111827;
+      margin:0;
+    }
+    .header-segmented {
+      display:inline-flex;
+      border:2px solid #e5e7eb;
+      background:#fff;
+      border-radius:9999px;
+      padding:.25rem;
+      gap:.25rem;
+    }
+    .header-segmented button {
+      appearance:none;
+      border:0;
+      padding:.75rem 1.25rem;
+      border-radius:9999px;
+      font-weight:700;
+      font-size:1rem;
+      color:#374151;
+      background:transparent;
+      cursor:pointer;
+      transition:.2s;
+    }
+    .header-segmented button.active {
+      background:rgba(47,125,49,.12);
+      color:#1e5620;
+      box-shadow:0 1px 6px rgba(47,125,49,.18) inset;
+    }
+    .header-sub {
+      text-align:left !important;
+      margin:0.75rem 0 2rem 0;
+      font-size:1.25rem;
+      color:#4b5563;
+      max-width:900px;
+      line-height:1.6;
+    }
 
     .form-group{margin-bottom:2rem}
     .section-header{font-size:1.125rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem;border-bottom:2px solid var(--gray-200);padding-bottom:.5rem}
@@ -82,7 +459,7 @@
     .cpm-price{font-size:1.25rem;font-weight:800;color:var(--brand-600)}
     .cmp-description{font-size:.875rem;color:var(--gray-600)}
 
-    /* Custom slider (hidden by default) */
+    /* Custom slider */
     .custom-slider{display:none;margin-top:.75rem;padding:1rem;background:var(--gray-50);border-radius:.5rem}
     .custom-slider.active{display:block}
     .slider-container{margin:1rem 0}
@@ -120,675 +497,1153 @@
     .stat-label{color:var(--gray-600)}
     .stat-value{font-weight:600;color:var(--brand-600)}
 
-    /* Responsive */
-    @media (max-width:1024px){
-      .main{grid-template-columns:1fr;gap:2rem}
-      .sidebar{position:static}
-    }
-    @media (max-width:768px){
-      .input-row{grid-template-columns:1fr}
-      .nav-hidden-mobile{display:none}
-      .container{padding:0 1rem}
-      .header .container{padding:0 1rem}
-    }
+    .section-hidden{display:none}
 
-    /* Modal styles */
-    .modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
-    .modal-overlay.active{display:flex}
-    .modal{background:#fff;border-radius:1rem;padding:2rem;max-width:720px;width:90%;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
-    .modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;color:var(--gray-500);cursor:pointer;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border-radius:50%}
-    .modal-close:hover{background:var(--gray-100);color:var(--gray-700)}
-    .modal-title{font-size:1.25rem;font-weight:700;color:var(--gray-900);margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
-    .enhancement-option{border:1px solid #ccc;background-color:#fdfdfd;border-radius:8px;padding:1.25rem;margin-bottom:1rem;cursor:pointer;transition:.2s}
-    .enhancement-option:hover{border-color:var(--brand-600)}
-    .enhancement-option.selected{border-color:var(--brand-600);background:rgba(47,125,49,.05)}
-    .enhancement-header{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.5rem}
-    .enhancement-checkbox{margin-top:.2rem}
-    .enhancement-title{font-weight:600;color:var(--gray-900)}
-    .enhancement-description{color:var(--gray-600);font-size:.875rem;line-height:1.4}
-    .enhancement-pricing{color:var(--brand-600);font-weight:600;font-size:.875rem;margin-top:.25rem}
-    .url-input{width:100%;padding:.75rem;border:1px solid var(--gray-200);border-radius:.5rem;font-size:.875rem;margin-top:.75rem;background:#fbfcfd;box-shadow:inset 0 0.5px 1px rgba(0,0,0,.03);display:none}
-    .url-input.active{display:block}
-    .url-label{font-size:.875rem;color:var(--gray-700);margin-top:.5rem;display:none}
-    .url-label.active{display:block}
-    .modal-buttons{display:flex;gap:1rem;margin-top:2rem}
-    .modal-btn{flex:1;padding:.875rem 1.5rem;border-radius:.75rem;border:none;font-weight:600;font-size:.875rem;cursor:pointer;transition:.2s;white-space:nowrap;min-width:200px}
-    .modal-btn-primary{background:var(--brand-600);color:#fff}
-    .modal-btn-primary:hover{background:var(--brand-700)}
-    .modal-btn-secondary{background:#fff;color:var(--gray-700);border:2px solid #333}
-    .modal-btn-secondary:hover{background:var(--gray-50)}
-    
-    /* Success modal */
-    .success-content{text-align:center}
-    .success-icon{font-size:3rem;margin-bottom:1rem}
-    .success-title{font-size:1.5rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem}
-    .success-message{color:var(--gray-600);margin-bottom:2rem;line-height:1.5}
-    .campaign-details{background:var(--gray-50);border-radius:.75rem;padding:1.5rem;margin:1.5rem 0;text-align:left}
-    .detail-title{font-weight:600;color:var(--gray-900);margin-bottom:.75rem}
-    .detail-item{display:flex;justify-content:space-between;margin-bottom:.5rem;font-size:.875rem}
-    .detail-label{color:var(--gray-600)}
-    .detail-value{font-weight:600;color:var(--gray-900)}
-    .next-steps{text-align:left;margin:1.5rem 0}
-    .next-steps-title{font-weight:600;color:var(--gray-900);margin-bottom:.75rem}
-    .next-steps ol{margin-left:1.5rem;color:var(--gray-700);font-size:.875rem;line-height:1.6}
-    .next-steps li{margin-bottom:.5rem}
+    /* Sponsor form styles */
+    .pref-cards{display:grid;gap:.75rem}
+    .pref-card{border:2px solid var(--gray-200);border-radius:.75rem;padding:1rem;cursor:pointer;transition:.2s;position:relative;background:#fff}
+    .pref-card:hover{border-color:var(--brand-600)}
+    .pref-card.selected{border-color:var(--brand-600);background:rgba(47,125,49,.05)}
+    .pref-radio{position:absolute;opacity:0}
+    .pref-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem}
+    .pref-name{font-weight:600;color:var(--gray-900)}
+    .pref-note{font-size:.8rem;color:var(--gray-600)}
+    .sponsor-note{background:var(--gray-50);border:1px solid var(--gray-200);border-radius:.75rem;padding:1rem;margin-top:1rem;font-size:.85rem;color:var(--gray-700)}
+
+    /* Footer */
     .footer{background:var(--brand-600);color:#eaf3ef}
     .footer .container{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:.9rem 1rem}
     .footer p{font-style:italic;font-weight:600}
     .social-icons{display:flex;gap:.5rem}
     .social-icon{width:2rem;height:2rem;border-radius:9999px;background:rgba(255,255,255,.15);display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:#eaf3ef;font-size:.85rem}
     .social-icon:hover{background:rgba(255,255,255,.25)}
-  </style>
+
+    /* Responsive */
+    @media (max-width:1024px){
+      .hero-title{font-size:3.5rem}
+      .hero-subtitle{font-size:1.25rem}
+      .hero-stats{gap:4rem;margin-bottom:2.5rem}
+      .stat-number{font-size:3.5rem}
+      .stat-label{font-size:1rem;max-width:250px}
+      .options-grid{grid-template-columns:1fr;max-width:600px}
+      .trust-bar{flex-wrap:wrap;padding:1.25rem 1.5rem}
+      .trust-item{padding:0.75rem 1.5rem;border-right:none;border-bottom:1px solid #e0e0e0;flex:1 1 50%;min-width:200px}
+      .trust-item:nth-child(2n){border-right:1px solid #e0e0e0}
+      .trust-item:nth-last-child(-n+2){border-bottom:none}
+      .main{grid-template-columns:1fr;gap:2rem}
+      .sidebar{position:static}
+    }
+    
+    @media (max-width:768px){
+      .hero{padding:4rem 0 0}
+      .hero-title{font-size:2.75rem;margin-bottom:1.25rem;line-height:1.2}
+      .hero-subtitle{font-size:1.125rem;margin-bottom:2rem}
+      .hero-eyebrow{font-size:.75rem;padding:.5rem 1rem;margin-bottom:2rem}
+      .hero-stats{flex-direction:column;gap:2rem;margin-bottom:2.5rem}
+      .stat-number{font-size:3.5rem}
+      .stat-label{font-size:1rem;max-width:300px}
+      .hero-cta{padding:1rem 1.75rem;margin-bottom:3rem;font-size:1rem}
+      .trust-bar{flex-direction:column;align-items:stretch;padding:0}
+      .trust-item{border-right:none!important;border-bottom:1px solid #e0e0e0;padding:1.25rem 1.5rem;justify-content:flex-start;min-width:auto}
+      .trust-item:last-child{border-bottom:none}
+      .trust-text{font-size:.95rem}
+      .options-section{padding:3rem 0}
+      .options-title{font-size:2rem}
+      .option-card{padding:2rem 1.5rem}
+      .input-row{grid-template-columns:1fr}
+      .container{padding:0 1rem}
+      .header-join h1{font-size:2rem}
+    }
+  
+/* checkmark list */
+ul.tier-list { list-style: none; padding-left: 0 !important; }
+ul.tier-list li { position: relative; padding-left: 1.5rem; margin: .25rem 0; }
+ul.tier-list li::before { content: "✓"; position: absolute; left: 0; top: 0; line-height: 1.2; color: var(--brand-600); font-weight: 800; }
+
+.section-divider{margin:1rem 0;}
+
+/* Enhance tier sub-header typography */
+.cpm-name {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #111827;
+}
+
+/* --- Scroll-safe header offsets (no visual change) --- */
+html { scroll-padding-top: 96px; } /* offset for in-page anchor jumps */
+#why-sponsor, #why-advertise, h2[id^="why-"] { scroll-margin-top: 96px; } /* ensure headings sit below sticky bars */
+</style>
+
+<style>
+/* --- Scroll-safe offsets for sticky header and anchor jumps --- */
+:root { --sticky-offset: 96px; }
+html { scroll-padding-top: var(--sticky-offset); }
+/* Common jump targets that may be navigated to */
+#signup,
+.options-section,
+.sidebar,
+.sidebar-title,
+h2[id^="why-"] {
+  scroll-margin-top: var(--sticky-offset);
+}
+</style>
+<style>
+
+/* --- Section background rhythm for clear visual separation --- */
+.hero-section {
+  background: #f5f5f5;
+}
+.options-section {
+  background: #fafafa;
+  padding-top: 80px;
+  padding-bottom: 80px;
+}
+.signup-section {
+  background: #fff;
+  padding-top: 80px;
+  padding-bottom: 100px;
+  border-top: 1px solid #eaeaea;
+}
+.options-section.alt {
+  background: #f8faf8; /* soft greenish brand tint */
+}
+
+</style>
+<style>
+
+/* --- Sticky sidebar breathing room (CSS-only, preserves layout) --- */
+:root { --sticky-offset: 96px; } /* header ~64px + 32px breathing room */
+
+.sidebar {
+  position: sticky;
+  top: var(--sticky-offset);
+}
+
+.sidebar,
+.sidebar-title {
+  scroll-margin-top: var(--sticky-offset);
+}
+
+/* Disable sticky on narrow screens for better UX */
+@media (max-width: 768px) {
+  .sidebar { position: static; top: auto; }
+}
+
+</style>
+<style>
+
+/* --- Tightened vertical rhythm between Options and Signup sections --- */
+.options-section {
+  padding: 4rem 0 1.5rem 0; /* Reduced bottom padding for closer spacing */
+}
+
+.signup-section {
+  background: #fff;
+  padding: 1.5rem 0 2.25rem 0; /* Reduced top padding */
+}
+
+</style>
+<style>
+
+/* --- Fix "Most Popular" badge placement on Sponsor Tiers --- */
+#tiers .cpm-header {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.75rem;
+}
+
+#tiers .cpm-price {
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+}
+
+</style>
+<style>
+
+/* --- Legal notice box styling (subtle info card) --- */
+.legal-notice, .legal-box, .tax-note, .tax-box {
+  background: #f8fafc;
+  color: #334155;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 1.25rem 1.5rem;
+  line-height: 1.6;
+  font-size: 0.95rem;
+}
+
+</style>
 </head>
 <body>
-  <!-- Header -->
-  <header class="header">
-    <div class="container">
-      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
-      <nav class="nav">
-        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
-          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-          <a href="/about" class="nav-link">About</a>
-          <a href="/advertise" class="nav-link active">Advertise</a>
-          <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-        </div>
-        <div class="nav-hidden-mobile" id="guestNav">
-          <a href="/about" class="nav-link">About</a>
-          <a href="/advertise" class="nav-link active">Advertise</a>
-          <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-        </div>
-      </nav>
-    </div>
-  </header>
+<!-- Header -->
+<header class="header">
+<div class="container">
+<a class="logo" href="/">Charity Stream</a>
+<nav class="nav">
+<a class="nav-link" href="/about">About</a>
+<a class="nav-link" href="/advertise">Advertise</a>
+<a class="nav-link" href="/impact">Impact</a>
+<a class="nav-cta" href="/">Watch Ads →</a>
+</nav>
+</div>
+</header>
+<!-- Hero Section (WIP) -->
+<section class="hero" id="wip">
+<div class="container">
+<div class="hero-eyebrow">Trusted by 50+ Advertisers • $47K+ Donated • 1,247 Active Viewers</div>
+<h1 class="hero-title">Stop Interrupting. <span class="hero-highlight">Start Connecting.</span></h1>
+<p class="hero-subtitle">Reach people who choose to watch. Every view fuels a cause. Every cause sparks connection. Your brand makes it possible.</p>
+<div class="hero-stats">
+<div class="stat">
+<span class="stat-number">6.5x</span>
+<span class="stat-label">Better View-Through Rate Than Industry Standard</span>
+</div>
+<div class="stat">
+<span class="stat-number">Up to 50x</span>
+<span class="stat-label">Cheaper Than Google Ads</span>
+</div>
+</div>
+<a class="hero-cta" href="#signup">
+<span>Start Your Campaign</span>
+<span>→</span>
+</a>
+</div>
+<div class="trust-bar">
+<div class="trust-item">
+<div class="trust-icon">✓</div>
+<span class="trust-text">No skips, no blockers</span>
+</div>
+<div class="trust-item">
+<div class="trust-icon">✓</div>
+<span class="trust-text">Every campaign funds a cause</span>
+</div>
+<div class="trust-item">
+<div class="trust-icon">✓</div>
+<span class="trust-text">Transparent budgets</span>
+</div>
+<div class="trust-item">
+<div class="trust-icon">✓</div>
+<span class="trust-text">Impact + reach reporting</span>
+</div>
+</div>
+</section>
+<!-- Options Section -->
+<section class="options-section">
+<div class="container">
+<div class="options-header">
+<h2 class="options-title">Two Ways to Work With Us</h2>
+<p class="options-subtitle">Choose the approach that best aligns with your goals and budget</p>
+</div>
+<div class="options-grid">
+<!-- Sponsorship Card -->
+<div class="option-card sponsorship">
+<div class="option-badge">
+<span>✨</span>
+<span class="option-badge-text">Tax-Deductible</span>
+</div>
+<h3 class="option-title">Sponsorship</h3>
+<p class="option-description">Build goodwill and brand visibility while supporting our mission. Perfect for CSR initiatives.</p>
+<div class="option-features">
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>Processed through our 501(c)(3) fiscal sponsor</strong> — fully compliant and documented</span>
+</div>
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>100% tax-deductible under IRS rules</strong> — maximize your charitable impact</span>
+</div>
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>Get credited as a mission supporter</strong> — featured across our platform and social channels</span>
+</div>
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>Best for CSR campaigns</strong> — perfect for companies prioritizing social responsibility</span>
+</div>
+</div>
+<a class="option-cta" href="#signup" onclick="activateSponsor(event)" onclick="activateSponsor(event)">Select Sponsorship</a>
+</div>
+<!-- Advertising Card -->
+<div class="option-card advertising">
+<div class="option-badge">
+<span>🚀</span>
+<span class="option-badge-text">High Performance</span>
+</div>
+<h3 class="option-title">Advertising</h3>
+<p class="option-description">Run campaigns that outperform traditional ads while fueling verified charitable donations.</p>
+<div class="option-features">
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>Standard business write-off</strong> — treated as marketing expense for tax purposes</span>
+</div>
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>CPMs starting at $0.10</strong> — a fraction of industry rates with premium engagement</span>
+</div>
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>Transparent spend caps &amp; detailed reporting</strong> — full visibility into performance and impact</span>
+</div>
+<div class="option-feature">
+<div class="feature-bullet">•</div>
+<span><strong>Every impression works twice</strong> — your message lands while dollars flow to charity</span>
+</div>
+</div>
+<a class="option-cta" href="#signup" onclick="activateAdv(event)">Select Advertising</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Sign-Up Section -->
+<section class="signup-section" id="signup">
+<div class="container">
+<div class="main">
+<!-- Form Section (Left Column) -->
+<div class="form-section">
+<!-- Header + Toggle -->
+<div class="header-join">
+<h1>Join as a</h1>
+<div aria-label="Join as" class="header-segmented" role="tablist">
+<button aria-selected="true" class="active" id="header-adv" role="tab" type="button">Advertiser</button>
+<button aria-selected="false" id="header-sp" role="tab" type="button">Sponsor</button>
+</div>
+</div>
+<p class="header-sub">Make every dollar count twice—build your brand and a better world.</p>
+<!-- Advertiser Form Wrapper -->
+<div id="advFormWrap">
+<form id="advertiserForm">
+<!-- Company Information -->
+<div class="form-group">
+<h2 class="section-header">Advertiser Information</h2>
+<div class="input-group">
+<label class="input-label" for="companyName">Company/Organization Name *</label>
+<input class="input-field" id="companyName" placeholder="Enter your business, nonprofit, or personal brand name" required="" type="text"/>
+</div>
+<div class="input-group">
+<label class="input-label" for="websiteUrl">Website or Social Media URL</label>
+<input class="input-field" id="websiteUrl" placeholder="https://yourwebsite.com or @yourhandle" type="url"/>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label class="input-label" for="firstName">First Name *</label>
+<input class="input-field" id="firstName" placeholder="First name" required="" type="text"/>
+</div>
+<div class="input-group">
+<label class="input-label" for="lastName">Last Name *</label>
+<input class="input-field" id="lastName" placeholder="Last name" required="" type="text"/>
+</div>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label class="input-label" for="email">Email *</label>
+<input class="input-field" id="email" placeholder="your@email.com" required="" type="email"/>
+</div>
+<div class="input-group">
+<label class="input-label" for="jobTitle">Title/Role</label>
+<input class="input-field" id="jobTitle" placeholder="CEO, Founder, Content Creator, etc." type="text"/>
+</div>
+</div>
+</div>
+<!-- Campaign Setup -->
+<div class="form-group">
+<h2 class="section-header">Campaign Setup</h2>
+<div class="input-group">
+<label class="input-label">Ad Format *</label>
+<div style="display:flex;gap:1rem">
+<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+<input name="adFormat" required="" type="radio" value="video"/>
+<span>Video (MP4, max 15 seconds)</span>
+</label>
+<label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
+<input name="adFormat" required="" type="radio" value="static"/>
+<span>Static Image</span>
+</label>
+</div>
+</div>
+<div class="input-group">
+<label class="input-label" for="budget">Weekly Budget Cap *</label>
+<input class="input-field" id="budget" min="1" placeholder="$100" required="" type="number"/>
+<small style="color:var(--gray-600);font-size:.75rem">Campaigns automatically pause when this amount is reached</small>
+</div>
+<div class="input-group">
+<label class="input-label">CPM Rate Selection *</label>
+<div class="cpm-options">
+<label class="cpm-option" for="starter">
+<input class="cpm-radio" id="starter" name="cpmRate" required="" type="radio" value="0.50"/>
+<div class="cpm-header">
+<span class="cpm-name">Starter</span>
+</div>
+<div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$0.50 per 1,000 views</div>
+<div class="cmp-description">Perfect for small businesses and nonprofits</div>
+</label>
+<label class="cpm-option selected" for="standard">
+<input checked="" class="cpm-radio" id="standard" name="cpmRate" required="" type="radio" value="3.00"/>
+<div class="cpm-header">
+<span class="cpm-name">Standard</span>
+<span class="cpm-badge">Recommended</span>
+</div>
+<div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$3.00 per 1,000 views</div>
+<div class="cmp-description">Optimal balance of reach and charitable impact</div>
+</label>
+<label class="cpm-option" for="impact">
+<input class="cpm-radio" id="impact" name="cpmRate" required="" type="radio" value="10.00"/>
+<div class="cpm-header">
+<span class="cpm-name">Impact</span>
+</div>
+<div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$10.00 per 1,000 views</div>
+<div class="cmp-description">Maximum charitable impact for premium brands</div>
+</label>
+<label class="cpm-option" for="custom">
+<input class="cpm-radio" id="custom" name="cpmRate" required="" type="radio" value="custom"/>
+<div class="cpm-header">
+<span class="cpm-name">Custom Rate</span>
+</div>
+<div class="cmp-description">Set your own rate between $0.10 - $100.00</div>
+<div class="custom-slider" id="customSlider">
+<div class="slider-container">
+<input class="slider" id="cpmSlider" max="100" min="0.10" step="0.10" type="range" value="2.00"/>
+<div class="slider-value">$<span id="sliderValue">2.00</span> per 1,000 views</div>
+</div>
+</div>
+</label>
+</div>
+</div>
+<div class="input-group">
+<label class="input-label">Upload Creative *</label>
+<div class="upload-area" onclick="document.getElementById('fileUpload').click()">
+<div class="upload-icon">📎</div>
+<div class="upload-text">Click to upload your ad creative</div>
+<div class="upload-subtext">MP4 video (max 15s) or PNG/JPG image</div>
+</div>
+<input accept="video/mp4,image/png,image/jpeg" id="fileUpload" required="" style="display:none" type="file"/>
+</div>
+</div>
+<!-- Legal -->
+<div class="form-group">
+<div class="checkbox-group">
+<input class="checkbox" id="recurringSpend" type="checkbox"/>
+<label class="checkbox-label" for="recurringSpend">Make this a recurring weekly campaign (auto-renew with same budget and creative)</label>
+</div>
+<div class="checkbox-group">
+<input class="checkbox" id="terms" required="" type="checkbox"/>
+<label class="checkbox-label" for="terms">I agree to the <a href="#" style="color:var(--brand-600)">Terms and Conditions</a> *</label>
+</div>
+</div>
+<button class="submit-btn" type="submit">Submit Campaign</button>
+<div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:.75rem;padding:1rem;margin-top:1.5rem">
+<div style="font-size:.875rem;color:var(--gray-700);line-height:1.5">
+<strong>Important:</strong> All advertisers receive equal ad rotation regardless of CPM rate. Higher donation amounts do not purchase more visibility - they simply increase your charitable impact.
+                </div>
+</div>
+</form>
+</div>
+<!-- Sponsor Form Wrapper -->
+<div class="section-hidden" id="sponsorFormWrap">
+<form id="sponsorForm">
+<!-- Contact Information -->
+<div class="form-group">
+<h2 class="section-header">Organization &amp; Contact</h2>
+<div class="input-row">
+<div class="input-group">
+<label class="input-label" for="sp-org">Organization (legal name) *</label>
+<input class="input-field" id="sp-org" name="org" placeholder="Charity Stream" required="" type="text"/>
+</div>
+<div class="input-group">
+<label class="input-label" for="sp-email">Contact Email *</label>
+<input class="input-field" id="sp-email" name="email" placeholder="contact@charitystream.org" required="" type="email"/>
+</div>
+</div>
+<div class="input-row">
+<div class="input-group">
+<label class="input-label" for="sp-website">Website — homepage only *</label>
+<input class="input-field" id="sp-website" name="website" placeholder="https://charitystream.org" required="" type="url"/>
+</div>
+<div class="input-group">
+<label class="input-label" for="sp-ein">EIN / Tax ID *</label>
+<input class="input-field" id="sp-ein" name="ein" placeholder="12-3456789" required="" type="text"/>
+</div>
+</div>
+</div>
+<!-- Sponsorship Tiers -->
+<div class="form-group">
+<h2 class="section-header">Sponsorship Tiers *</h2>
+<div class="cpm-options" id="tiers">
+<label class="cpm-option" for="bronze">
+<input class="cpm-radio" id="bronze" name="tier" required="" type="radio" value="Bronze"/>
+<div class="cpm-header">
+<div class="cpm-name">Bronze</div>
+<div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$50</div>
+</div>
+<div class="cmp-description" style="font-style:italic;margin-bottom:.5rem">Get in the door as an early supporter.</div>
+<ul class="tier-list" style="margin:0;padding-left:18px;font-size:.85rem;color:var(--gray-700)">
+<li>Logo in ad reel</li>
+<li>Leaderboard listing</li>
+</ul>
+</label>
+<label class="cpm-option" for="silver">
+<input class="cpm-radio" id="silver" name="tier" type="radio" value="Silver"/>
+<div class="cpm-header">
+<div class="cpm-name">Silver</div>
+<div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$100</div>
+</div>
+<div class="cmp-description" style="font-style:italic;margin-bottom:.5rem">Boost your visibility with more exposure.</div>
+<ul class="tier-list" style="margin:0;padding-left:18px;font-size:.85rem;color:var(--gray-700)">
+<li>All Bronze perks</li>
+<li>Extra frequency in ad reel</li>
+</ul>
+</label>
+<label class="cpm-option selected" for="gold">
+<input checked="" class="cpm-radio" id="gold" name="tier" type="radio" value="Gold"/>
+<div class="cpm-header">
+<div class="cpm-name">Gold</div>
+<span class="cpm-badge">Most Popular</span><div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$250</div>
+</div>
+<div class="cmp-description" style="font-style:italic;margin-bottom:.5rem">Stand out as a featured sponsor.</div>
+<ul class="tier-list" style="margin:0;padding-left:18px;font-size:.85rem;color:var(--gray-700)">
+<li>All Silver perks</li>
+<li>Placement in "Sponsors of the Week" bar</li>
+<li>Highlighted visibility</li>
+</ul>
+</label>
+<label class="cpm-option" for="diamond">
+<input class="cpm-radio" id="diamond" name="tier" type="radio" value="Diamond"/>
+<div class="cpm-header">
+<div class="cpm-name">Diamond</div>
+<div class="cpm-price" style="color: var(--brand-600); font-weight: 800;">$500+</div>
+</div>
+<div class="cmp-description" style="font-style:italic;margin-bottom:.5rem">Go above and beyond with premium recognition.</div>
+<ul class="tier-list" style="margin:0;padding-left:18px;font-size:.85rem;color:var(--gray-700);margin-bottom:.75rem">
+<li>All Gold perks</li>
+<li>Static homepage feature</li>
+<li>Social + email recognition</li>
+<li>Flexible contribution amount</li>
+</ul>
+<div class="custom-slider" id="diamondCustom">
+<label for="sp-amount" style="font-size:.8rem;color:var(--gray-700);display:block;margin-bottom:.5rem">Optional custom amount (≥ $500)</label>
+<input class="input-field" id="sp-amount" min="500" placeholder="$500" step="50" type="number"/>
+</div>
+</label>
+</div>
+</div>
+<!-- Upload Logo -->
+<div class="form-group">
+<h2 class="section-header">Upload Logo *</h2>
+<div class="upload-area" onclick="document.getElementById('sp-logo').click()">
+<div class="upload-icon">📎</div>
+<div class="upload-text">Click to upload your logo</div>
+<div class="upload-subtext">SVG or PNG (min 512×512)</div>
+</div>
+<input accept="image/svg+xml,image/png" id="sp-logo" name="logo" required="" style="display:none" type="file"/>
+</div>
+<!-- Consent -->
+<div class="form-group">
+<div class="checkbox-group">
+<input class="checkbox" id="sp-agree" name="agree" required="" type="checkbox"/>
+<label class="checkbox-label" for="sp-agree">
+                    By checking this box, I acknowledge and agree to the <a href="#" style="color:var(--brand-600)">Terms and Conditions</a>. *
+                  </label>
+</div>
+</div>
+<button class="submit-btn" type="submit">Submit Sponsorship Application</button>
+<div class="sponsor-note"><p style="font-style: italic;"><strong>Tax &amp; Compliance Notice:</strong> Processed by [Fiscal Sponsor Legal Name], a 501(c)(3) public charity (EIN [###-##-####]). Contributions may qualify as tax-deductible, subject to IRS rules. Promotional elements (discounts, CTAs, endorsements) may affect eligibility. All submissions are subject to review and approval per our Terms and Conditions.</p></div>
+</form>
+</div>
+</div>
+<!-- Sidebar (Right Column) -->
+<div class="sidebar">
+<h3 class="sidebar-title" id="sidebar-title"><span id="why-advertise"></span>Why Advertise With Us?</h3>
+<ul class="benefit-list" id="adv-benefits"><li class="benefit-item"><span class="benefit-icon">✓</span><span><strong>Guaranteed attention</strong> — every ad fully viewed, never skipped</span></li><li class="benefit-item"><span class="benefit-icon">✓</span><span><strong>Up to 50× cheaper CPMs</strong> — starting at $0.10 vs Google/Meta</span></li><li class="benefit-item"><span class="benefit-icon">✓</span><span><strong>Every ad donates 100% net revenue</strong> — directly to a vetted weekly nonprofit</span></li><li class="benefit-item"><span class="benefit-icon">✓</span><span><strong>Full transparency + budget control</strong> — set caps, auto-pause, and track funds-to-mission</span></li></ul>
+<ul class="benefit-list section-hidden" id="sp-benefits">
+<li class="benefit-item">
+<span class="benefit-icon">✓</span>
+<span><strong>Tax-deductible support</strong> via our 501(c)(3) fiscal sponsor</span>
+</li>
+<li class="benefit-item">
+<span class="benefit-icon">✓</span>
+<span><strong>Non-skippable recognition</strong> in our sponsor reel</span>
+</li>
+<li class="benefit-item">
+<span class="benefit-icon">✓</span>
+<span><strong>Tiered prominence:</strong> priority slots, increased rotations, longer on-screen time</span>
+</li>
+<li class="benefit-item">
+<span class="benefit-icon">✓</span>
+<span><strong>CSR-ready visibility:</strong> neutral name/logo across static site placements, program pages, and socials + a shareable impact recap</span>
+</li>
+</ul>
+<div class="stats-box">
+<h4 class="stats-title">Platform Stats</h4>
+<div id="adv-stats"><div class="stat-item"><span class="stat-label">Total Raised</span><span class="stat-value">$832.11</span></div><div class="stat-item"><span class="stat-label">Active Users</span><span class="stat-value">241</span></div><div class="stat-item"><span class="stat-label">View-Through Rate</span><span class="stat-value">100%</span></div><div class="stat-item"><span class="stat-label">Company Advertisers</span><span class="stat-value">27</span></div></div>
+<div class="section-hidden" id="sp-stats">
+<div class="stat-item">
+<span class="stat-label">Total Raised</span>
+<span class="stat-value">$832.11</span>
+</div>
+<div class="stat-item">
+<span class="stat-label">Unique Viewers</span>
+<span class="stat-value">241</span>
+</div>
+<div class="stat-item">
+<span class="stat-label">Participating Charities</span>
+<span class="stat-value">12</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer -->
+<footer class="footer">
+<div class="container">
+<p>Stream ads, fuel impact, compete for good.</p>
+<div class="social-icons">
+<a class="social-icon" href="#">✉</a>
+<a class="social-icon" href="#">in</a>
+<a class="social-icon" href="#">X</a>
+<a class="social-icon" href="#">●</a>
+<a class="social-icon" href="#">◉</a>
+</div>
+</div>
+</footer>
+<script>
+    // Toggle between Advertiser and Sponsor forms
+    (function(){
+      const headerAdv = document.getElementById('header-adv');
+      const headerSp = document.getElementById('header-sp');
+      const advWrap = document.getElementById('advFormWrap');
+      const spWrap = document.getElementById('sponsorFormWrap');
 
-  <div class="container">
-    <div class="main">
-      <!-- Form Section -->
-      <div class="form-section">
-        <h1 class="form-title">Join as an Advertiser</h1>
-        <p class="form-subtitle">Make every dollar count twice—build your brand and a better world.</p>
-
-        <form id="advertiserForm">
-          <!-- Company Information -->
-          <div class="form-group">
-            <h2 class="section-header">Advertiser Information</h2>
-            
-            <div class="input-group">
-              <label class="input-label" for="companyName">Company/Organization Name *</label>
-              <input type="text" id="companyName" class="input-field" placeholder="Enter your business, nonprofit, or personal brand name" required>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label" for="websiteUrl">Website or Social Media URL</label>
-              <input type="url" id="websiteUrl" class="input-field" placeholder="https://yourwebsite.com or @yourhandle">
-            </div>
-
-            <div class="input-row">
-              <div class="input-group">
-                <label class="input-label" for="firstName">First Name *</label>
-                <input type="text" id="firstName" class="input-field" placeholder="First name" required>
-              </div>
-              <div class="input-group">
-                <label class="input-label" for="lastName">Last Name *</label>
-                <input type="text" id="lastName" class="input-field" placeholder="Last name" required>
-              </div>
-            </div>
-
-            <div class="input-row">
-              <div class="input-group">
-                <label class="input-label" for="email">Email *</label>
-                <input type="email" id="email" class="input-field" placeholder="your@email.com" required>
-              </div>
-              <div class="input-group">
-                <label class="input-label" for="jobTitle">Title/Role</label>
-                <input type="text" id="jobTitle" class="input-field" placeholder="CEO, Founder, Content Creator, etc.">
-              </div>
-            </div>
-          </div>
-
-          <!-- Campaign Setup -->
-          <div class="form-group">
-            <h2 class="section-header">Campaign Setup</h2>
-
-            <div class="input-group">
-              <label class="input-label">Ad Format *</label>
-              <div style="display:flex;gap:1rem">
-                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-                  <input type="radio" name="adFormat" value="video" required>
-                  <span>Video (MP4, max 15 seconds)</span>
-                </label>
-                <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-                  <input type="radio" name="adFormat" value="static" required>
-                  <span>Static Image</span>
-                </label>
-              </div>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label" for="budget">Weekly Budget Cap *</label>
-              <input type="number" id="budget" class="input-field" placeholder="$100" min="1" required>
-              <small style="color:var(--gray-600);font-size:.75rem">Campaigns automatically pause when this amount is reached</small>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label">CPM Rate Selection *</label>
-              <div class="cpm-options">
-                <label class="cpm-option" for="starter">
-                  <input type="radio" name="cpmRate" value="0.50" id="starter" class="cpm-radio" required>
-                  <div class="cpm-header">
-                    <span class="cpm-name">Starter</span>
-                  </div>
-                  <div class="cpm-price">$0.50 per 1,000 views</div>
-                  <div class="cmp-description">Perfect for small businesses and nonprofits</div>
-                </label>
-
-                <label class="cpm-option selected" for="standard">
-                  <input type="radio" name="cpmRate" value="3.00" id="standard" class="cpm-radio" checked required>
-                  <div class="cpm-header">
-                    <span class="cpm-name">Standard</span>
-                    <span class="cpm-badge">Recommended</span>
-                  </div>
-                  <div class="cpm-price">$3.00 per 1,000 views</div>
-                  <div class="cmp-description">Optimal balance of reach and charitable impact</div>
-                </label>
-
-                <label class="cpm-option" for="impact">
-                  <input type="radio" name="cpmRate" value="10.00" id="impact" class="cpm-radio" required>
-                  <div class="cpm-header">
-                    <span class="cpm-name">Impact</span>
-                  </div>
-                  <div class="cpm-price">$10.00 per 1,000 views</div>
-                  <div class="cmp-description">Maximum charitable impact for premium brands</div>
-                </label>
-
-                <label class="cpm-option" for="custom">
-                  <input type="radio" name="cpmRate" value="custom" id="custom" class="cpm-radio" required>
-                  <div class="cpm-header">
-                    <span class="cpm-name">Custom Rate</span>
-                  </div>
-                  <div class="cmp-description">Set your own rate between $0.10 - $100.00</div>
-                  
-                  <div class="custom-slider" id="customSlider">
-                    <div class="slider-container">
-                      <input type="range" min="0.10" max="100" value="2.00" step="0.10" class="slider" id="cpmSlider">
-                      <div class="slider-value">$<span id="sliderValue">2.00</span> per 1,000 views</div>
-                    </div>
-                  </div>
-                </label>
-              </div>
-            </div>
-
-            <div class="input-group">
-              <label class="input-label">Upload Creative *</label>
-              <div class="upload-area" onclick="document.getElementById('fileUpload').click()">
-                <div class="upload-icon">📎</div>
-                <div class="upload-text">Click to upload your ad creative</div>
-                <div class="upload-subtext">MP4 video (max 15s) or PNG/JPG image</div>
-              </div>
-              <input type="file" id="fileUpload" accept="video/mp4,image/png,image/jpeg" style="display:none" required>
-            </div>
-          </div>
-
-          <!-- Legal -->
-          <div class="form-group">
-            <div class="checkbox-group">
-              <input type="checkbox" id="recurringSpend" class="checkbox">
-              <label for="recurringSpend" class="checkbox-label">Make this a recurring weekly campaign (auto-renew with same budget and creative)</label>
-            </div>
-            
-            <div class="checkbox-group">
-              <input type="checkbox" id="terms" class="checkbox" required>
-              <label for="terms" class="checkbox-label">I agree to the <a href="/Terms and Conditions/Advertiser Terms and Conditions - Building Trust Through Responsible Advertising.pdf" target="_blank" rel="noopener noreferrer" style="color:var(--brand-600)">Terms and Conditions</a> *</label>
-            </div>
-          </div>
-
-          <button type="submit" class="submit-btn">Submit Campaign</button>
-
-          <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:.75rem;padding:1rem;margin-top:1.5rem">
-            <div style="font-size:.875rem;color:var(--gray-700);line-height:1.5">
-              <strong>Important:</strong> All advertisers receive equal ad rotation regardless of CPM rate. Higher donation amounts do not purchase more visibility - they simply increase your charitable impact.
-            </div>
-          </div>
-        </form>
-      </div>
-
-      <!-- Sidebar -->
-      <div class="sidebar">
-        <h3 class="sidebar-title">Why Advertise With Us?</h3>
-        <ul class="benefit-list">
-          <li class="benefit-item">
-            <span class="benefit-icon">✓</span>
-            <span>100% view-through rate (no skipping allowed)</span>
-          </li>
-          <li class="benefit-item">
-            <span class="benefit-icon">✓</span>
-            <span>CPM as low as $0.10 - way below industry rates</span>
-          </li>
-          <li class="benefit-item">
-            <span class="benefit-icon">✓</span>
-            <span>Tax-deductible charitable giving while reaching engaged audiences</span>
-          </li>
-          <li class="benefit-item">
-            <span class="benefit-icon">✓</span>
-            <span>Transparent budget controls with automatic spending caps</span>
-          </li>
-          <li class="benefit-item">
-            <span class="benefit-icon">✓</span>
-            <span>Detailed reporting on charitable impact and audience reach</span>
-          </li>
-        </ul>
-
-        <div class="stats-box">
-          <h4 class="stats-title">Platform Stats</h4>
-          <div class="stat-item">
-            <span class="stat-label">Total Raised</span>
-            <span class="stat-value">$832.11</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Active Users</span>
-            <span class="stat-value">241</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">View-Through Rate</span>
-            <span class="stat-value">100%</span>
-          </div>
-          <div class="stat-item">
-            <span class="stat-label">Company Advertisers</span>
-            <span class="stat-value">27</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Enhancement Modal -->
-  <div class="modal-overlay" id="enhancementModal">
-    <div class="modal">
-      <button class="modal-close" onclick="closeModal()">&times;</button>
-      <h3 class="modal-title">Boost Your Campaign Before Submitting</h3>
-      
-      <div class="enhancement-option">
-        <div class="enhancement-header" onclick="toggleEnhancement('clickableLink')">
-          <input type="checkbox" id="clickableLinkEnhancement" class="enhancement-checkbox">
-          <div>
-            <div class="enhancement-title">Add a clickable link</div>
-            <div class="enhancement-description">Drive traffic straight to your site or store</div>
-            <div class="enhancement-pricing">+$0.25 per click — convert viewers into customers</div>
-          </div>
-        </div>
-        <div class="url-label" id="urlLabel">Enter your destination URL:</div>
-        <input type="url" id="destinationUrl" name="destinationUrl" class="url-input" placeholder="https://yourwebsite.com/landing-page" onclick="event.stopPropagation()">
-      </div>
-
-      <div class="enhancement-option" onclick="toggleEnhancement('expedited')">
-        <div class="enhancement-header">
-          <input type="checkbox" id="expeditedEnhancement" class="enhancement-checkbox">
-          <div>
-            <div class="enhancement-title">Get expedited approval</div>
-            <div class="enhancement-description">Within 24 hours to join this week's ad cycle</div>
-            <div class="enhancement-pricing">+$5 flat fee — skip the wait, start generating impact faster</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-buttons">
-        <button class="modal-btn modal-btn-primary" onclick="submitWithEnhancements()">Add Enhancements & Submit</button>
-        <button class="modal-btn modal-btn-secondary" onclick="submitBasicCampaign()">Submit Basic Campaign Only</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Success Modal -->
-  <div class="modal-overlay" id="successModal">
-    <div class="modal">
-      <div class="success-content">
-        <div class="success-icon">✅</div>
-        <h3 class="success-title">Campaign Submitted Successfully!</h3>
-        <p class="success-message">We'll review your ad and notify you by email shortly.</p>
+      function showForm(type) {
+        const isAdv = (type === 'adv');
         
-        <div class="campaign-details">
-          <div class="detail-title">Campaign details:</div>
-          <div class="detail-item">
-            <span class="detail-label">Budget:</span>
-            <span class="detail-value" id="finalBudget">$0</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-label">CPM Rate:</span>
-            <span class="detail-value" id="finalCPM">$0</span>
-          </div>
-          <div class="detail-item" id="enhancementsDetail" style="display:none">
-            <span class="detail-label">Enhancements:</span>
-            <span class="detail-value" id="finalEnhancements">None</span>
-          </div>
-        </div>
-
-        <div class="next-steps">
-          <div class="next-steps-title">What happens next:</div>
-          <ol>
-            <li>Review begins immediately</li>
-            <li>Email with approval decision</li>
-            <li>Campaign goes live once approved</li>
-          </ol>
-        </div>
-
-        <button class="modal-btn modal-btn-primary" onclick="submitAnother()" style="width:auto;margin:0 auto">Submit Another Campaign</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Footer -->
-  <footer class="footer">
-    <div class="container">
-      <p>Stream ads, fuel impact, compete for good.</p>
-      <div class="social-icons">
-        <a href="#" class="social-icon">✉</a>
-        <a href="#" class="social-icon">in</a>
-        <a href="#" class="social-icon">X</a>
-        <a href="#" class="social-icon">●</a>
-        <a href="#" class="social-icon">◉</a>
-      </div>
-    </div>
-  </footer>
-
-  <script>
-    // Check authentication status on page load
-    document.addEventListener('DOMContentLoaded', function() {
-      checkAuthStatus();
-    });
-
-    function checkAuthStatus() {
-      const token = localStorage.getItem('authToken');
-      const currentUser = localStorage.getItem('currentUser');
-      
-      if (token && currentUser) {
-        try {
-          const user = JSON.parse(currentUser);
-          document.getElementById('userDisplayName').textContent = user.username || user.email.split('@')[0];
-        } catch (error) {
-          console.error('Error parsing user data:', error);
-          document.getElementById('userDisplayName').textContent = 'Guest';
+        // Update header toggle states
+        headerAdv.classList.toggle('active', isAdv);
+        headerSp.classList.toggle('active', !isAdv);
+        headerAdv.setAttribute('aria-selected', String(isAdv));
+        headerSp.setAttribute('aria-selected', String(!isAdv));
+        
+        // Show/hide form wrappers
+        advWrap.classList.toggle('section-hidden', !isAdv);
+        spWrap.classList.toggle('section-hidden', isAdv);
+        
+        // Update sidebar content
+        const sidebarTitle = document.getElementById('sidebar-title');
+        const advBenefits = document.getElementById('adv-benefits');
+        const spBenefits = document.getElementById('sp-benefits');
+        const advStats = document.getElementById('adv-stats');
+        const spStats = document.getElementById('sp-stats');
+        
+        if (sidebarTitle) {
+          sidebarTitle.textContent = isAdv ? 'Why Advertise With Us?' : 'Why Sponsor Us?';
         }
-        // Show user menu, hide sign in link
-        document.getElementById('userMenu').style.display = 'block';
-        document.getElementById('signInLink').style.display = 'none';
-      } else {
-        // Show sign in link, hide user menu
-        document.getElementById('userMenu').style.display = 'none';
-        document.getElementById('signInLink').style.display = 'inline';
+        
+        advBenefits.classList.toggle('section-hidden', !isAdv);
+        spBenefits.classList.toggle('section-hidden', isAdv);
+        advStats.classList.toggle('section-hidden', !isAdv);
+        spStats.classList.toggle('section-hidden', isAdv);
       }
+
+      headerAdv.addEventListener('click', () => showForm('adv'));
+      headerSp.addEventListener('click', () => showForm('sp'));
+
+      // Default: Advertiser active
+      showForm('adv');
+    })();
+
+    // Function for "Select Sponsorship" button
+    function __existingActivateSponsor(e) {
+      e.preventDefault();
+      // Scroll to signup
+      document.querySelector('#signup').scrollIntoView({behavior:'smooth', block:'start'});
+      // Activate sponsor pill after scroll
+      setTimeout(() => {
+        document.getElementById('header-sp').click();
+      }, 500);
     }
 
-    function handleNavClick(action) {
-      switch (action) {
-        case 'about':
-          window.location.href = '/about';
-          break;
-        case 'advertise':
-          // Already on advertise page
-          break;
-        case 'impact':
-          window.location.href = '/impact';
-          break;
-        case 'watch':
-          // Go to main landing page
-          window.location.href = '/';
-          break;
-      }
-    }
-
-    // Handle CPM option selection
+    // CPM option selection (Advertiser form)
     document.querySelectorAll('input[name="cpmRate"]').forEach(radio => {
       radio.addEventListener('change', function() {
-        // Update visual selection
         document.querySelectorAll('.cpm-option').forEach(option => option.classList.remove('selected'));
         this.closest('.cpm-option').classList.add('selected');
         
-        // Show/hide custom slider
         const customSlider = document.getElementById('customSlider');
         if (this.value === 'custom') {
           customSlider.classList.add('active');
         } else {
           customSlider.classList.remove('active');
         }
-      }); 
+      });
     });
 
-    // Handle custom slider
+    // Custom CPM slider
     const slider = document.getElementById('cpmSlider');
     const sliderValue = document.getElementById('sliderValue');
     
-    slider.addEventListener('input', function() {
-      sliderValue.textContent = parseFloat(this.value).toFixed(2);
-    });
-
-    // Handle file upload
-    document.getElementById('fileUpload').addEventListener('change', function() {
-      const uploadArea = document.querySelector('.upload-area');
-      if (this.files.length > 0) {
-        uploadArea.style.borderColor = 'var(--brand-600)';
-        uploadArea.style.background = 'rgba(47,125,49,.05)';
-        document.querySelector('.upload-text').textContent = this.files[0].name;
-        document.querySelector('.upload-subtext').textContent = 'File selected successfully';
-      }
-    });
-
-    // Handle form submission
-    document.getElementById('advertiserForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      showEnhancementModal();
-    });
-
-    // Modal functions
-    function showEnhancementModal() {
-      document.getElementById('enhancementModal').classList.add('active');
-      document.body.style.overflow = 'hidden';
+    if (slider && sliderValue) {
+      slider.addEventListener('input', function() {
+        sliderValue.textContent = parseFloat(this.value).toFixed(2);
+      });
     }
 
-    function closeModal() {
-      document.getElementById('enhancementModal').classList.remove('active');
-      document.getElementById('successModal').classList.remove('active');
-      document.body.style.overflow = 'auto';
-    }
-
-    function toggleEnhancement(type) {
-      const checkbox = document.getElementById(type + 'Enhancement');
-      const option = checkbox.closest('.enhancement-option');
-      
-      checkbox.checked = !checkbox.checked;
-      
-      if (checkbox.checked) {
-        option.classList.add('selected');
-      } else {
-        option.classList.remove('selected');
-      }
-
-      // Show/hide URL input for clickable link
-      if (type === 'clickableLink') {
-        const urlInput = document.getElementById('destinationUrl');
-        const urlLabel = document.getElementById('urlLabel');
+    // Sponsor tier selection
+    document.querySelectorAll('input[name="tier"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        document.querySelectorAll('#tiers .cpm-option').forEach(option => option.classList.remove('selected'));
+        this.closest('.cpm-option').classList.add('selected');
         
-        if (checkbox.checked) {
-          urlInput.classList.add('active');
-          urlLabel.classList.add('active');
+        const diamondCustom = document.getElementById('diamondCustom');
+        if (this.value === 'Diamond') {
+          diamondCustom.style.display = 'block';
         } else {
-          urlInput.classList.remove('active');
-          urlLabel.classList.remove('active');
-          urlInput.value = '';
+          diamondCustom.style.display = 'none';
         }
-      }
-    }
-
-    function submitWithEnhancements() {
-      // Validate URL if clickable link is selected
-      const clickableLink = document.getElementById('clickableLinkEnhancement').checked;
-      const urlInput = document.getElementById('destinationUrl');
-      
-      if (clickableLink && !urlInput.value) {
-        alert('Please enter a destination URL for your clickable link.');
-        return;
-      }
-      
-      processSubmission(true);
-    }
-
-    function submitBasicCampaign() {
-      processSubmission(false);
-    }
-
-    function processSubmission(withEnhancements) {
-      // Get form data
-      const budget = document.getElementById('budget').value;
-      const cpmRate = document.querySelector('input[name="cpmRate"]:checked').value;
-      const recurring = document.getElementById('recurringSpend').checked;
-      
-      let finalCPM = cpmRate;
-      if (cpmRate === 'custom') {
-        finalCPM = document.getElementById('sliderValue').textContent;
-      }
-
-      // Process enhancements
-      let enhancements = [];
-      if (withEnhancements) {
-        if (document.getElementById('clickableLinkEnhancement').checked) {
-          enhancements.push('Clickable link (+$0.25/click)');
-        }
-        if (document.getElementById('expeditedEnhancement').checked) {
-          enhancements.push('24-hour approval (+$5)');
-        }
-      }
-
-      // Show success modal
-      showSuccessModal(budget, finalCPM, enhancements, recurring);
-    }
-
-    function showSuccessModal(budget, cpm, enhancements, recurring) {
-      // Hide enhancement modal
-      document.getElementById('enhancementModal').classList.remove('active');
-      
-      // Update success modal content
-      document.getElementById('finalBudget').textContent = '$' + budget;
-      document.getElementById('finalCPM').textContent = '$' + cpm;
-      
-      if (recurring) {
-        document.getElementById('finalBudget').textContent += ' (weekly recurring)';
-      }
-      
-      const enhancementDetail = document.getElementById('enhancementsDetail');
-      const enhancementValue = document.getElementById('finalEnhancements');
-      
-      if (enhancements.length > 0) {
-        enhancementDetail.style.display = 'flex';
-        enhancementValue.textContent = enhancements.join(', ');
-      } else {
-        enhancementDetail.style.display = 'none';
-      }
-      
-      // Show success modal
-      document.getElementById('successModal').classList.add('active');
-    }
-
-    function submitAnother() {
-      // Reset form
-      document.getElementById('advertiserForm').reset();
-      
-      // Reset CPM selection
-      document.querySelectorAll('.cpm-option').forEach(option => option.classList.remove('selected'));
-      document.querySelector('label[for="standard"]').classList.add('selected');
-      
-      // Reset custom slider
-      document.getElementById('customSlider').classList.remove('active');
-      document.getElementById('sliderValue').textContent = '2.00';
-      
-      // Close modal
-      closeModal();
-    }
-
-    // Close modal when clicking outside
-    document.addEventListener('click', function(e) {
-      if (e.target.classList.contains('modal-overlay')) {
-        closeModal();
-      }
+      });
     });
 
-    function toggleUserMenu() {
-      const dropdown = document.getElementById('userDropdown');
-      dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+    // File upload (Advertiser)
+    const fileUpload = document.getElementById('fileUpload');
+    if (fileUpload) {
+      fileUpload.addEventListener('change', function() {
+        const uploadArea = this.previousElementSibling;
+        if (this.files.length > 0) {
+          uploadArea.style.borderColor = 'var(--brand-600)';
+          uploadArea.style.background = 'rgba(47,125,49,.05)';
+          const txt = uploadArea.querySelector('.upload-text');
+          const sub = uploadArea.querySelector('.upload-subtext');
+          if (txt) txt.textContent = this.files[0].name;
+          if (sub) sub.textContent = 'File selected successfully';
+        }
+      });
     }
 
-    function logout() {
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('currentUser');
-      window.location.href = '/auth';
+    // File upload (Sponsor logo)
+    const spLogo = document.getElementById('sp-logo');
+    if (spLogo) {
+      spLogo.addEventListener('change', function() {
+        const uploadArea = this.previousElementSibling;
+        if (this.files.length > 0) {
+          uploadArea.style.borderColor = 'var(--brand-600)';
+          uploadArea.style.background = 'rgba(47,125,49,.05)';
+          const txt = uploadArea.querySelector('.upload-text');
+          const sub = uploadArea.querySelector('.upload-subtext');
+          if (txt) txt.textContent = this.files[0].name;
+          if (sub) sub.textContent = 'File selected successfully';
+        }
+      });
     }
 
-    // Close dropdown when clicking outside
-    document.addEventListener('click', function(event) {
-      const userMenu = document.querySelector('.user-menu');
-      const dropdown = document.getElementById('userDropdown');
+    // Form submissions - These are now handled by the modal system below
+    // Left here for reference only
+
+    // Sponsor form submission handler
+    document.getElementById('sponsorForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
       
-      if (userMenu && !userMenu.contains(event.target)) {
-        dropdown.style.display = 'none';
-      }
-    });
-
-    // Logo and Watch Ads button functionality
-    document.addEventListener('DOMContentLoaded', function() {
-      const authToken = localStorage.getItem('authToken');
-      const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+      const submitBtn = this.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = 'Submitting...';
+      submitBtn.disabled = true;
       
-      // Logo button functionality
-      const logoBtn = document.getElementById('logoBtn');
-      if (logoBtn) {
-        logoBtn.onclick = function(e) {
-          e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth';
-          }
-        };
-      }
-
-      // Watch Ads button functionality
-      const watchAdsBtn = document.getElementById('watchAdsBtn');
-      if (watchAdsBtn) {
-        watchAdsBtn.onclick = function(e) {
-          e.preventDefault();
-          
-          if (authToken) {
-            // User is logged in, go to main page
-            window.location.href = '/';
-          } else {
-            // User is not logged in, go to sign in
-            window.location.href = '/auth';
-          }
-        };
-      }
-
-      // Set initial UI state
-      const loggedInNav = document.getElementById('loggedInNav');
-      const guestNav = document.getElementById('guestNav');
-      const usernameDisplay = document.getElementById('usernameDisplay');
-
-      if (authToken && currentUser) {
-        // User is logged in
-        if (loggedInNav) loggedInNav.style.display = 'flex';
-        if (guestNav) guestNav.style.display = 'none';
+      try {
+        const formData = new FormData();
+        formData.append('organization', document.getElementById('sp-org').value);
+        formData.append('contactEmail', document.getElementById('sp-email').value);
+        formData.append('website', document.getElementById('sp-website').value);
+        formData.append('einTaxId', document.getElementById('sp-ein').value);
+        formData.append('sponsorTier', document.querySelector('input[name="tier"]:checked')?.value || '');
         
-        if (usernameDisplay && currentUser.username) {
-          usernameDisplay.textContent = currentUser.username;
+        // Add logo file if selected
+        const logoInput = document.getElementById('sp-logo');
+        if (logoInput.files[0]) {
+          formData.append('logo', logoInput.files[0]);
         }
-      } else {
-        // User is not logged in
-        if (loggedInNav) loggedInNav.style.display = 'none';
-        if (guestNav) guestNav.style.display = 'flex';
+
+        const response = await fetch('/api/sponsor/submit', {
+          method: 'POST',
+          body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+          console.log('✅ Sponsor submission successful:', data);
+          alert('✅ Sponsorship application submitted successfully!\n\nOrganization: ' + data.data.organization + '\nEmail: ' + data.data.contactEmail + '\n\nWe will review your application and contact you shortly.');
+          this.reset();
+          
+          // Reset file upload UI
+          const uploadArea = document.querySelector('#sponsorForm .upload-area .upload-text');
+          if (uploadArea) uploadArea.textContent = 'Click to upload your logo';
+        } else {
+          alert('❌ Submission failed: ' + (data.message || 'Please try again later.'));
+        }
+      } catch (error) {
+        console.error('❌ Sponsor submission error:', error);
+        alert('❌ Network error: Unable to submit application. Please check your connection and try again.');
+      } finally {
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
       }
+    });
+
+    // Smooth scroll for all anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        if (href === '#' || this.hasAttribute('onclick')) return;
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) {
+          target.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          });
+        }
+      });
     });
   </script>
+
+<script>
+// --- Auto-select toggle + smooth jump helpers ---
+function smoothJumpToSignup() {
+  const el = document.querySelector('#signup');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function activateAdv(e) {
+  if (e) e.preventDefault();
+  smoothJumpToSignup();
+  // defer click to after scroll start
+  setTimeout(() => {
+    const advTab = document.getElementById('header-adv') || document.querySelector('[data-role="adv-tab"]');
+    if (advTab) advTab.click();
+  }, 300);
+}
+
+function activateSponsor(e) {
+  // If an existing activateSponsor exists, we won't duplicate definitions.
+  // This fallback ensures sponsor tab activates and scrolls to form.
+  if (e) e.preventDefault();
+  if (typeof window.__existingActivateSponsor === 'function') {
+    return window.__existingActivateSponsor(e);
+  }
+  smoothJumpToSignup();
+  setTimeout(() => {
+    const sponsorTab = document.getElementById('header-sponsor') || document.querySelector('[data-role="sponsor-tab"]');
+    if (sponsorTab) sponsorTab.click();
+  }, 300);
+}
+</script>
+
+<!-- Add this HTML before the closing </body> tag, after the footer -->
+
+<!-- Enhancement Modal for Advertisers -->
+<div class="modal-overlay" id="enhancementModal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeEnhancementModal()">&times;</button>
+    <h3 class="modal-title">Boost Your Campaign Before Submitting</h3>
+    
+    <div class="enhancement-option" onclick="toggleEnhancement('clickableLink')">
+      <div class="enhancement-header">
+        <input type="checkbox" id="clickableLinkEnhancement" class="enhancement-checkbox">
+        <div>
+          <div class="enhancement-title">Add a clickable link</div>
+          <div class="enhancement-description">Drive traffic straight to your site or store</div>
+          <div class="enhancement-pricing">+$0.25 per click — convert viewers into customers</div>
+        </div>
+      </div>
+      <div class="url-label" id="urlLabel">Enter your destination URL:</div>
+      <input type="url" id="destinationUrl" name="destinationUrl" class="url-input" placeholder="https://yourwebsite.com/landing-page" onclick="event.stopPropagation()">
+    </div>
+
+    <div class="enhancement-option" onclick="toggleEnhancement('expedited')">
+      <div class="enhancement-header">
+        <input type="checkbox" id="expeditedEnhancement" class="enhancement-checkbox">
+        <div>
+          <div class="enhancement-title">Get expedited approval</div>
+          <div class="enhancement-description">Within 24 hours to join this week's ad cycle</div>
+          <div class="enhancement-pricing">+$5 flat fee — skip the wait, start generating impact faster</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-buttons">
+      <button class="modal-btn modal-btn-primary" onclick="submitWithEnhancements()">Add Enhancements & Submit</button>
+      <button class="modal-btn modal-btn-secondary" onclick="submitBasicCampaign()">Submit Basic Campaign Only</button>
+    </div>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="modal">
+    <div class="success-content">
+      <div class="success-icon">✅</div>
+      <h3 class="success-title">Campaign Submitted Successfully!</h3>
+      <p class="success-message">We'll review your ad and notify you by email shortly.</p>
+      
+      <div class="campaign-details">
+        <div class="detail-title">Campaign details:</div>
+        <div class="detail-item">
+          <span class="detail-label">Budget:</span>
+          <span class="detail-value" id="finalBudget">$0</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">CPM Rate:</span>
+          <span class="detail-value" id="finalCPM">$0</span>
+        </div>
+        <div class="detail-item" id="enhancementsDetail" style="display:none">
+          <span class="detail-label">Enhancements:</span>
+          <span class="detail-value" id="finalEnhancements">None</span>
+        </div>
+      </div>
+
+      <div class="next-steps">
+        <div class="next-steps-title">What happens next:</div>
+        <ol>
+          <li>Review begins immediately</li>
+          <li>Email with approval decision</li>
+          <li>Campaign goes live once approved</li>
+        </ol>
+      </div>
+
+      <button class="modal-btn modal-btn-primary" onclick="submitAnother()" style="width:auto;margin:0 auto">Submit Another Campaign</button>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Modal styles */
+.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.active{display:flex}
+.modal{background:#fff;border-radius:1rem;padding:2rem;max-width:720px;width:90%;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)}
+.modal-close{position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;color:var(--gray-500);cursor:pointer;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border-radius:50%}
+.modal-close:hover{background:var(--gray-100);color:var(--gray-700)}
+.modal-title{font-size:1.25rem;font-weight:700;color:var(--gray-900);margin-bottom:1.5rem;display:flex;align-items:center;gap:.5rem}
+.enhancement-option{border:1px solid #ccc;background-color:#fdfdfd;border-radius:8px;padding:1.25rem;margin-bottom:1rem;cursor:pointer;transition:.2s}
+.enhancement-option:hover{border-color:var(--brand-600)}
+.enhancement-option.selected{border-color:var(--brand-600);background:rgba(47,125,49,.05)}
+.enhancement-header{display:flex;align-items:flex-start;gap:.75rem;margin-bottom:.5rem}
+.enhancement-checkbox{margin-top:.2rem}
+.enhancement-title{font-weight:600;color:var(--gray-900)}
+.enhancement-description{color:var(--gray-600);font-size:.875rem;line-height:1.4}
+.enhancement-pricing{color:var(--brand-600);font-weight:600;font-size:.875rem;margin-top:.25rem}
+.url-input{width:100%;padding:.75rem;border:1px solid var(--gray-200);border-radius:.5rem;font-size:.875rem;margin-top:.75rem;background:#fbfcfd;box-shadow:inset 0 0.5px 1px rgba(0,0,0,.03);display:none}
+.url-input.active{display:block}
+.url-label{font-size:.875rem;color:var(--gray-700);margin-top:.5rem;display:none}
+.url-label.active{display:block}
+.modal-buttons{display:flex;gap:1rem;margin-top:2rem}
+.modal-btn{flex:1;padding:.875rem 1.5rem;border-radius:.75rem;border:none;font-weight:600;font-size:.875rem;cursor:pointer;transition:.2s;white-space:nowrap}
+.modal-btn-primary{background:var(--brand-600);color:#fff}
+.modal-btn-primary:hover{background:var(--brand-700)}
+.modal-btn-secondary{background:#fff;color:var(--gray-700);border:2px solid #333}
+.modal-btn-secondary:hover{background:var(--gray-50)}
+
+/* Success modal */
+.success-content{text-align:center}
+.success-icon{font-size:3rem;margin-bottom:1rem}
+.success-title{font-size:1.5rem;font-weight:700;color:var(--gray-900);margin-bottom:1rem}
+.success-message{color:var(--gray-600);margin-bottom:2rem;line-height:1.5}
+.campaign-details{background:var(--gray-50);border-radius:.75rem;padding:1.5rem;margin:1.5rem 0;text-align:left}
+.detail-title{font-weight:600;color:var(--gray-900);margin-bottom:.75rem}
+.detail-item{display:flex;justify-content:space-between;margin-bottom:.5rem;font-size:.875rem}
+.detail-label{color:var(--gray-600)}
+.detail-value{font-weight:600;color:var(--gray-900)}
+.next-steps{text-align:left;margin:1.5rem 0}
+.next-steps-title{font-weight:600;color:var(--gray-900);margin-bottom:.75rem}
+.next-steps ol{margin-left:1.5rem;color:var(--gray-700);font-size:.875rem;line-height:1.6}
+.next-steps li{margin-bottom:.5rem}
+</style>
+
+<script>
+// Replace the existing advertiser form submission handler with this:
+document.getElementById('advertiserForm').addEventListener('submit', function(e) {
+  e.preventDefault();
+  showEnhancementModal();
+});
+
+// Modal functions
+function showEnhancementModal() {
+  document.getElementById('enhancementModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeEnhancementModal() {
+  document.getElementById('enhancementModal').classList.remove('active');
+  document.getElementById('successModal').classList.remove('active');
+  document.body.style.overflow = 'auto';
+}
+
+function toggleEnhancement(type) {
+  const checkbox = document.getElementById(type + 'Enhancement');
+  const option = checkbox.closest('.enhancement-option');
+  
+  checkbox.checked = !checkbox.checked;
+  
+  if (checkbox.checked) {
+    option.classList.add('selected');
+  } else {
+    option.classList.remove('selected');
+  }
+
+  // Show/hide URL input for clickable link
+  if (type === 'clickableLink') {
+    const urlInput = document.getElementById('destinationUrl');
+    const urlLabel = document.getElementById('urlLabel');
+    
+    if (checkbox.checked) {
+      urlInput.classList.add('active');
+      urlLabel.classList.add('active');
+    } else {
+      urlInput.classList.remove('active');
+      urlLabel.classList.remove('active');
+      urlInput.value = '';
+    }
+  }
+}
+
+function submitWithEnhancements() {
+  // Validate URL if clickable link is selected
+  const clickableLink = document.getElementById('clickableLinkEnhancement').checked;
+  const urlInput = document.getElementById('destinationUrl');
+  
+  if (clickableLink && !urlInput.value) {
+    alert('Please enter a destination URL for your clickable link.');
+    return;
+  }
+  
+  processSubmission(true);
+}
+
+function submitBasicCampaign() {
+  processSubmission(false);
+}
+
+async function processSubmission(withEnhancements) {
+  // Get form data
+  const budget = document.getElementById('budget').value;
+  const cpmRate = document.querySelector('input[name="cpmRate"]:checked').value;
+  const recurring = document.getElementById('recurringSpend').checked;
+  const fileInput = document.getElementById('fileUpload');
+  
+  let finalCPM = cpmRate;
+  if (cpmRate === 'custom') {
+    finalCPM = document.getElementById('sliderValue').textContent;
+  }
+
+  // Process enhancements
+  let enhancements = [];
+  if (withEnhancements) {
+    if (document.getElementById('clickableLinkEnhancement').checked) {
+      enhancements.push('Clickable link (+$0.25/click)');
+    }
+    if (document.getElementById('expeditedEnhancement').checked) {
+      enhancements.push('24-hour approval (+$5)');
+    }
+  }
+
+  // Submit to API
+  try {
+    const formData = new FormData();
+    formData.append('companyName', document.getElementById('companyName').value);
+    formData.append('websiteUrl', document.getElementById('websiteUrl').value);
+    formData.append('firstName', document.getElementById('firstName').value);
+    formData.append('lastName', document.getElementById('lastName').value);
+    formData.append('email', document.getElementById('email').value);
+    formData.append('jobTitle', document.getElementById('jobTitle').value);
+    formData.append('adFormat', document.querySelector('input[name="adFormat"]:checked')?.value || '');
+    formData.append('weeklyBudget', budget);
+    formData.append('cpmRate', finalCPM);
+    formData.append('isRecurring', recurring);
+    
+    // Add file if selected
+    if (fileInput.files[0]) {
+      formData.append('creative', fileInput.files[0]);
+    }
+
+    const response = await fetch('/api/advertiser/submit', {
+      method: 'POST',
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+      console.log('✅ Advertiser submission successful:', data);
+      // Show success modal
+      showSuccessModal(budget, finalCPM, enhancements, recurring);
+    } else {
+      alert('Submission failed: ' + (data.message || 'Please try again later.'));
+      document.getElementById('enhancementModal').classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+  } catch (error) {
+    console.error('❌ Submission error:', error);
+    alert('Network error: Unable to submit application. Please check your connection and try again.');
+    document.getElementById('enhancementModal').classList.remove('active');
+    document.body.style.overflow = 'auto';
+  }
+}
+
+function showSuccessModal(budget, cpm, enhancements, recurring) {
+  // Hide enhancement modal
+  document.getElementById('enhancementModal').classList.remove('active');
+  
+  // Update success modal content
+  document.getElementById('finalBudget').textContent = '$' + budget;
+  document.getElementById('finalCPM').textContent = '$' + cpm;
+  
+  if (recurring) {
+    document.getElementById('finalBudget').textContent += ' (weekly recurring)';
+  }
+  
+  const enhancementDetail = document.getElementById('enhancementsDetail');
+  const enhancementValue = document.getElementById('finalEnhancements');
+  
+  if (enhancements.length > 0) {
+    enhancementDetail.style.display = 'flex';
+    enhancementValue.textContent = enhancements.join(', ');
+  } else {
+    enhancementDetail.style.display = 'none';
+  }
+  
+  // Show success modal
+  document.getElementById('successModal').classList.add('active');
+}
+
+function submitAnother() {
+  // Reset form
+  document.getElementById('advertiserForm').reset();
+  
+  // Reset CPM selection
+  document.querySelectorAll('.cpm-option').forEach(option => option.classList.remove('selected'));
+  document.querySelector('label[for="standard"]').classList.add('selected');
+  
+  // Reset custom slider
+  document.getElementById('customSlider').classList.remove('active');
+  document.getElementById('sliderValue').textContent = '2.00';
+  
+  // Reset enhancements
+  document.getElementById('clickableLinkEnhancement').checked = false;
+  document.getElementById('expeditedEnhancement').checked = false;
+  document.querySelectorAll('.enhancement-option').forEach(opt => opt.classList.remove('selected'));
+  document.getElementById('destinationUrl').classList.remove('active');
+  document.getElementById('urlLabel').classList.remove('active');
+  document.getElementById('destinationUrl').value = '';
+  
+  // Close modal
+  closeEnhancementModal();
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    closeEnhancementModal();
+  }
+});
+</script>
+
 </body>
 </html>
