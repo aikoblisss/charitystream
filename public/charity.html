@@ -377,15 +377,27 @@
   <!-- Header -->
   <header class="header">
     <div class="container">
-      <a href="/" class="logo">Charity Stream</a>
+      <!-- LOGO (Top Left) -->
+      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+      
+      <!-- NAVIGATION (Top Right) -->
       <nav class="nav">
-        <div class="nav-hidden-mobile">
-          <span class="welcome">Welcome, <span class="welcome-bold">StickyHenry</span></span>
+        <!-- LOGGED IN USER NAV -->
+        <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
-          <a href="/impact" class="nav-link active">Impact</a>
+          <a href="/impact" class="nav-link">Impact</a>
+          <a href="#" class="nav-cta" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
-        <a href="/" class="watch-ads-btn">Watch Ads</a>
+        
+        <!-- GUEST USER NAV -->
+        <div class="nav-hidden-mobile" id="guestNav">
+          <a href="/about" class="nav-link">About</a>
+          <a href="/advertise" class="nav-link">Advertise</a>
+          <a href="/impact" class="nav-link">Impact</a>
+          <a href="/auth" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
+        </div>
       </nav>
     </div>
   </header>

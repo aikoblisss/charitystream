@@ -35,8 +35,12 @@
     .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
     .logo{font-size:1.5rem;font-weight:700;color:var(--gray-900);letter-spacing:-.025em;text-decoration:none}
     .nav{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:.875rem}
+    .nav-hidden-mobile{display:flex;align-items:center;gap:1rem}
+    .welcome{color:var(--gray-900)}
+    .welcome-bold{font-weight:500}
     .nav-link{color:var(--gray-700);text-decoration:none;padding:.5rem 1rem;border-radius:.375rem;transition:.2s;font-weight:500}
     .nav-link:hover{background:var(--gray-100);color:var(--gray-900)}
+    .nav-link.active{color:var(--gray-900);font-weight:600}
     .nav-cta{background:var(--brand-600);color:#fff;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;text-decoration:none;transition:.2s}
     .nav-cta:hover{background:var(--brand-700);transform:translateY(-1px)}
 
@@ -678,15 +682,30 @@ h2[id^="why-"] {
 <body>
 <!-- Header -->
 <header class="header">
-<div class="container">
-<a class="logo" href="/">Charity Stream</a>
-<nav class="nav">
-<a class="nav-link" href="/about">About</a>
-<a class="nav-link" href="/advertise">Advertise</a>
-<a class="nav-link" href="/impact">Impact</a>
-<a class="nav-cta" href="/">Watch Ads →</a>
-</nav>
-</div>
+  <div class="container">
+    <!-- LOGO (Top Left) -->
+    <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+    
+    <!-- NAVIGATION (Top Right) -->
+    <nav class="nav">
+      <!-- LOGGED IN USER NAV -->
+      <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+        <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
+        <a href="/about" class="nav-link">About</a>
+        <a href="/advertise" class="nav-link active">Advertise</a>
+        <a href="/impact" class="nav-link">Impact</a>
+        <a href="#" class="nav-cta" id="watchAdsBtnLoggedIn">Watch Ads</a>
+      </div>
+      
+      <!-- GUEST USER NAV -->
+      <div class="nav-hidden-mobile" id="guestNav">
+        <a href="/about" class="nav-link">About</a>
+        <a href="/advertise" class="nav-link active">Advertise</a>
+        <a href="/impact" class="nav-link">Impact</a>
+        <a href="/auth" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
+      </div>
+    </nav>
+  </div>
 </header>
 <!-- Hero Section (WIP) -->
 <section class="hero" id="wip">
@@ -1642,6 +1661,81 @@ document.addEventListener('click', function(e) {
   if (e.target.classList.contains('modal-overlay')) {
     closeEnhancementModal();
   }
+});
+
+// Check authentication status
+const authToken = localStorage.getItem('authToken');
+const currentUser = JSON.parse(localStorage.getItem('currentUser') || 'null');
+
+// Set initial UI state
+function setInitialUIState() {
+  const loggedInNav = document.getElementById('loggedInNav');
+  const guestNav = document.getElementById('guestNav');
+  const usernameDisplay = document.getElementById('usernameDisplay');
+  const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
+  const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
+
+  if (authToken && currentUser) {
+    // User is logged in
+    if (loggedInNav) loggedInNav.style.display = 'flex';
+    if (guestNav) guestNav.style.display = 'none';
+    
+    if (usernameDisplay && currentUser.username) {
+      usernameDisplay.textContent = currentUser.username;
+    }
+  } else {
+    // User is not logged in
+    if (loggedInNav) loggedInNav.style.display = 'none';
+    if (guestNav) guestNav.style.display = 'flex';
+  }
+
+  // Watch Ads button functionality
+  if (watchAdsBtnLoggedIn) {
+    watchAdsBtnLoggedIn.onclick = () => {
+      if (authToken) {
+        // User is logged in, go to main page
+        window.location.href = '/';
+      } else {
+        // User is not logged in, go to sign in
+        window.location.href = '/auth';
+      }
+    };
+  }
+
+  if (watchAdsBtnGuest) {
+    watchAdsBtnGuest.onclick = () => {
+      if (authToken) {
+        // User is logged in, go to main page
+        window.location.href = '/';
+      } else {
+        // User is not logged in, go to sign in
+        window.location.href = '/auth';
+      }
+    };
+  }
+}
+
+// Logo button functionality
+document.addEventListener('DOMContentLoaded', function() {
+  const logoBtn = document.getElementById('logoBtn');
+  if (logoBtn) {
+    logoBtn.onclick = function(e) {
+      e.preventDefault();
+      
+      if (authToken) {
+        // User is logged in, go to main page
+        window.location.href = '/';
+      } else {
+        // User is not logged in, go to sign in
+        window.location.href = '/auth';
+      }
+    };
+  }
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', () => {
+  setInitialUIState();
 });
 </script>
 

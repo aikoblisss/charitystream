@@ -323,18 +323,55 @@ const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
+  console.log(`🔐 Auth check for ${req.path}:`, {
+    hasAuthHeader: !!authHeader,
+    hasToken: !!token,
+    tokenPrefix: token ? token.substring(0, 10) + '...' : 'none',
+    authHeaderValue: authHeader ? authHeader.substring(0, 20) + '...' : 'none'
+  });
+
   if (!token) {
+    console.log(`❌ No token for ${req.path}`);
     return res.status(401).json({ error: 'Access token required' });
   }
 
+  console.log(`🔍 JWT_SECRET available:`, !!JWT_SECRET);
+  console.log(`🔍 JWT_SECRET length:`, JWT_SECRET ? JWT_SECRET.length : 0);
+
   jwt.verify(token, JWT_SECRET, (err, user) => {
     if (err) {
+      console.log(`❌ Invalid token for ${req.path}:`, err.message);
+      console.log(`❌ JWT Error details:`, {
+        name: err.name,
+        message: err.message,
+        expiredAt: err.expiredAt
+      });
       return res.status(403).json({ error: 'Invalid token' });
     }
+    console.log(`✅ Valid token for ${req.path}, user:`, user.userId);
     req.user = user;
+    
+    // Track the request after authentication
+    requestTracker.track(req.path, user.userId, req.method);
     next();
   });
 };
+
+// Middleware for tracking requests without authentication
+const trackRequest = (req, res, next) => {
+  const userId = req.user?.userId || 'anonymous';
+  requestTracker.track(req.path, userId, req.method);
+  next();
+};
+
+// Debug endpoint to test authentication
+app.get('/api/debug/auth-test', authenticateToken, (req, res) => {
+  res.json({
+    message: 'Authentication working!',
+    user: req.user,
+    timestamp: new Date().toISOString()
+  });
+});
 
 // ===== USER AUTHENTICATION ROUTES =====
 
@@ -505,11 +542,13 @@ app.post('/api/auth/login', async (req, res) => {
 
     // Generate JWT token with extended expiry for remember me
     const tokenExpiry = rememberMe ? '30d' : '7d'; // 30 days if remember me, 7 days otherwise
+    console.log(`🔑 Generating JWT token for user ${user.id} with secret length:`, JWT_SECRET ? JWT_SECRET.length : 0);
     const token = jwt.sign(
       { userId: user.id, username: user.username },
       JWT_SECRET,
       { expiresIn: tokenExpiry }
     );
+    console.log(`🔑 Generated token length:`, token.length);
 
     console.log(`✅ User logged in: ${user.username}`);
     res.json({
@@ -2175,7 +2214,7 @@ app.post('/api/charity/submit', async (req, res) => {
 // Device fingerprint-based desktop detection endpoints
 
 // Desktop app heartbeat (called by desktop app)
-app.post('/api/tracking/desktop-active', async (req, res) => {
+app.post('/api/tracking/desktop-active', trackRequest, trackingRateLimit, async (req, res) => {
   try {
     const { fingerprint } = req.body;
     if (!fingerprint) {
@@ -2309,13 +2348,74 @@ const requestCounts = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
 const MAX_REQUESTS = 100; // Max requests per minute
 
-// MODIFY rate limiting to be less aggressive for video endpoints
-const VIDEO_RATE_LIMIT_WINDOW = 10000; // 10 seconds
-const MAX_VIDEO_REQUESTS = 20; // More generous limit for video operations
+// MODIFY rate limiting to be very generous for event-driven architecture
+const VIDEO_RATE_LIMIT_WINDOW = 60000; // 60 seconds (1 minute)
+const MAX_VIDEO_REQUESTS = 999999; // Very generous - we won't hit this with event-driven pattern
+
+// ============================================================
+// 🔍 DEBUGGING: Request tracking dashboard
+// ============================================================
+const requestTracker = {
+  counts: new Map(), // Track requests per endpoint per user
+  startTime: Date.now(),
+  
+  track(endpoint, userId, method = 'ANY') {
+    const key = `${method}_${endpoint}_${userId || 'anonymous'}`;
+    const current = this.counts.get(key) || { count: 0, lastRequest: 0 };
+    current.count++;
+    current.lastRequest = Date.now();
+    this.counts.set(key, current);
+  },
+  
+  getStats() {
+    const stats = {};
+    const uptimeMinutes = (Date.now() - this.startTime) / 60000;
+    
+    for (const [key, data] of this.counts.entries()) {
+      const requestsPerMinute = (data.count / uptimeMinutes).toFixed(2);
+      stats[key] = {
+        total: data.count,
+        perMinute: requestsPerMinute,
+        lastRequest: new Date(data.lastRequest).toLocaleTimeString()
+      };
+    }
+    
+    return stats;
+  },
+  
+  printDashboard() {
+    console.log('\n========================================');
+    console.log('📊 REQUEST TRACKING DASHBOARD');
+    console.log('========================================');
+    
+    const stats = this.getStats();
+    const sorted = Object.entries(stats).sort((a, b) => b[1].total - a[1].total);
+    
+    for (const [key, data] of sorted) {
+      const [method, endpoint, userId] = key.split('_');
+      console.log(`${endpoint} (${method})`);
+      console.log(`  User: ${userId}`);
+      console.log(`  Total: ${data.total} requests`);
+      console.log(`  Rate: ${data.perMinute} req/min`);
+      console.log(`  Last: ${data.lastRequest}`);
+      console.log('----------------------------------------');
+    }
+    
+    console.log('========================================\n');
+  }
+};
+
+// Print dashboard every 30 seconds
+setInterval(() => {
+  requestTracker.printDashboard();
+}, 30000);
 
 // Rate limiting middleware for tracking endpoints
 function trackingRateLimit(req, res, next) {
   const userId = req.user?.userId;
+  const username = req.user?.username || 'unknown';
+  const endpoint = req.path;
+  
   if (!userId) return next();
   
   const now = Date.now();
@@ -2323,6 +2423,8 @@ function trackingRateLimit(req, res, next) {
   
   // Reset if window expired
   if (now > userRequests.resetTime) {
+    console.log(`🔄 Rate limit reset for user ${username} (${userId})`);
+    console.log(`   Previous window: ${userRequests.count} requests`);
     userRequests.count = 0;
     userRequests.resetTime = now + RATE_LIMIT_WINDOW;
   }
@@ -2330,12 +2432,24 @@ function trackingRateLimit(req, res, next) {
   userRequests.count++;
   requestCounts.set(userId, userRequests);
   
+  console.log(`📊 Tracking rate limit check: ${username} @ ${endpoint}`);
+  console.log(`   Current: ${userRequests.count}/${MAX_REQUESTS} requests`);
+  console.log(`   Window resets in: ${Math.ceil((userRequests.resetTime - now) / 1000)}s`);
+  
   if (userRequests.count > MAX_REQUESTS) {
-    console.log(`⚠️ Rate limit exceeded for user ${userId}: ${userRequests.count} requests`);
+    console.error(`🚨 TRACKING RATE LIMIT EXCEEDED for ${username} (${userId})`);
+    console.error(`   Endpoint: ${endpoint}`);
+    console.error(`   Request count: ${userRequests.count}/${MAX_REQUESTS}`);
+    
     return res.status(429).json({ 
       error: 'Too many requests',
       message: 'Please slow down. Try again in a minute.',
-      retryAfter: Math.ceil((userRequests.resetTime - now) / 1000)
+      retryAfter: Math.ceil((userRequests.resetTime - now) / 1000),
+      debug: {
+        currentCount: userRequests.count,
+        limit: MAX_REQUESTS,
+        windowEndsIn: Math.ceil((userRequests.resetTime - now) / 1000)
+      }
     });
   }
   
@@ -2345,25 +2459,71 @@ function trackingRateLimit(req, res, next) {
 // Video-specific rate limiting (more generous)
 function videoRateLimit(req, res, next) {
   const userId = req.user?.userId;
+  const username = req.user?.username || 'unknown';
+  const endpoint = req.path;
+  
   if (!userId) return next();
   
   const now = Date.now();
   const key = `video_${userId}`;
-  const userRequests = requestCounts.get(key) || { count: 0, resetTime: now + VIDEO_RATE_LIMIT_WINDOW };
+  const userRequests = requestCounts.get(key) || { 
+    count: 0, 
+    resetTime: now + VIDEO_RATE_LIMIT_WINDOW,
+    requests: [] // Track individual requests
+  };
   
   if (now > userRequests.resetTime) {
+    console.log(`🔄 Video rate limit reset for user ${username} (${userId})`);
+    console.log(`   Previous window: ${userRequests.count} requests`);
+    if (userRequests.requests.length > 0) {
+      console.log(`   Top endpoints:`);
+      const endpointCounts = {};
+      userRequests.requests.forEach(r => {
+        endpointCounts[r.endpoint] = (endpointCounts[r.endpoint] || 0) + 1;
+      });
+      Object.entries(endpointCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .forEach(([endpoint, count]) => {
+          console.log(`     ${endpoint}: ${count} calls`);
+        });
+    }
+    
     userRequests.count = 0;
     userRequests.resetTime = now + VIDEO_RATE_LIMIT_WINDOW;
+    userRequests.requests = [];
   }
   
   userRequests.count++;
+  userRequests.requests.push({
+    endpoint: endpoint,
+    timestamp: now,
+    timeString: new Date(now).toLocaleTimeString()
+  });
   requestCounts.set(key, userRequests);
   
+  console.log(`📊 Video rate limit check: ${username} @ ${endpoint}`);
+  console.log(`   Current: ${userRequests.count}/${MAX_VIDEO_REQUESTS} requests`);
+  console.log(`   Window resets in: ${Math.ceil((userRequests.resetTime - now) / 1000)}s`);
+  
   if (userRequests.count > MAX_VIDEO_REQUESTS) {
+    console.error(`🚨 VIDEO RATE LIMIT EXCEEDED for ${username} (${userId})`);
+    console.error(`   Endpoint: ${endpoint}`);
+    console.error(`   Request count: ${userRequests.count}/${MAX_VIDEO_REQUESTS}`);
+    console.error(`   Recent requests (last 10):`);
+    userRequests.requests.slice(-10).forEach(r => {
+      console.error(`     ${r.timeString} - ${r.endpoint}`);
+    });
+    
     return res.status(429).json({ 
       error: 'Too many requests', 
       message: 'Please slow down your requests',
-      retryAfter: Math.ceil((userRequests.resetTime - now) / 1000)
+      retryAfter: Math.ceil((userRequests.resetTime - now) / 1000),
+      debug: {
+        currentCount: userRequests.count,
+        limit: MAX_VIDEO_REQUESTS,
+        windowEndsIn: Math.ceil((userRequests.resetTime - now) / 1000)
+      }
     });
   }
   
@@ -2412,8 +2572,16 @@ function withDatabaseConnection(handler) {
   };
 }
 
+// Server-side request deduplication for start-session
+const recentSessionStarts = new Map();
+const SESSION_DEDUP_WINDOW = 5000; // 5 seconds
+
 // Start watching session
-app.post('/api/tracking/start-session', authenticateToken, videoRateLimit, async (req, res) => {
+app.post('/api/tracking/start-session', authenticateToken, async (req, res) => {
+  console.log('🎬 START-SESSION ENDPOINT CALLED');
+  console.log('🎬 Request body:', req.body);
+  console.log('🎬 User from auth:', req.user);
+  
   let client = null;
   try {
     const { videoName, quality } = req.body;
@@ -2421,6 +2589,46 @@ app.post('/api/tracking/start-session', authenticateToken, videoRateLimit, async
     const username = req.user.username;
     const userIP = req.ip || req.connection.remoteAddress;
     const userAgent = req.get('User-Agent');
+
+    // Layer 4: Server-side request deduplication
+    const dedupKey = `${userId}_${videoName}_${quality}`;
+    const now = Date.now();
+    
+    // Clean up old entries
+    for (const [key, timestamp] of recentSessionStarts.entries()) {
+      if (now - timestamp > SESSION_DEDUP_WINDOW) {
+        recentSessionStarts.delete(key);
+      }
+    }
+    
+    // Check if we have a recent duplicate request
+    if (recentSessionStarts.has(dedupKey)) {
+      console.log(`⏸️ Duplicate session start request detected for ${username}, returning cached sessionId`);
+      // Return a cached session ID if available
+      const pool = getPool();
+      if (pool) {
+        try {
+          const client = await pool.connect();
+          const result = await client.query(
+            `SELECT id FROM watch_sessions 
+             WHERE user_id = $1 AND end_time IS NULL 
+             ORDER BY start_time DESC LIMIT 1`,
+            [userId]
+          );
+          client.release();
+          
+          if (result.rows.length > 0) {
+            return res.json({ sessionId: result.rows[0].id });
+          }
+        } catch (error) {
+          console.error('Error fetching cached session:', error);
+        }
+      }
+      return res.status(409).json({ error: 'Session already active' });
+    }
+    
+    // Record this request
+    recentSessionStarts.set(dedupKey, now);
 
     console.log(`🔍 Checking for active sessions for user ${username} (ID: ${userId})`);
     
@@ -2668,7 +2876,11 @@ app.post('/api/tracking/complete-session', authenticateToken, async (req, res) =
 // ===== AD TRACKING ENDPOINTS =====
 
 // Start ad tracking
-app.post('/api/tracking/start-ad', authenticateToken, async (req, res) => {
+app.post('/api/tracking/start-ad', authenticateToken, trackingRateLimit, async (req, res) => {
+  console.log('📺 START-AD ENDPOINT CALLED');
+  console.log('📺 Request body:', req.body);
+  console.log('📺 User from auth:', req.user);
+  
   try {
     const { sessionId } = req.body;
     
@@ -2690,9 +2902,47 @@ app.post('/api/tracking/start-ad', authenticateToken, async (req, res) => {
 });
 
 // Complete ad tracking
-app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
+app.post('/api/tracking/complete-ad', authenticateToken, trackingRateLimit, async (req, res) => {
+  console.log('🚨 COMPLETE-AD ENDPOINT HIT');
+  console.log('✅ COMPLETE-AD ENDPOINT CALLED');
+  console.log('✅ Request body:', req.body);
+  console.log('✅ User from auth:', req.user);
+  
   try {
     const { adTrackingId, durationSeconds, completed = true } = req.body;
+    
+    console.log('🔍 Processing ad completion:', {
+      adTrackingId: adTrackingId,
+      userId: req.user.userId,
+      timestamp: new Date().toISOString()
+    });
+    
+    // Check if this ad tracking ID has already been completed
+    const pool = getPool();
+    if (pool) {
+      try {
+        const checkResult = await pool.query(
+          'SELECT id, completed FROM ad_tracking WHERE id = $1',
+          [adTrackingId]
+        );
+        
+        if (checkResult.rows.length > 0) {
+          const existingTracking = checkResult.rows[0];
+          if (existingTracking.completed) {
+            console.log('⚠️ Ad tracking ID already completed:', adTrackingId);
+            return res.json({
+              message: 'Ad tracking already completed',
+              durationSeconds: durationSeconds
+            });
+          }
+        } else {
+          console.log('❌ Ad tracking ID not found:', adTrackingId);
+          return res.status(404).json({ error: 'Ad tracking ID not found' });
+        }
+      } catch (checkError) {
+        console.error('Error checking ad tracking status:', checkError);
+      }
+    }
     
     const [err, adTracking] = await dbHelpers.completeAdTracking(adTrackingId, durationSeconds, completed);
     if (err) {
@@ -2702,11 +2952,17 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
 
     // Update daily stats and user's monthly minutes if ad was completed
     if (completed && durationSeconds > 0) {
+      console.log('📊 UPDATE-DAILY-STATS - EXECUTING:', {
+        userId: req.user.userId,
+        adsWatched: 1,
+        watchTimeSeconds: durationSeconds
+      });
+      
       const [statsErr] = await dbHelpers.updateDailyStats(req.user.userId, 1, durationSeconds);
       if (statsErr) {
-        console.error('Error updating daily stats:', statsErr);
+        console.error('❌ Error updating daily stats:', statsErr);
       } else {
-        console.log(`📊 Updated daily stats for user ${req.user.userId}`);
+        console.log(`✅ Updated daily stats for user ${req.user.userId}`);
       }
 
       // Update user's total and monthly watch time (record seconds every time an ad completes)
@@ -2719,12 +2975,19 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
         willUpdateMonthly: secondsWatched > 0
       });
       if (secondsWatched > 0) {
+        console.log('⏱️ UPDATE-WATCH-SECONDS - EXECUTING:', {
+          userId: req.user.userId,
+          secondsWatched: secondsWatched
+        });
+        
         const [watchTimeErr, updatedUser] = await dbHelpers.updateWatchSeconds(req.user.userId, secondsWatched);
         if (watchTimeErr) {
-          console.error('Error updating watch seconds:', watchTimeErr);
+          console.error('❌ Error updating watch seconds:', watchTimeErr);
         } else {
-          console.log(`⏱️ ${req.user.username} watched ${secondsWatched} seconds (${durationSeconds} sec) - Total: ${updatedUser.total_seconds_watched}s, Monthly: ${updatedUser.current_month_seconds}s`);
+          console.log(`✅ ${req.user.username} watched ${secondsWatched} seconds (${durationSeconds} sec) - Total: ${updatedUser.total_seconds_watched}s, Monthly: ${updatedUser.current_month_seconds}s`);
         }
+      } else {
+        console.log('⚠️ No seconds to update (secondsWatched = 0)');
       }
     }
 
@@ -2740,10 +3003,24 @@ app.post('/api/tracking/complete-ad', authenticateToken, async (req, res) => {
 
 // ===== LEADERBOARD ROUTES =====
 
+// Server-side caching for leaderboard data
+const leaderboardCache = new Map();
+const LEADERBOARD_CACHE_TTL = 60000; // 1 minute
+
 // Get monthly leaderboard (top 5 users)
-app.get('/api/leaderboard/monthly', async (req, res) => {
+app.get('/api/leaderboard/monthly', authenticateToken, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 5;
+    const cacheKey = `leaderboard_${limit}`;
+    const now = Date.now();
+    
+    // Check cache first
+    const cached = leaderboardCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < LEADERBOARD_CACHE_TTL) {
+      console.log(`📊 Returning cached leaderboard data`);
+      return res.json(cached.data);
+    }
+    
     const [err, leaderboard] = await dbHelpers.getMonthlyLeaderboard(limit);
     
     if (err) {
@@ -2751,7 +3028,7 @@ app.get('/api/leaderboard/monthly', async (req, res) => {
       return res.status(500).json({ error: 'Failed to get leaderboard' });
     }
 
-    res.json({
+    const leaderboardData = {
       leaderboard: leaderboard.map((user, index) => ({
         rank: user.rank_number,
         username: user.username,
@@ -2761,7 +3038,22 @@ app.get('/api/leaderboard/monthly', async (req, res) => {
         streakDays: user.streak_days,
         accountAgeDays: Math.floor((new Date() - new Date(user.created_at)) / (1000 * 60 * 60 * 24))
       }))
+    };
+    
+    // Cache the result
+    leaderboardCache.set(cacheKey, {
+      data: leaderboardData,
+      timestamp: now
     });
+    
+    // Clean up old cache entries
+    for (const [key, value] of leaderboardCache.entries()) {
+      if (now - value.timestamp > LEADERBOARD_CACHE_TTL) {
+        leaderboardCache.delete(key);
+      }
+    }
+    
+    res.json(leaderboardData);
   } catch (error) {
     console.error('Error in monthly leaderboard:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -2819,9 +3111,22 @@ app.get('/api/debug/daily-stats', authenticateToken, async (req, res) => {
   }
 });
 
+// Server-side caching for user impact data
+const userImpactCache = new Map();
+const IMPACT_CACHE_TTL = 30000; // 30 seconds
+
 app.get('/api/user/impact', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
+    const cacheKey = `impact_${userId}`;
+    const now = Date.now();
+    
+    // Check cache first
+    const cached = userImpactCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < IMPACT_CACHE_TTL) {
+      console.log(`📊 Returning cached impact data for user ${userId}`);
+      return res.json(cached.data);
+    }
     
     // Get all user data in parallel
     const [
@@ -2848,7 +3153,7 @@ app.get('/api/user/impact', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    res.json({
+    const impactData = {
       impact: {
         adsWatchedToday: adsWatchedToday,
         totalAdsWatched: totalAdsWatched,
@@ -2861,7 +3166,22 @@ app.get('/api/user/impact', authenticateToken, async (req, res) => {
         accountAgeDays: accountAgeDays,
         donationsGenerated: Math.round(totalAdsWatched * 0.01) // Placeholder: $0.01 per ad
       }
+    };
+    
+    // Cache the result
+    userImpactCache.set(cacheKey, {
+      data: impactData,
+      timestamp: now
     });
+    
+    // Clean up old cache entries
+    for (const [key, value] of userImpactCache.entries()) {
+      if (now - value.timestamp > IMPACT_CACHE_TTL) {
+        userImpactCache.delete(key);
+      }
+    }
+    
+    res.json(impactData);
   } catch (error) {
     console.error('Error getting user impact:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -2961,8 +3281,22 @@ app.get('/api/videos/current', async (req, res) => {
 
 // Get all active videos for looping
 // DYNAMIC: Scans charity-stream-videos R2 bucket for all video_X.mp4 files
-app.get('/api/videos/playlist', async (req, res) => {
+// Server-side caching for playlist data
+const playlistCache = new Map();
+const PLAYLIST_CACHE_TTL = 120000; // 2 minutes
+
+app.get('/api/videos/playlist', authenticateToken, trackingRateLimit, async (req, res) => {
   try {
+    const cacheKey = 'playlist_all';
+    const now = Date.now();
+    
+    // Check cache first
+    const cached = playlistCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < PLAYLIST_CACHE_TTL) {
+      console.log(`📊 Returning cached playlist data`);
+      return res.json(cached.data);
+    }
+    
     const R2_BUCKET_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
     const CHARITY_BUCKET = 'charity-stream-videos';
     
@@ -2995,12 +3329,27 @@ app.get('/api/videos/playlist', async (req, res) => {
       duration: 60
     }));
     
+    const playlistData = {
+      videos: playlist
+    };
+    
+    // Cache the result
+    playlistCache.set(cacheKey, {
+      data: playlistData,
+      timestamp: now
+    });
+    
+    // Clean up old cache entries
+    for (const [key, value] of playlistCache.entries()) {
+      if (now - value.timestamp > PLAYLIST_CACHE_TTL) {
+        playlistCache.delete(key);
+      }
+    }
+    
     console.log(`✅ Dynamically serving playlist: ${playlist.length} videos from R2 bucket`);
     console.log(`   Videos: ${videoFiles.map(v => v.filename).join(', ')}`);
     
-    res.json({
-      videos: playlist
-    });
+    res.json(playlistData);
   } catch (error) {
     console.error('❌ Error fetching playlist:', error);
     
@@ -3020,10 +3369,21 @@ app.get('/api/videos/playlist', async (req, res) => {
   }
 });
 
+// Add simple in-memory cache for advertiser lookups
+const advertiserCache = new Map();
+const ADVERTISER_CACHE_TTL = 300000; // 5 minutes
+
 // GET endpoint to fetch advertiser info for a specific video
-app.get('/api/videos/:videoFilename/advertiser', async (req, res) => {
+app.get('/api/videos/:videoFilename/advertiser', authenticateToken, async (req, res) => {
   try {
     const { videoFilename } = req.params;
+    
+    // Check cache first
+    const cacheKey = `advertiser_${videoFilename}`;
+    const cached = advertiserCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < ADVERTISER_CACHE_TTL) {
+      return res.json(cached.data);
+    }
     
     const pool = getPool();
     if (!pool) {
@@ -3036,18 +3396,22 @@ app.get('/api/videos/:videoFilename/advertiser', async (req, res) => {
       WHERE video_filename = $1 AND is_active = true
       LIMIT 1
     `, [videoFilename]);
-
-    if (result.rows.length > 0) {
-      res.json({
-        hasAdvertiser: true,
-        advertiser: result.rows[0]
-      });
-    } else {
-      res.json({
-        hasAdvertiser: false,
-        advertiser: null
-      });
-    }
+    
+    const responseData = result.rows.length > 0 ? {
+      hasAdvertiser: true,
+      advertiser: result.rows[0]
+    } : {
+      hasAdvertiser: false,
+      advertiser: null
+    };
+    
+    // Cache the result
+    advertiserCache.set(cacheKey, {
+      data: responseData,
+      timestamp: Date.now()
+    });
+    
+    res.json(responseData);
   } catch (error) {
     console.error('❌ Error fetching video advertiser:', error);
     res.status(500).json({ error: 'Failed to fetch advertiser information' });
@@ -3498,6 +3862,19 @@ app.get('*', (req, res) => {
   }
 });
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  const pool = getPool();
+  const healthStatus = {
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    database: pool ? 'connected' : 'disconnected',
+    uptime: process.uptime(),
+    memory: process.memoryUsage()
+  };
+  res.json(healthStatus);
+});
+
 app.listen(PORT, () => {
   console.log('🚀 LetsWatchAds Server Started!');
   if (process.env.NODE_ENV === 'production') {
@@ -3509,6 +3886,12 @@ app.listen(PORT, () => {
   }
   console.log(`🔐 API endpoints available at /api/`);
   console.log('\n📋 Available endpoints:');
+  
+  // Periodic health logging
+  setInterval(() => {
+    const pool = getPool();
+    console.log(`💓 Server health - DB: ${pool ? 'OK' : 'ERROR'}, Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  }, 60000); // Every minute
   console.log('   POST /api/auth/register');
   console.log('   POST /api/auth/login');
   console.log('   GET  /api/auth/me');

@@ -151,6 +151,7 @@
       height: 4rem;
       display: flex;
       align-items: center;
+      justify-content: space-between;
       gap: 1.25rem;
     }
 
@@ -168,18 +169,15 @@
     }
 
     .nav {
-      margin-left: auto;
       display: flex;
       align-items: center;
-      gap: 32px;
-      font-size: 16px;
-      color: var(--gray-700);
+      gap: 1rem;
     }
 
     .nav-hidden-mobile {
       display: flex;
       align-items: center;
-      gap: 32px;
+      gap: 1rem;
     }
 
     .welcome {
@@ -191,33 +189,37 @@
     }
 
     .nav-link {
-      color: #666;
+      color: var(--gray-700);
       text-decoration: none;
-      font-size: 16px;
+      padding: .5rem 1rem;
+      border-radius: .375rem;
+      transition: .2s;
       font-weight: 500;
     }
 
     .nav-link:hover {
+      background: var(--gray-100);
       color: var(--gray-900);
     }
 
-    .nav-link:first-child {
-      color: #111;
-    }
-
-    .watch-ads-btn {
-      background-color: #2F7D31;
-      color: white;
-      padding: 10px 20px;
-      border-radius: 6px;
-      text-decoration: none;
+    .nav-link.active {
+      color: var(--gray-900);
       font-weight: 600;
-      font-size: 16px;
-      transition: background-color 0.2s;
     }
 
-    .watch-ads-btn:hover {
-      background-color: #1B5E20;
+    .nav-cta {
+      background: var(--brand-600);
+      color: #fff;
+      padding: .5rem 1rem;
+      border-radius: .5rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: .2s;
+    }
+
+    .nav-cta:hover {
+      background: var(--brand-700);
+      transform: translateY(-1px);
     }
 
     /* FORA Charity Header */
@@ -1504,20 +1506,27 @@
 
   <!-- Top Nav -->
   <header class="header">
-      <div class="header-container">
-        <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+    <div class="header-container">
+      <!-- LOGO (Top Left) -->
+      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+      
+      <!-- NAVIGATION (Top Right) -->
       <nav class="nav">
+        <!-- LOGGED IN USER NAV -->
         <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
+          <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="watch-ads-btn" id="watchAdsBtnLoggedIn">Watch Ads</a>
+          <a href="#" class="nav-cta" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
+        
+        <!-- GUEST USER NAV -->
         <div class="nav-hidden-mobile" id="guestNav">
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="/auth" class="watch-ads-btn" id="watchAdsBtnGuest">Watch Ads</a>
+          <a href="/auth" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -2202,6 +2211,13 @@
 
     // Initialize video player for guests (no functionality)
     function initializeVideoPlayerForGuests() {
+      // CRITICAL: Don't initialize guest player if user is authenticated
+      const token = localStorage.getItem('authToken');
+      if (token) {
+        console.log('🎬 User is authenticated, skipping guest player initialization');
+        return;
+      }
+      
       // Prevent multiple initializations
       if (isPlayerInitialized) {
         console.log('🎬 Guest player already initialized, skipping...');
@@ -2307,25 +2323,171 @@
       return null;
     }
 
+    // ============================================================
+    // 🔍 DEBUGGING: Frontend request tracker
+    // ============================================================
+    const frontendRequestTracker = {
+      requests: [],
+      startTime: Date.now(),
+      
+      log(endpoint, method = 'POST', status, duration) {
+        const request = {
+          timestamp: Date.now(),
+          timeString: new Date().toLocaleTimeString(),
+          endpoint: endpoint,
+          method: method,
+          status: status,
+          duration: duration,
+          stackTrace: new Error().stack.split('\n').slice(2, 5) // Get caller info
+        };
+        
+        this.requests.push(request);
+        
+        // Log to console with color coding
+        const emoji = status === 429 ? '🚨' : status >= 400 ? '❌' : '✅';
+        console.log(`${emoji} [${request.timeString}] ${method} ${endpoint} - ${status} (${duration}ms)`);
+        
+        if (status === 429) {
+          console.error('🚨 429 ERROR DETAILS:');
+          console.error('   Caller stack trace:', request.stackTrace);
+          this.printSummary();
+        }
+        
+        // Keep only last 100 requests
+        if (this.requests.length > 100) {
+          this.requests.shift();
+        }
+      },
+      
+      printSummary() {
+        console.log('\n========================================');
+        console.log('📊 FRONTEND REQUEST SUMMARY');
+        console.log('========================================');
+        
+        const uptimeMinutes = (Date.now() - this.startTime) / 60000;
+        const endpointCounts = {};
+        const last60Seconds = this.requests.filter(r => Date.now() - r.timestamp < 60000);
+        
+        this.requests.forEach(r => {
+          const key = `${r.method} ${r.endpoint}`;
+          endpointCounts[key] = (endpointCounts[key] || 0) + 1;
+        });
+        
+        console.log(`Total requests: ${this.requests.length}`);
+        console.log(`Uptime: ${uptimeMinutes.toFixed(2)} minutes`);
+        console.log(`Rate: ${(this.requests.length / uptimeMinutes).toFixed(2)} req/min`);
+        console.log(`Last 60 seconds: ${last60Seconds.length} requests`);
+        console.log('\nTop endpoints:');
+        
+        Object.entries(endpointCounts)
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .forEach(([endpoint, count]) => {
+            const perMinute = (count / uptimeMinutes).toFixed(2);
+            console.log(`  ${endpoint}: ${count} total (${perMinute}/min)`);
+          });
+        
+        console.log('\nRecent 429 errors:');
+        const recent429s = this.requests.filter(r => r.status === 429).slice(-5);
+        recent429s.forEach(r => {
+          console.log(`  ${r.timeString} - ${r.endpoint}`);
+          console.log(`    Called from:`, r.stackTrace[0]);
+        });
+        
+        console.log('========================================\n');
+      },
+      
+      getStats() {
+        const uptimeMinutes = (Date.now() - this.startTime) / 60000;
+        const last60Seconds = this.requests.filter(r => Date.now() - r.timestamp < 60000);
+        const errors = this.requests.filter(r => r.status >= 400);
+        
+        return {
+          totalRequests: this.requests.length,
+          uptimeMinutes: uptimeMinutes.toFixed(2),
+          requestsPerMinute: (this.requests.length / uptimeMinutes).toFixed(2),
+          last60Seconds: last60Seconds.length,
+          totalErrors: errors.length,
+          total429s: this.requests.filter(r => r.status === 429).length
+        };
+      }
+    };
+
+    // Print summary every 30 seconds
+    setInterval(() => {
+      frontendRequestTracker.printSummary();
+    }, 30000);
+
+    // Expose to window for manual inspection
+    window.debugRequests = frontendRequestTracker;
+
+    // Tracked fetch wrapper
+    async function trackedFetch(url, options = {}) {
+      const method = options.method || 'GET';
+      const startTime = performance.now();
+      
+      try {
+        const response = await fetch(url, options);
+        const duration = Math.round(performance.now() - startTime);
+        frontendRequestTracker.log(url, method, response.status, duration);
+        return response;
+      } catch (error) {
+        const duration = Math.round(performance.now() - startTime);
+        frontendRequestTracker.log(url, method, 'ERROR', duration);
+        throw error;
+      }
+    }
+
+    // Global lock to prevent rapid-fire session starts
+    let sessionStartInProgress = false;
+    const SESSION_START_COOLDOWN = 3000; // 3 seconds between session starts
+    let lastSessionStartTime = 0;
+
+    // Global tracking variables (moved outside initializeVideoPlayer)
+    let currentAdTrackingId = null;
+    let isAdPlaying = false;
+    let adStartTime = null;
+    let accumulatedAdTime = 0;
+    let sessionStartTime = null;
+    let currentVideoStartTime = null;
+    let pausedCount = 0;
+
     // Start a watch session with request coalescing
     async function startWatchSession(videoName, quality) {
       if (!authToken) return null;
-
-      const requestKey = `start_session_${videoName}_${quality}`;
       
-      // If same request is already pending, return that promise
-      if (pendingSessionRequests.has(requestKey)) {
-        console.log('⏸️ Reusing pending session request');
-        return pendingSessionRequests.get(requestKey);
+      // Layer 1: Function-level lock to prevent rapid-fire calls
+      const now = Date.now();
+      if (sessionStartInProgress || (now - lastSessionStartTime) < SESSION_START_COOLDOWN) {
+        console.log('⏸️ Session start blocked - cooldown active');
+        return null;
       }
+      
+      sessionStartInProgress = true;
+      lastSessionStartTime = now;
+      
+      try {
+        // Check circuit breaker
+        if (!circuitBreaker.canMakeRequest()) {
+          console.log('⏸️ Circuit breaker open - skipping request');
+          return null;
+        }
 
-      const sessionPromise = (async () => {
-        try {
-          // Add timeout to prevent hanging
-          const controller = new AbortController();
+        const requestKey = `start_session_${videoName}_${quality}`;
+        
+        // If same request is already pending, return that promise
+        if (pendingSessionRequests.has(requestKey)) {
+          console.log('⏸️ Reusing pending session request');
+          return pendingSessionRequests.get(requestKey);
+        }
+
+        const sessionPromise = (async () => {
+          try {
+            // Add timeout to prevent hanging
+            const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
-          const response = await fetch('/api/tracking/start-session', {
+          const response = await trackedFetch('/api/tracking/start-session', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -2341,6 +2503,7 @@
           clearTimeout(timeoutId);
 
           if (response.ok) {
+            circuitBreaker.recordSuccess();
             const result = await response.json();
             currentSessionId = result.sessionId;
             console.log('📺 Watch session started:', result.sessionId);
@@ -2359,15 +2522,16 @@
             // Show conflict toast
             showConflictToast();
             
-            // Ensure monitoring is running
-            startReliableConflictMonitoring();
+            // No monitoring needed - server handles conflicts
             
             return null; // Session not started due to conflict
           } else if (response.status === 429) {
             console.log('⏳ Rate limited, retrying session start later...');
+            circuitBreaker.recordFailure();
             // Don't retry immediately on rate limit
             return null;
           } else {
+            circuitBreaker.recordFailure();
             throw new Error(`HTTP ${response.status}`);
           }
         } catch (error) {
@@ -2375,6 +2539,7 @@
             console.log('📺 Watch session request timed out (non-critical)');
           } else {
             console.error('Error starting watch session:', error);
+            circuitBreaker.recordFailure();
           }
           return null;
         } finally {
@@ -2385,6 +2550,12 @@
       
       pendingSessionRequests.set(requestKey, sessionPromise);
       return sessionPromise;
+      } finally {
+        // Always release the lock after a delay
+        setTimeout(() => {
+          sessionStartInProgress = false;
+        }, 1000);
+      }
     }
 
     // Start ad tracking
@@ -2392,7 +2563,7 @@
       if (!authToken || !sessionId) return null;
 
       try {
-        const response = await fetch('/api/tracking/start-ad', {
+        const response = await trackedFetch('/api/tracking/start-ad', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2416,10 +2587,22 @@
 
     // Complete ad tracking
     async function completeAdTracking(adTrackingId, durationSeconds, completed = true) {
-      if (!authToken || !adTrackingId) return;
+      if (!authToken || !adTrackingId) {
+        console.log('❌ MISSING AUTH TOKEN OR AD TRACKING ID:', {
+          hasAuthToken: !!authToken,
+          adTrackingId: adTrackingId
+        });
+        return;
+      }
+
+      console.log('🚀 COMPLETE-AD-TRACKING CALLED:', {
+        adTrackingId: adTrackingId,
+        durationSeconds: durationSeconds,
+        completed: completed
+      });
 
       try {
-        const response = await fetch('/api/tracking/complete-ad', {
+        const response = await trackedFetch('/api/tracking/complete-ad', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2432,66 +2615,163 @@
           })
         });
 
-        if (response.ok) {
-          console.log('📺 Ad tracking completed:', durationSeconds, 'seconds');
-          // Refresh user impact data and leaderboard
-          await loadUserImpact(); // Make sure this completes before moving on
-          loadLeaderboard();
-        }
-      } catch (error) {
-        console.error('Error completing ad tracking:', error);
-      }
-    }
-
-    // Load user impact data
-    async function loadUserImpact() {
-      if (!authToken) return;
-
-      try {
-        const response = await fetch('/api/user/impact', {
-          headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
+        console.log('📡 COMPLETE-AD RESPONSE:', {
+          status: response.status,
+          ok: response.ok
         });
 
         if (response.ok) {
-          const result = await response.json();
-          const impact = result.impact;
+          console.log('✅ Ad tracking completed successfully:', durationSeconds, 'seconds');
           
-          // Update UI with impact data (remove skeleton classes)
-          const adsWatchedElement = document.getElementById('adsWatchedToday');
-          const totalAdsElement = document.getElementById('totalAdsWatched');
-          const rankElement = document.getElementById('currentRank');
-          
-          if (adsWatchedElement) {
-            adsWatchedElement.innerHTML = impact.adsWatchedToday;
-            adsWatchedElement.classList.add('data-loaded');
+          // CRITICAL FIX: Invalidate cache and force immediate refresh for real-time updates
+          console.log('🔄 Clearing cache and forcing immediate UI refresh');
+          userImpactCache = null; // Clear cache to force fresh data
+          if (impactRefreshDebounce) {
+            clearTimeout(impactRefreshDebounce);
+            impactRefreshDebounce = null;
           }
           
-          if (totalAdsElement) {
-            totalAdsElement.innerHTML = impact.totalAdsWatched;
-            totalAdsElement.classList.add('data-loaded');
-          }
-          
-          // Show dash for 0 minutes, otherwise show rank number
-          const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
-          if (rankElement) {
-            rankElement.innerHTML = rankDisplay;
-            rankElement.classList.add('data-loaded');
-          }
-          
-          document.getElementById('userMinutesDisplay').innerHTML = `${impact.watchTimeMinutes} mins`;
-          
-          // Update user rank in leaderboard
-          const userRankElement = document.getElementById('userRankDisplay');
-          if (userRankElement) {
-            userRankElement.innerHTML = rankDisplay;
-            userRankElement.classList.add('data-loaded');
-          }
+          // Force immediate refresh without cache or debounce
+          await loadUserImpact(true, true); // Force refresh + skip debounce
+          loadLeaderboard();
+        } else {
+          console.error('❌ Complete-ad API returned error:', response.status);
+          const errorText = await response.text();
+          console.error('❌ Error response:', errorText);
         }
       } catch (error) {
-        console.error('Error loading user impact:', error);
+        console.error('❌ Error completing ad tracking:', error);
       }
+    }
+
+    // Cache user impact data to prevent excessive API calls
+    let userImpactCache = null;
+    const IMPACT_CACHE_TTL = 5000; // 5 seconds (reduced for more responsive updates)
+    let impactRefreshDebounce = null;
+
+    // Load user impact data with caching and debouncing
+    async function loadUserImpact(forceRefresh = false, skipDebounce = false) {
+      if (!authToken) return;
+
+      // Bypass cache if force refresh requested (for real-time ad updates)
+      if (!forceRefresh && userImpactCache && (Date.now() - userImpactCache.timestamp) < IMPACT_CACHE_TTL) {
+        console.log('📊 Using cached impact data');
+        updateImpactUI(userImpactCache.data);
+        return;
+      }
+
+      // Clear any existing debounce if skipping
+      if (skipDebounce && impactRefreshDebounce) {
+        clearTimeout(impactRefreshDebounce);
+        impactRefreshDebounce = null;
+      }
+
+      // Skip debounce for immediate ad updates (real-time UI refresh)
+      if (skipDebounce) {
+        console.log('⚡ Loading impact data immediately (skip debounce for ad completion)');
+        try {
+          const response = await trackedFetch('/api/user/impact', {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const impact = result.impact;
+            
+            // Cache the result
+            userImpactCache = {
+              data: impact,
+              timestamp: Date.now()
+            };
+            
+            updateImpactUI(impact);
+            console.log('✅ Impact UI updated immediately after ad completion');
+          }
+        } catch (error) {
+          console.error('Error loading user impact:', error);
+        }
+        return;
+      }
+
+      // Keep debounce for other calls (non-ad completion updates)
+      if (impactRefreshDebounce) {
+        clearTimeout(impactRefreshDebounce);
+      }
+      
+      impactRefreshDebounce = setTimeout(async () => {
+        try {
+          const response = await trackedFetch('/api/user/impact', {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            const impact = result.impact;
+            
+            // Cache the result
+            userImpactCache = {
+              data: impact,
+              timestamp: Date.now()
+            };
+            
+            updateImpactUI(impact);
+          }
+        } catch (error) {
+          console.error('Error loading user impact:', error);
+        }
+      }, 1000); // Wait 1 second before making the call
+    }
+
+    // Update UI with impact data (extracted for reuse)
+    function updateImpactUI(impact) {
+      console.log('🎨 UPDATING IMPACT UI:', {
+        adsWatchedToday: impact.adsWatchedToday,
+        totalAdsWatched: impact.totalAdsWatched,
+        watchTimeMinutes: impact.watchTimeMinutes,
+        currentRank: impact.currentRank,
+        timestamp: new Date().toLocaleTimeString()
+      });
+      
+      // Update UI with impact data (remove skeleton classes)
+      const adsWatchedElement = document.getElementById('adsWatchedToday');
+      const totalAdsElement = document.getElementById('totalAdsWatched');
+      const rankElement = document.getElementById('currentRank');
+      
+      if (adsWatchedElement) {
+        const oldValue = adsWatchedElement.innerHTML;
+        adsWatchedElement.innerHTML = impact.adsWatchedToday;
+        adsWatchedElement.classList.add('data-loaded');
+        console.log(`📊 Ads Today: ${oldValue} → ${impact.adsWatchedToday}`);
+      }
+      
+      if (totalAdsElement) {
+        const oldValue = totalAdsElement.innerHTML;
+        totalAdsElement.innerHTML = impact.totalAdsWatched;
+        totalAdsElement.classList.add('data-loaded');
+        console.log(`📊 Total Ads: ${oldValue} → ${impact.totalAdsWatched}`);
+      }
+      
+      // Show dash for 0 minutes, otherwise show rank number
+      const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
+      if (rankElement) {
+        rankElement.innerHTML = rankDisplay;
+        rankElement.classList.add('data-loaded');
+      }
+      
+      document.getElementById('userMinutesDisplay').innerHTML = `${impact.watchTimeMinutes} mins`;
+      
+      // Update user rank in leaderboard
+      const userRankElement = document.getElementById('userRankDisplay');
+      if (userRankElement) {
+        userRankElement.innerHTML = rankDisplay;
+        userRankElement.classList.add('data-loaded');
+      }
+      
+      console.log('✅ Impact UI update completed');
     }
 
     // Load leaderboard data
@@ -2499,7 +2779,7 @@
       if (!authToken) return;
 
       try {
-        const response = await fetch('/api/leaderboard/monthly?limit=5', {
+        const response = await trackedFetch('/api/leaderboard/monthly?limit=5', {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
@@ -2560,107 +2840,10 @@
       }
     }
 
-    // ========== EFFICIENT CONFLICT DETECTION (MINIMAL POLLING) ==========
+    // ========== EVENT-DRIVEN ARCHITECTURE (NO POLLING) ==========
     
-    let conflictMonitoringInterval = null;
-    let detectionCache = { result: false, timestamp: 0 };
-    const CACHE_DURATION = 20000; // 20 second cache - dramatically reduces API calls
-
-    // SIMPLE detection - only use session-based conflicts (409 errors)
-    async function checkForDesktopApp() {
-      if (!authToken) return false;
-      
-      // Use cached result if recent (20s cache = massive reduction in API calls)
-      const now = Date.now();
-      if (now - detectionCache.timestamp < CACHE_DURATION) {
-        return detectionCache.result;
-      }
-      
-      try {
-        const response = await fetch('/api/tracking/session-status', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-          },
-          signal: AbortSignal.timeout(3000)
-        });
-        
-        if (response.ok) {
-          const sessionStatus = await response.json();
-          const isDesktopActive = sessionStatus.hasDesktopSession || sessionStatus.conflictDetected;
-          
-          // Cache the result
-          detectionCache = {
-            result: isDesktopActive,
-            timestamp: now
-          };
-          
-          console.log(`📡 API check - Desktop active: ${isDesktopActive}`);
-          return isDesktopActive;
-        }
-      } catch (error) {
-        // On error, assume no conflict to avoid false positives
-        console.log('Session status check failed (non-critical)');
-      }
-      
-      return false;
-    }
-
-    // EFFICIENT monitoring - only checks when video is ACTUALLY PLAYING
-    function startReliableConflictMonitoring() {
-      if (conflictMonitoringInterval) {
-        clearInterval(conflictMonitoringInterval);
-      }
-      
-      console.log('🚨 Starting EFFICIENT conflict monitoring (30s intervals, 20s cache, only when playing)');
-      
-      conflictMonitoringInterval = setInterval(async () => {
-        // ONLY check if video is actively playing
-        // No point checking if paused - saves API calls!
-        if (!player || player.paused()) {
-          console.log('⏸️ Video paused - skipping desktop check');
-          return;
-        }
-        
-        const isDesktopActive = await checkForDesktopApp();
-        
-        if (isDesktopActive) {
-          console.log('🚫 DESKTOP APP DETECTED - PAUSING VIDEO IMMEDIATELY');
-          
-          // FORCE PAUSE THE VIDEO
-          if (player) {
-            player.pause();
-            console.log('✅ Video paused due to desktop app');
-          }
-          
-          // Show conflict notification
-          showConflictToast();
-          
-          // Complete any active session
-          if (currentSessionId) {
-            const duration = Math.floor((Date.now() - (currentVideoStartTime || Date.now())) / 1000);
-            try {
-              await completeWatchSession(currentSessionId, duration, false, pausedCount);
-              currentSessionId = null;
-            } catch (e) {
-              // Silent fail
-            }
-          }
-          
-          // Stop monitoring since video is paused
-          stopConflictMonitoring();
-        }
-      }, 30000); // Check every 30 seconds (with 20s cache = ~2 API calls/min!)
-    }
-
-    function stopConflictMonitoring() {
-      if (conflictMonitoringInterval) {
-        clearInterval(conflictMonitoringInterval);
-        conflictMonitoringInterval = null;
-        console.log('Stopped conflict monitoring');
-      }
-    }
+    // No more polling! Server handles all conflict detection automatically.
+    // Client only makes requests when user takes action (clicks play).
     
     // SIMPLE showConflictToast function
     function showConflictToast() {
@@ -2700,43 +2883,97 @@
       }, 8000);
     }
     
-    // Manual cleanup function
+    // Manual cleanup function - no longer needed with event-driven architecture
     async function manualCleanup() {
-      try {
-        // Clear detection cache immediately
-        detectionCache = { result: false, timestamp: 0 };
-        
-        if (authToken) {
-          await fetch('/api/tracking/cleanup-desktop-sessions', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${authToken}`,
-              'Content-Type': 'application/json'
-            }
-          });
-        }
-        console.log('✅ Manual cleanup completed');
-        alert('Desktop sessions cleared. You can now watch on the website.');
-        
-        // Refresh the page to reset everything
-        location.reload();
-        
-      } catch (error) {
-        console.log('Cleanup completed (some requests may have failed)');
-        alert('Cleanup attempted. Refreshing page...');
-        location.reload();
-      }
+      console.log('✅ Manual cleanup - no longer needed with server-side session management');
+      alert('Server now handles session conflicts automatically. Try refreshing the page.');
+      location.reload();
     }
+
+    // ========== CIRCUIT BREAKER PATTERN ==========
+    
+    // Circuit breaker to prevent overwhelming the server
+    const circuitBreaker = {
+      failures: 0,
+      lastFailureTime: 0,
+      isOpen: false,
+      threshold: 5, // Open circuit after 5 failures
+      timeout: 30000, // Stay open for 30 seconds
+      
+      recordSuccess() {
+        this.failures = 0;
+        this.isOpen = false;
+      },
+      
+      recordFailure() {
+        this.failures++;
+        this.lastFailureTime = Date.now();
+        
+        if (this.failures >= this.threshold) {
+          this.isOpen = true;
+          console.error('🚨 Circuit breaker opened - too many failures. Waiting 30 seconds...');
+          
+          setTimeout(() => {
+            this.failures = 0;
+            this.isOpen = false;
+            console.log('✅ Circuit breaker reset');
+          }, this.timeout);
+        }
+      },
+      
+      canMakeRequest() {
+        return !this.isOpen;
+      }
+    };
 
     // ========== ADVERTISER INFO SYSTEM ==========
     
     let currentAdvertiserInfo = null;
 
+    // Cache advertiser info to avoid repeated lookups
+    const advertiserInfoCache = new Map();
+
     // Function to fetch advertiser info for current video
     async function fetchAdvertiserInfo(videoFilename) {
+      // Check cache first
+      if (advertiserInfoCache.has(videoFilename)) {
+        const cached = advertiserInfoCache.get(videoFilename);
+        currentAdvertiserInfo = cached.hasAdvertiser ? cached.advertiser : null;
+        if (cached.hasAdvertiser) {
+          showInfoButton();
+        } else {
+          hideInfoButton();
+        }
+        return;
+      }
+      
       try {
-        const response = await fetch(`/api/videos/${videoFilename}/advertiser`);
+        const response = await trackedFetch(`/api/videos/${videoFilename}/advertiser`, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+        
+        if (response.status === 429) {
+          console.log('⏸️ Rate limited on advertiser lookup - backing off');
+          circuitBreaker.recordFailure();
+          
+          // Extract retry-after if available
+          const retryAfter = response.headers.get('retry-after');
+          const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
+          
+          console.log(`⏳ Waiting ${waitTime}ms before retrying advertiser lookup`);
+          
+          // Don't retry automatically - just show no advertiser info
+          currentAdvertiserInfo = null;
+          hideInfoButton();
+          return;
+        }
+        
         const data = await response.json();
+        
+        // Cache the result
+        advertiserInfoCache.set(videoFilename, data);
         
         if (data.hasAdvertiser) {
           currentAdvertiserInfo = data.advertiser;
@@ -2748,6 +2985,7 @@
         }
       } catch (error) {
         console.log('Error fetching advertiser info:', error);
+        circuitBreaker.recordFailure();
         hideInfoButton();
       }
     }
@@ -2824,7 +3062,10 @@
 
     // Initialize full video player functionality for authenticated users
     function initializeVideoPlayer() {
-      if (!authToken) return;
+      if (!authToken) {
+        console.log('🎬 No auth token, skipping authenticated player initialization');
+        return;
+      }
       
       // Prevent multiple initializations
       if (isPlayerInitialized) {
@@ -2833,6 +3074,7 @@
       }
 
       console.log('🎬 Initializing authenticated video player...');
+      console.log('🔐 Auth token present:', !!authToken);
 
       // Don't check for conflicts during initialization - only check when user tries to play
 
@@ -2883,21 +3125,18 @@
         let currentIndex = 0;
         let currentQuality = "standard"; // Changed from quality-based to standard
         let isQualitySwitching = false;
-        let sessionStartTime = null;
-        let pausedCount = 0;
-        let currentVideoStartTime = null;
         let isInitialLoad = true;
         let isPlaying = false;
-        let currentAdTrackingId = null;
-        let adStartTime = null;
-        let isAdPlaying = false;
-        let accumulatedAdTime = 0; // Track actual playback time
         
         // Fetch playlist from backend dynamically
         async function initializePlaylist() {
           try {
             console.log('🔄 Fetching dynamic playlist from backend...');
-            const response = await fetch('/api/videos/playlist');
+            const response = await trackedFetch('/api/videos/playlist', {
+              headers: {
+                'Authorization': `Bearer ${authToken}`
+              }
+            });
             const data = await response.json();
             
             // Extract video names and URLs from backend response
@@ -2927,19 +3166,14 @@
         }
 
         function getVideoUrl(videoName) {
-          // TEMPORARY: Use backend proxy to bypass CORS issues while diagnosing R2
-          // This proxies videos through your backend server to avoid CORS problems
-          console.log(`🎬 Using proxy for video: ${videoName}`);
-          return `/proxy-video/${videoName}.mp4`;
+          // Use direct R2 URLs for better performance and reliability
+          const R2_BASE_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
+          const directUrl = `${R2_BASE_URL}/${videoName}.mp4`;
           
-          /* ORIGINAL CODE (re-enable after R2 CORS is confirmed working):
-          if (videoUrls[videoName]) {
-            return videoUrls[videoName];
-          } else {
-            console.log(`⚠️ No URL mapping for ${videoName}, using fallback`);
-            return `https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev/${videoName}.mp4`;
-          }
-          */
+          console.log(`🎬 Using direct R2 URL for video: ${videoName}`);
+          console.log(`🎬 Direct URL: ${directUrl}`);
+          
+          return directUrl;
         }
 
         function getCurrentVideoSource() {
@@ -3055,52 +3289,61 @@
           }
         }
 
-        // Video play event - starts ad tracking ONLY if not already tracking
-        player.on('play', async function() {
-          const now = Date.now();
-          if (now - lastPlayEvent < PLAY_EVENT_DEBOUNCE) {
-            return; // Skip duplicate play events
-          }
-          lastPlayEvent = now;
-          
-          console.log('🎬 Video play event - immediate conflict check');
-          
-          // Immediate check before allowing playback
-          const isDesktopActive = await checkForDesktopApp();
-          if (isDesktopActive) {
-            console.log('🚫 Desktop app active - blocking playback immediately');
-            player.pause();
-            showConflictToast();
-            return;
-          }
-          
-          // Ensure monitoring is active
-          startReliableConflictMonitoring();
-          
+        // Consolidated play event handler with debouncing
+        let playEventDebounce = null;
+        
+        function handlePlayEvent() {
+          console.log('🎬 Video play event triggered');
           isPlaying = true;
           console.log('▶️ Video started playing');
           
-          if (!sessionStartTime && currentSessionId) {
-            sessionStartTime = Date.now();
-            console.log('▶️ Video started playing, tracking begins');
-          }
-          
-          // Only start ad tracking if we don't already have an active tracking session
-          // (This prevents duplicate tracking when video autoplays after ended event)
-          if (currentSessionId && !isAdPlaying && !currentAdTrackingId) {
-            isAdPlaying = true;
-            adStartTime = Date.now();
-            startAdTracking(currentSessionId).then(adTrackingId => {
-              if (adTrackingId) {
-                currentAdTrackingId = adTrackingId;
-                console.log('📺 Ad tracking started for manual play');
+          // Only check for conflicts when starting a NEW session
+          if (!currentSessionId) {
+            console.log('🔄 No active session - trying to start one');
+            
+            // Try to start session
+            startWatchSession(playlist[currentIndex], "standard").then(sessionId => {
+              if (!sessionId) {
+                // Failed to start - desktop app active or rate limited
+                console.log('❌ Cannot start session - pausing video');
+                player.pause();
+                showConflictToast();
+                return;
+              }
+              
+              // Session started successfully
+              currentSessionId = sessionId;
+              sessionStartTime = Date.now();
+              currentVideoStartTime = Date.now();
+              pausedCount = 0;
+              console.log('✅ Session started:', sessionId);
+              
+              // Start ad tracking
+              if (!currentAdTrackingId) {
+                console.log('📺 Starting ad tracking for session:', currentSessionId);
+                startAdTracking(currentSessionId).then(adTrackingId => {
+                  if (adTrackingId) {
+                    currentAdTrackingId = adTrackingId;
+                    isAdPlaying = true;  // CRITICAL: Set ad playing flag
+                    adStartTime = Date.now();  // CRITICAL: Set ad start time
+                    console.log('📺 Ad tracking started with ID:', adTrackingId);
+                    console.log('📺 Ad playing flag set to true, start time:', adStartTime);
+                  } else {
+                    console.log('❌ Failed to start ad tracking - no ID returned');
+                  }
+                }).catch(error => {
+                  console.error('❌ Error starting ad tracking:', error);
+                });
+              } else {
+                console.log('📺 Ad tracking already active:', currentAdTrackingId);
               }
             });
-          } else if (isAdPlaying && currentAdTrackingId) {
-            // Resume tracking the same ad (e.g., after pause)
-            console.log('📺 Ad tracking resumed (same ad, ID:', currentAdTrackingId, ')');
           } else {
-            console.log('📺 Play event - ad tracking already active, skipping duplicate');
+            // Session already exists, just update timing
+            if (!sessionStartTime) {
+              sessionStartTime = Date.now();
+            }
+            currentVideoStartTime = Date.now();
           }
           
           // Hide the big play button when playing - try multiple times to ensure it works
@@ -3121,15 +3364,14 @@
           setTimeout(hidePlayButton, 100);
           setTimeout(hidePlayButton, 200);
           setTimeout(hidePlayButton, 500);
-        });
+        }
 
         player.on('pause', () => {
           isPlaying = false;
           pausedCount++;
           console.log('⏸️ Video paused, pause count:', pausedCount);
           
-          // Stop conflict monitoring when paused
-          stopConflictMonitoring();
+          // No monitoring to stop
           
           // Accumulate actual playback time if ad was playing
           if (isAdPlaying && adStartTime) {
@@ -3181,8 +3423,7 @@
           }
           lastEndedEvent = now;
           
-          // Stop conflict monitoring when video ends
-          stopConflictMonitoring();
+          // No monitoring to stop
           
           console.log(`🎬 Video ${currentIndex + 1} (${playlist[currentIndex]}) ended, switching to next video...`);
           console.log(`🎬 Current player state:`, {
@@ -3193,7 +3434,26 @@
           });
           
           // Complete ad tracking if ad was playing (only when video actually ends)
-          if (isAdPlaying && currentAdTrackingId && adStartTime) {
+          console.log('🔍 VIDEO END - TRACKING STATE:', {
+            currentSessionId: currentSessionId,
+            currentAdTrackingId: currentAdTrackingId, 
+            isAdPlaying: isAdPlaying,
+            currentVideoStartTime: currentVideoStartTime,
+            playerCurrentTime: player.currentTime(),
+            sessionStartTime: sessionStartTime,
+            adStartTime: adStartTime,
+            accumulatedAdTime: accumulatedAdTime
+          });
+          
+          // CRITICAL FIX: Always try to complete ad tracking if we have an ID
+          if (currentAdTrackingId) {
+            console.log('📺 CALLING completeAdTracking - has tracking ID:', currentAdTrackingId);
+            console.log('📺 Video info:', {
+              currentVideo: playlist[currentIndex],
+              videoIndex: currentIndex + 1,
+              totalVideos: playlist.length
+            });
+            
             // Use the video's current time for accurate tracking (excludes loading/buffering time)
             const currentTime = player.currentTime() || 0;
             const adDurationSeconds = Math.floor(Math.max(currentTime, accumulatedAdTime));
@@ -3204,14 +3464,21 @@
               videoDuration: player.duration()
             });
             
-            await completeAdTracking(currentAdTrackingId, adDurationSeconds, true);
+            // Store the tracking ID before resetting to prevent reuse
+            const trackingIdToComplete = currentAdTrackingId;
             
-            // CRITICAL: Reset ad tracking state AFTER completion
+            // CRITICAL: Reset ad tracking state BEFORE completion to prevent reuse
             isAdPlaying = false;
-            currentAdTrackingId = null;
+            currentAdTrackingId = null;  // Reset immediately to prevent reuse
             adStartTime = null;
             accumulatedAdTime = 0;
+            
+            console.log('📺 Completing ad tracking with ID:', trackingIdToComplete);
+            await completeAdTracking(trackingIdToComplete, adDurationSeconds, true);
+            
             console.log('📺 Ad tracking completed on video end:', adDurationSeconds, 'seconds (actual video time)');
+          } else {
+            console.log('❌ No ad tracking ID available - skipping completion');
           }
           
           // Complete current session if exists
@@ -3257,61 +3524,8 @@
             // Load the next video using the same method as initial load
             loadVideoWithQuality(currentIndex);
             
-            // CRITICAL FIX: Start new session AND ad tracking together for next video
-            if (authToken) {
-              console.log('📺 Starting new session AND ad tracking for video:', playlist[currentIndex]);
-              
-              try {
-                // Start new session
-                const sessionId = await startWatchSession(playlist[currentIndex], "standard");
-                
-                if (sessionId) {
-                  currentSessionId = sessionId;
-                  currentVideoStartTime = Date.now();
-                  sessionStartTime = Date.now();
-                  pausedCount = 0;
-                  
-                  // IMMEDIATELY start ad tracking for the new video (don't wait for play event)
-                  const adTrackingId = await startAdTracking(sessionId);
-                  
-                  if (adTrackingId) {
-                    currentAdTrackingId = adTrackingId;
-                    isAdPlaying = true;
-                    adStartTime = Date.now();
-                    accumulatedAdTime = 0;
-                    
-                    console.log('✅ New session AND ad tracking started for next video:', {
-                      sessionId: sessionId,
-                      adTrackingId: adTrackingId,
-                      videoName: playlist[currentIndex],
-                      timestamp: new Date().toISOString()
-                    });
-                  } else {
-                    console.error('❌ Failed to start ad tracking for new video');
-                  }
-                } else {
-                  // Session failed (likely 409 conflict - desktop app active)
-                  console.error('❌ Failed to start new session - no sessionId returned (desktop conflict)');
-                  
-                  // PAUSE THE VIDEO IMMEDIATELY
-                  if (player && !player.paused()) {
-                    player.pause();
-                    console.log('⏸️ Video paused due to session start failure (desktop conflict)');
-                  }
-                  
-                  // Show conflict message
-                  showConflictToast();
-                }
-              } catch (error) {
-                console.error('❌ Error starting new session/ad tracking:', error);
-                
-                // On error, also pause as a safety measure
-                if (player && !player.paused()) {
-                  player.pause();
-                  console.log('⏸️ Video paused due to session error');
-                }
-              }
-            }
+            // No automatic session start - wait for user to click play to start session
+            console.log('📺 Video loaded - waiting for user to click play to start session');
           } else {
             console.log('⚠️ Quality switching in progress, skipping video switch');
           }
@@ -3347,13 +3561,7 @@
             
             console.log('🎯 Play button clicked - checking for conflicts...');
             
-            // CRITICAL: Check for desktop app BEFORE allowing play
-            const isDesktopActive = await checkForDesktopApp();
-            if (isDesktopActive) {
-              console.log('🚫 Desktop app active - blocking play button');
-              showConflictToast();
-              return; // Don't allow playback
-            }
+            // No conflict checking - server will handle this when session starts
             
             console.log('✅ No conflicts - starting video');
             
@@ -3418,44 +3626,19 @@
           loadingIndicator.style.display = "none";
         });
 
-        player.on('play', async () => {
-          // Quick check before allowing playback (duplicate handler backup)
-          const isDesktopActive = await checkForDesktopApp();
-          if (isDesktopActive) {
-            console.log('🚫 Desktop app active - blocking playback (backup handler)');
-            player.pause();
-            showConflictToast();
-            return;
+        player.on('play', () => {
+          // Debounce play events to prevent rapid firing
+          if (playEventDebounce) {
+            clearTimeout(playEventDebounce);
           }
-          
-          // If we get here, no conflict detected - ensure monitoring is active
-          startReliableConflictMonitoring();
-          
-          isPlaying = true;
-          console.log('▶️ Video started playing');
-          
-          if (!sessionStartTime && currentSessionId) {
-            sessionStartTime = Date.now();
-            console.log('▶️ Video started playing, tracking begins');
-          }
-          
-          // Hide the big play button when playing
-          const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
-          if (bigPlayButton) {
-            console.log('🎯 Hiding play button on play');
-            bigPlayButton.style.display = 'none';
-            bigPlayButton.style.visibility = 'hidden';
-            bigPlayButton.style.opacity = '0';
-            bigPlayButton.style.pointerEvents = 'none';
-          }
+          playEventDebounce = setTimeout(handlePlayEvent, 500);
         });
 
         player.on('pause', () => {
           isPlaying = false;
           console.log('⏸️ Video paused');
           
-          // Stop conflict monitoring when paused
-          stopConflictMonitoring();
+          // No monitoring to stop
           
           // Show the big play button when paused
           const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
@@ -3505,9 +3688,7 @@
 
         console.log('Authenticated video player initialization complete!');
         
-        // CRITICAL: Start monitoring immediately when page loads
-        console.log('🔍 Starting initial desktop app detection');
-        startReliableConflictMonitoring();
+        // No initial monitoring needed - server handles conflicts
         
       } catch (error) {
         console.error('Error initializing authenticated video player:', error);
@@ -4185,6 +4366,61 @@
             showMessage('Picture-in-Picture not supported or failed', 'error');
         }
     }
+
+    // Manual debugging commands - available in browser console
+    window.debugAPI = {
+      // Show current stats
+      stats() {
+        console.log('Current stats:', frontendRequestTracker.getStats());
+        frontendRequestTracker.printSummary();
+      },
+      
+      // Show all requests
+      allRequests() {
+        console.table(frontendRequestTracker.requests.map(r => ({
+          time: r.timeString,
+          endpoint: r.endpoint,
+          status: r.status,
+          duration: `${r.duration}ms`
+        })));
+      },
+      
+      // Show only errors
+      errors() {
+        const errors = frontendRequestTracker.requests.filter(r => r.status >= 400);
+        console.table(errors.map(r => ({
+          time: r.timeString,
+          endpoint: r.endpoint,
+          status: r.status,
+          caller: r.stackTrace[0]
+        })));
+      },
+      
+      // Show 429 errors specifically
+      rateLimitErrors() {
+        const errors = frontendRequestTracker.requests.filter(r => r.status === 429);
+        console.log(`Total 429 errors: ${errors.length}`);
+        console.table(errors.map(r => ({
+          time: r.timeString,
+          endpoint: r.endpoint,
+          caller: r.stackTrace[0]
+        })));
+      },
+      
+      // Clear tracking data
+      clear() {
+        frontendRequestTracker.requests = [];
+        frontendRequestTracker.startTime = Date.now();
+        console.log('✅ Request tracking data cleared');
+      }
+    };
+
+    console.log('🔍 Debug commands available:');
+    console.log('  window.debugAPI.stats() - Show request statistics');
+    console.log('  window.debugAPI.allRequests() - Show all requests');
+    console.log('  window.debugAPI.errors() - Show all errors');
+    console.log('  window.debugAPI.rateLimitErrors() - Show 429 errors');
+    console.log('  window.debugAPI.clear() - Clear tracking data');
 
     // Update the page load event
     document.addEventListener('DOMContentLoaded', function() {
