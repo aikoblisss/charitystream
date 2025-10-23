@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subscription Success - Charity Stream</title>
+    
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-feature-settings: 'liga' 1, 'calt' 1, 'tnum' 1;
+            background-color: #f8f9fa;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        
+        .success-container {
+            background-color: white;
+            padding: 60px 40px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            border: 1px solid #e9ecef;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        
+        .success-icon {
+            width: 80px;
+            height: 80px;
+            background-color: #e8f5e8;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 40px;
+        }
+        
+        .success-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2F7D31;
+            margin-bottom: 16px;
+        }
+        
+        .success-message {
+            font-size: 18px;
+            color: #6c757d;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+        
+        .status-message {
+            font-size: 16px;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 24px;
+            font-weight: 500;
+        }
+        
+        .status-message.success {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+        }
+        
+        .status-message.error {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+        
+        .status-message.warning {
+            background-color: #fffbeb;
+            color: #d97706;
+            border: 1px solid #fed7aa;
+        }
+        
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2F7D31;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .continue-btn {
+            background-color: #2F7D31;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .continue-btn:hover {
+            background-color: #1b5e20;
+        }
+        
+        .continue-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="success-container">
+        <div class="success-icon">🎉</div>
+        <h1 class="success-title">Payment Successful!</h1>
+        <p class="success-message">Thank you for subscribing to Charity Stream Premium. We're verifying your subscription...</p>
+        
+        <div id="status-message" class="status-message">
+            <div class="loading-spinner"></div>
+            Checking subscription status...
+        </div>
+        
+        <a href="/" class="continue-btn" id="continue-btn" style="display: none;">
+            Continue to Charity Stream
+        </a>
+    </div>
+
+    <script>
+        // Add function to check subscription status after redirect
+        async function checkSubscriptionStatus() {
+            console.log('🔍 ===== SUBSCRIPTION STATUS CHECK STARTED =====');
+            console.log('🔍 Function called at:', new Date().toISOString());
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const subscriptionId = urlParams.get('subscriptionId');
+            
+            console.log('🔍 Current URL:', window.location.href);
+            console.log('🔍 URL params:', window.location.search);
+            console.log('🔍 Subscription ID from URL:', subscriptionId);
+            console.log('🔍 All URL params:', Object.fromEntries(urlParams.entries()));
+            
+            const statusMessage = document.getElementById('status-message');
+            const continueBtn = document.getElementById('continue-btn');
+            
+            if (subscriptionId) {
+                console.log('🔍 Checking subscription status for:', subscriptionId);
+                
+                const authToken = localStorage.getItem('authToken');
+                console.log('🔑 Auth token for status check:', authToken ? 'Found' : 'Missing');
+                
+                if (!authToken) {
+                    console.log('❌ No auth token for status check');
+                    statusMessage.innerHTML = '❌ Authentication required. Please log in.';
+                    statusMessage.className = 'status-message error';
+                    return;
+                }
+
+                try {
+                    console.log('📡 Making API call to check subscription status...');
+                    console.log('📡 API URL:', `/api/subscribe/status?subscriptionId=${subscriptionId}`);
+                    console.log('📡 Auth token present:', !!authToken);
+                    console.log('📡 Auth token length:', authToken ? authToken.length : 0);
+                    
+                    const response = await fetch(`/api/subscribe/status?subscriptionId=${subscriptionId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${authToken}`
+                        }
+                    });
+
+                    console.log('📡 API response received!');
+                    console.log('📡 API response status:', response.status);
+                    console.log('📡 API response ok:', response.ok);
+                    console.log('📡 API response headers:', Object.fromEntries(response.headers.entries()));
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('📊 Subscription status data:', data);
+                        
+                        if (data.isPremium) {
+                            console.log('🎉 Subscription is active! User has premium access!');
+                            statusMessage.innerHTML = '✅ Subscription confirmed! You now have premium access!';
+                            statusMessage.className = 'status-message success';
+                            
+                            // Update localStorage with premium status
+                            const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                            currentUser.isPremium = true;
+                            currentUser.subscriptionTier = 'premium';
+                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
+                            console.log('💾 Updated localStorage with premium status');
+                            
+                            // Show continue button
+                            continueBtn.style.display = 'inline-block';
+                            
+                            // Auto-redirect after 5 seconds
+                            setTimeout(() => {
+                                console.log('🔄 Auto-redirecting to main page...');
+                                window.location.href = '/';
+                            }, 5000);
+                        } else {
+                            console.log('⚠️ Subscription is not active yet. Status:', data.status);
+                            statusMessage.innerHTML = `⚠️ Subscription is not active yet. Status: ${data.status}. Please try again.`;
+                            statusMessage.className = 'status-message warning';
+                        }
+                    } else {
+                        const errorData = await response.json();
+                        console.error('❌ API error response:', errorData);
+                        statusMessage.innerHTML = `❌ Error checking subscription: ${errorData.error || 'Unknown error'}`;
+                        statusMessage.className = 'status-message error';
+                    }
+                } catch (error) {
+                    console.error('❌ Error checking subscription status:', error);
+                    console.error('❌ Error details:', error.message);
+                    statusMessage.innerHTML = '❌ Error checking subscription status. Please try again.';
+                    statusMessage.className = 'status-message error';
+                }
+            } else {
+                console.log('⚠️ No subscription ID found in URL parameters');
+                statusMessage.innerHTML = '❌ No subscription ID found. Please try again.';
+                statusMessage.className = 'status-message error';
+            }
+            
+            console.log('🔍 ===== SUBSCRIPTION STATUS CHECK COMPLETED =====');
+        }
+
+        // Check subscription status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Success page loaded - DOMContentLoaded event fired');
+            console.log('🚀 About to call checkSubscriptionStatus()');
+            try {
+                checkSubscriptionStatus();
+                console.log('🚀 checkSubscriptionStatus() called successfully');
+            } catch (error) {
+                console.error('❌ Error calling checkSubscriptionStatus():', error);
+            }
+        });
+        
+        // Also try calling it immediately (in case DOMContentLoaded already fired)
+        console.log('🚀 Success page script loaded - calling checkSubscriptionStatus immediately');
+        try {
+            checkSubscriptionStatus();
+            console.log('🚀 checkSubscriptionStatus() called immediately');
+        } catch (error) {
+            console.error('❌ Error calling checkSubscriptionStatus() immediately:', error);
+        }
+    </script>
+</body>
+</html>

@@ -2670,7 +2670,7 @@
       if (skipDebounce) {
         console.log('⚡ Loading impact data immediately (skip debounce for ad completion)');
         try {
-          const response = await trackedFetch('/api/user/impact', {
+          const response = await trackedFetch('/api/user/impact?force=true', {
             headers: {
               'Authorization': `Bearer ${authToken}`
             }
@@ -4412,6 +4412,35 @@
         frontendRequestTracker.requests = [];
         frontendRequestTracker.startTime = Date.now();
         console.log('✅ Request tracking data cleared');
+      },
+      
+      // Check subscription status
+      async checkSubscription() {
+        console.log('🔍 Manual subscription status check...');
+        const authToken = localStorage.getItem('authToken');
+        
+        if (!authToken) {
+          console.log('❌ No auth token found');
+          return;
+        }
+        
+        try {
+          const response = await trackedFetch('/api/user/me', {
+            headers: {
+              'Authorization': `Bearer ${authToken}`
+            }
+          });
+          
+          if (response.ok) {
+            const userData = await response.json();
+            console.log('👤 Current user data:', userData);
+            console.log('💎 Is premium:', userData.user.isPremium);
+            console.log('🎫 Subscription tier:', userData.user.subscriptionTier);
+            console.log('📧 Email:', userData.user.email);
+          }
+        } catch (error) {
+          console.error('❌ Error checking subscription status:', error);
+        }
       }
     };
 
@@ -4421,6 +4450,7 @@
     console.log('  window.debugAPI.errors() - Show all errors');
     console.log('  window.debugAPI.rateLimitErrors() - Show 429 errors');
     console.log('  window.debugAPI.clear() - Clear tracking data');
+    console.log('  window.debugAPI.checkSubscription() - Check subscription status');
 
     // Update the page load event
     document.addEventListener('DOMContentLoaded', function() {

@@ -129,6 +129,14 @@ let tokenService = null;
 try {
   emailService = require('./services/emailService');
   console.log('✅ Email service loaded');
+  
+  // Test email service on startup
+  console.log('🚀 Initializing email service...');
+  if (emailService.isEmailConfigured()) {
+    console.log('✅ Email service is properly configured and ready');
+  } else {
+    console.error('❌ Email service failed to initialize - check your .env configuration');
+  }
 } catch (error) {
   console.log('⚠️ Email service not available:', error.message);
 }
@@ -224,28 +232,14 @@ app.use(helmet({
   }
 }));
 
-// Rate limiting (exempt desktop detection endpoints)
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
-  skip: (req) => {
-    // EXEMPT desktop detection endpoints from rate limiting to prevent 429 errors
-    // NOTE: When mounted at /api/, req.path does NOT include /api/ prefix
-    const exemptPaths = [
-      '/tracking/desktop-active',
-      '/tracking/desktop-inactive',
-      '/tracking/desktop-active-status',
-      '/tracking/session-status',
-      '/tracking/cleanup-desktop-sessions'
-    ];
-    const isExempt = exemptPaths.includes(req.path);
-    if (isExempt) {
-      console.log(`✅ Exempting ${req.path} from rate limiting`);
-    }
-    return isExempt;
-  }
-});
-app.use('/api/', limiter);
+// 🚫 GLOBAL RATE LIMITER REMOVED - Was causing cascade failures
+// The global limiter (100 requests per 15 minutes per IP) was too restrictive
+// and caused ALL users to get 429 errors when ANY user exceeded the limit.
+// 
+// Specific endpoint rate limiters (trackingRateLimit, videoRateLimit) 
+// provide sufficient protection without breaking normal usage.
+
+// REMOVED: app.use('/api/', limiter);
 
 // CORS configuration
 app.use(cors({
@@ -348,6 +342,15 @@ const authenticateToken = (req, res, next) => {
       });
       return res.status(403).json({ error: 'Invalid token' });
     }
+    
+    // 🔐 CRITICAL: Add debugging for authentication token
+    console.log('🔐 Authentication - decoded token user:', {
+      userId: user.userId,
+      email: user.email,
+      username: user.username,
+      // Add any other relevant fields
+    });
+    
     console.log(`✅ Valid token for ${req.path}, user:`, user.userId);
     req.user = user;
     
@@ -2346,7 +2349,7 @@ app.get('/api/tracking/session-status', authenticateToken, async (req, res) => {
 // Track request counts per user
 const requestCounts = new Map();
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS = 100; // Max requests per minute
+const MAX_REQUESTS = 5000; // Max requests per minute
 
 // MODIFY rate limiting to be very generous for event-driven architecture
 const VIDEO_RATE_LIMIT_WINDOW = 60000; // 60 seconds (1 minute)
@@ -2963,6 +2966,11 @@ app.post('/api/tracking/complete-ad', authenticateToken, trackingRateLimit, asyn
         console.error('❌ Error updating daily stats:', statsErr);
       } else {
         console.log(`✅ Updated daily stats for user ${req.user.userId}`);
+        
+        // CRITICAL FIX: Invalidate user impact cache immediately after ad completion
+        const cacheKey = `impact_${req.user.userId}`;
+        userImpactCache.delete(cacheKey);
+        console.log(`🗑️ Invalidated impact cache for user ${req.user.userId} after ad completion`);
       }
 
       // Update user's total and monthly watch time (record seconds every time an ad completes)
@@ -3113,19 +3121,24 @@ app.get('/api/debug/daily-stats', authenticateToken, async (req, res) => {
 
 // Server-side caching for user impact data
 const userImpactCache = new Map();
-const IMPACT_CACHE_TTL = 30000; // 30 seconds
+const IMPACT_CACHE_TTL = 2000; // 2 seconds (reduced for real-time updates)
 
 app.get('/api/user/impact', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId;
     const cacheKey = `impact_${userId}`;
     const now = Date.now();
+    const bypassCache = req.query.force === 'true'; // Allow cache bypass
     
-    // Check cache first
-    const cached = userImpactCache.get(cacheKey);
-    if (cached && (now - cached.timestamp) < IMPACT_CACHE_TTL) {
-      console.log(`📊 Returning cached impact data for user ${userId}`);
-      return res.json(cached.data);
+    // Check cache first (unless bypassed)
+    if (!bypassCache) {
+      const cached = userImpactCache.get(cacheKey);
+      if (cached && (now - cached.timestamp) < IMPACT_CACHE_TTL) {
+        console.log(`📊 Returning cached impact data for user ${userId}`);
+        return res.json(cached.data);
+      }
+    } else {
+      console.log(`⚡ Cache bypassed for user ${userId} - fetching fresh data`);
     }
     
     // Get all user data in parallel
@@ -3184,6 +3197,78 @@ app.get('/api/user/impact', authenticateToken, async (req, res) => {
     res.json(impactData);
   } catch (error) {
     console.error('Error getting user impact:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Manual database check endpoint (for debugging)
+app.get('/api/debug/user/:userId', authenticateToken, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.userId);
+    console.log('🔍 Manual user check for ID:', userId);
+    
+    const [err, user] = await dbHelpers.getUserById(userId);
+    
+    if (err || !user) {
+      console.error('❌ User not found:', err);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('✅ User found:', {
+      id: user.id,
+      email: user.email,
+      is_premium: user.is_premium,
+      premium_since: user.premium_since,
+      stripe_customer_id: user.stripe_customer_id,
+      stripe_subscription_id: user.stripe_subscription_id
+    });
+    
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        is_premium: user.is_premium,
+        premium_since: user.premium_since,
+        stripe_customer_id: user.stripe_customer_id,
+        stripe_subscription_id: user.stripe_subscription_id,
+        created_at: user.created_at
+      }
+    });
+  } catch (error) {
+    console.error('❌ Error in debug user endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Get current user info
+app.get('/api/user/me', authenticateToken, async (req, res) => {
+  try {
+    const [err, user] = await dbHelpers.getUserById(req.user.userId);
+    
+    if (err || !user) {
+      console.error('Error getting user:', err);
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Remove sensitive data
+    const userData = {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        isPremium: user.is_premium,
+        subscriptionTier: user.is_premium ? 'premium' : 'free',
+        premiumSince: user.premium_since,
+        stripeCustomerId: user.stripe_customer_id,
+        stripeSubscriptionId: user.stripe_subscription_id,
+        createdAt: user.created_at
+      }
+    };
+
+    res.json(userData);
+  } catch (error) {
+    console.error('Error in /api/user/me:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -3607,8 +3692,10 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 // Create subscription payment intent
 app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, res) => {
   try {
+    console.log('🚀 ===== SUBSCRIPTION CREATION STARTED =====');
     console.log('💳 Creating subscription for user:', req.user.userId);
     console.log('📧 User email:', req.user.email);
+    console.log('👤 User username:', req.user.username);
     
     // Check if Stripe is properly initialized
     if (!process.env.STRIPE_SECRET_KEY) {
@@ -3622,63 +3709,108 @@ app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, 
     }
 
     console.log('🔧 Stripe secret key available:', !!process.env.STRIPE_SECRET_KEY);
+    console.log('🔧 Stripe secret key starts with:', process.env.STRIPE_SECRET_KEY.substring(0, 7) + '...');
     console.log('🔧 Stripe price ID:', process.env.STRIPE_PRICE_ID);
 
-    // Get or create customer
+    // Fix customer lookup to prevent duplicates
     let customer;
     let customerId = null;
 
-    // Check if user already has a Stripe customer ID
+    // Check if user already has a Stripe customer ID in database
+    console.log('🔍 Checking for existing Stripe customer in database...');
     const [userErr, user] = await dbHelpers.getUserById(req.user.userId);
     if (userErr) {
       console.error('❌ Error fetching user:', userErr);
       return res.status(500).json({ error: 'Failed to fetch user data' });
     }
 
+    console.log('👤 User data retrieved:', {
+      id: user.id,
+      email: user.email,
+      username: user.username,
+      stripe_customer_id: user.stripe_customer_id,
+      stripe_subscription_id: user.stripe_subscription_id
+    });
+
+    // If user has stripe_customer_id, verify it exists in Stripe
     if (user.stripe_customer_id) {
-      // Use existing customer
       try {
+        console.log('🔍 Verifying existing Stripe customer:', user.stripe_customer_id);
         customer = await stripe.customers.retrieve(user.stripe_customer_id);
-        customerId = customer.id;
-        console.log('✅ Found existing customer:', customerId);
+        
+        // Check if customer is not deleted and matches our user
+        if (customer && !customer.deleted) {
+          customerId = customer.id;
+          console.log('✅ Using verified existing customer:', customerId);
+        } else {
+          console.log('⚠️ Existing customer was deleted in Stripe, creating new one');
+          customerId = null;
+        }
       } catch (error) {
-        console.log('⚠️ Existing customer not found, creating new one');
+        console.log('⚠️ Existing customer not found in Stripe, creating new one. Error:', error.message);
         customerId = null;
       }
     }
 
+    // Create new customer only if none exists
     if (!customerId) {
-      // Create new customer
       try {
-        customer = await stripe.customers.create({
+        console.log('🔧 Creating new Stripe customer...');
+        
+        // First, search by email to avoid duplicates
+        const existingCustomers = await stripe.customers.list({
           email: req.user.email,
-          name: req.user.username,
-          metadata: {
-            userId: req.user.userId,
-            username: req.user.username
-          }
+          limit: 1
         });
-        customerId = customer.id;
-        console.log('✅ Created new customer:', customerId);
+        
+        if (existingCustomers.data.length > 0) {
+          // Use existing customer from Stripe search
+          customer = existingCustomers.data[0];
+          customerId = customer.id;
+          console.log('✅ Found existing customer by email:', customerId);
+          
+          // Update database with the found customer ID
+          const [updateErr] = await dbHelpers.updateStripeCustomerId(req.user.userId, customerId);
+          if (updateErr) {
+            console.error('❌ Failed to save customer ID to database:', updateErr);
+          }
+        } else {
+          // Create brand new customer
+          customer = await stripe.customers.create({
+            email: req.user.email,
+            name: req.user.username,
+            metadata: {
+              userId: req.user.userId,
+              username: req.user.username
+            }
+          });
+          customerId = customer.id;
+          console.log('✅ Created new customer:', customerId);
 
-        // Save customer ID to database
-        const [updateErr] = await dbHelpers.updateStripeCustomerId(req.user.userId, customerId);
-        if (updateErr) {
-          console.error('❌ Failed to save customer ID:', updateErr);
+          // Save customer ID to database
+          const [updateErr] = await dbHelpers.updateStripeCustomerId(req.user.userId, customerId);
+          if (updateErr) {
+            console.error('❌ Failed to save customer ID to database:', updateErr);
+          } else {
+            console.log('✅ Customer ID saved to database');
+          }
         }
       } catch (customerError) {
         console.error('❌ Customer creation failed:', customerError);
-        return res.status(500).json({ error: 'Failed to create customer' });
+        return res.status(500).json({ error: 'Failed to create customer', details: customerError.message });
       }
     }
 
-    console.log('🔧 Creating subscription...');
+    console.log('🔧 Creating Stripe subscription...');
+    console.log('🔧 Customer ID:', customerId);
+    console.log('🔧 Price ID:', process.env.STRIPE_PRICE_ID);
 
     // Create subscription
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: process.env.STRIPE_PRICE_ID }],
       payment_behavior: 'default_incomplete',
+      payment_settings: { save_default_payment_method: 'on_subscription' },
       expand: ['latest_invoice.payment_intent'],
       metadata: {
         userId: req.user.userId,
@@ -3686,24 +3818,35 @@ app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, 
       }
     });
 
-    console.log('✅ Subscription created:', subscription.id);
+    console.log('✅ Subscription created successfully!');
+    console.log('📋 Subscription ID:', subscription.id);
+    console.log('📊 Subscription status:', subscription.status);
     console.log('🔐 Client secret:', subscription.latest_invoice.payment_intent.client_secret);
+    console.log('💳 Payment intent ID:', subscription.latest_invoice.payment_intent.id);
 
     // Save subscription ID to database
+    console.log('💾 Saving subscription ID to database...');
     const [subUpdateErr] = await dbHelpers.updateStripeSubscriptionId(req.user.userId, subscription.id);
     if (subUpdateErr) {
       console.error('❌ Failed to save subscription ID:', subUpdateErr);
+    } else {
+      console.log('✅ Subscription ID saved to database');
     }
+
+    console.log('🚀 ===== SUBSCRIPTION CREATION COMPLETED =====');
 
     res.json({
       clientSecret: subscription.latest_invoice.payment_intent.client_secret,
-      subscriptionId: subscription.id
+      subscriptionId: subscription.id,
+      customerId: customerId
     });
   } catch (error) {
+    console.error('❌ ===== SUBSCRIPTION CREATION FAILED =====');
     console.error('❌ Subscription creation failed:', error);
     console.error('❌ Error details:', error.message);
     console.error('❌ Error type:', error.type);
     console.error('❌ Error code:', error.code);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({ 
       error: 'Failed to create subscription',
       details: error.message,
@@ -3713,36 +3856,127 @@ app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, 
   }
 });
 
-// Get subscription status
+// Enhanced subscription status check with user ID verification
 app.get('/api/subscribe/status', authenticateToken, async (req, res) => {
   try {
+    console.log('🔍 ===== SUBSCRIPTION STATUS CHECK STARTED =====');
     const { subscriptionId } = req.query;
     
+    console.log('🔍 Checking subscription status for ID:', subscriptionId);
+    console.log('👤 User ID from auth token:', req.user.userId);
+    console.log('📧 User email from auth token:', req.user.email);
+    
+    // 🔍 CRITICAL: Verify the user exists and get their actual database ID
+    console.log('🔍 Verifying user existence in database...');
+    const [userCheckErr, dbUser] = await dbHelpers.getUserById(req.user.userId);
+    if (userCheckErr) {
+      console.error('❌ Error fetching user from database:', userCheckErr);
+      return res.status(500).json({ error: 'Failed to fetch user data' });
+    }
+    
+    if (!dbUser) {
+      console.error('❌ User not found in database with ID:', req.user.userId);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    console.log('🔍 Database user found:', {
+      dbId: dbUser.id,
+      authUserId: req.user.userId,
+      email: dbUser.email,
+      stripe_customer_id: dbUser.stripe_customer_id,
+      stripe_subscription_id: dbUser.stripe_subscription_id,
+      is_premium: dbUser.is_premium
+    });
+    
+    // Check if user IDs match
+    if (dbUser.id !== req.user.userId) {
+      console.error('❌ USER ID MISMATCH DETECTED!');
+      console.error('❌ Database ID:', dbUser.id);
+      console.error('❌ Auth token ID:', req.user.userId);
+      console.error('❌ This explains why premium status is not updating!');
+    }
+    
     if (!subscriptionId) {
+      console.error('❌ Subscription ID is required');
       return res.status(400).json({ error: 'Subscription ID is required' });
     }
-
-    console.log('🔍 Checking subscription status:', subscriptionId);
 
     // Retrieve subscription from Stripe
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     console.log('📊 Subscription status:', subscription.status);
-
-    const isActive = subscription.status === 'active' || subscription.status === 'trialing';
     
-    // Update user's premium status in database
-    const [updateErr] = await dbHelpers.updatePremiumStatus(req.user.userId, isActive);
-    if (updateErr) {
-      console.error('❌ Failed to update premium status:', updateErr);
+    const isActive = subscription.status === 'active' || subscription.status === 'trialing';
+    console.log('✅ Is subscription active?', isActive);
+    
+    if (isActive) {
+      console.log('🎉 Subscription is active! Updating user premium status...');
+      
+      // 🔧 USE THE DATABASE ID, NOT THE AUTH TOKEN ID
+      const actualUserId = dbUser.id; // Use the verified database ID
+      console.log('🔧 Using database user ID for premium update:', actualUserId);
+      
+      // Update user's premium status in database
+      const [updateErr, updatedUser] = await dbHelpers.updatePremiumStatus(actualUserId, true);
+      if (updateErr) {
+        console.error('❌ Failed to update premium status:', updateErr);
+        // Don't fail the request, just log the error
+      } else if (updatedUser) {
+        console.log('✅ Premium status updated successfully');
+        console.log('✅ Updated user:', {
+          id: updatedUser.id,
+          email: updatedUser.email, 
+          is_premium: updatedUser.is_premium,
+          premium_since: updatedUser.premium_since
+        });
+        
+        // Send confirmation email
+        console.log('📧 Sending subscription confirmation email...');
+        console.log('📧 Email service state:', {
+          isConfigured: emailService.isConfigured,
+          hasTransporter: !!emailService.transporter,
+          emailUser: process.env.EMAIL_USER
+        });
+
+        if (emailService && emailService.isEmailConfigured()) {
+          try {
+            console.log('📧 Calling sendSubscriptionConfirmationEmail...');
+            const emailResult = await emailService.sendSubscriptionConfirmationEmail(
+              req.user.email, 
+              req.user.username || req.user.email.split('@')[0]
+            );
+            
+            console.log('📧 Email result:', emailResult);
+            
+            if (emailResult.success) {
+              console.log('✅ Subscription confirmation email sent successfully');
+            } else {
+              console.error('❌ Failed to send subscription confirmation email:', emailResult);
+            }
+          } catch (emailError) {
+            console.error('❌ Error sending subscription confirmation email:', emailError);
+          }
+        } else {
+          console.log('❌ Email service not available:', {
+            serviceExists: !!emailService,
+            isConfigured: emailService ? emailService.isEmailConfigured() : 'no service'
+          });
+        }
+      } else {
+        console.error('❌ Premium status update returned no user - this indicates the UPDATE failed');
+      }
     }
+
+    console.log('🔍 ===== SUBSCRIPTION STATUS CHECK COMPLETED =====');
 
     res.json({ 
       isPremium: isActive,
       status: subscription.status,
-      subscriptionId: subscription.id
+      subscriptionId: subscription.id,
+      customerId: subscription.customer
     });
   } catch (error) {
-    console.error('❌ Subscription status check failed:', error);
+    console.error('❌ ===== SUBSCRIPTION STATUS CHECK FAILED =====');
+    console.error('❌ Error details:', error.message);
     res.status(500).json({ 
       error: 'Failed to check subscription status',
       details: error.message
@@ -3751,40 +3985,95 @@ app.get('/api/subscribe/status', authenticateToken, async (req, res) => {
 });
 
 // Stripe webhook endpoint
-app.post('/api/webhook', express.raw({type: 'application/json'}), (req, res) => {
+app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  console.log('🔔 ===== WEBHOOK RECEIVED =====');
+  console.log('🔔 Headers:', req.headers);
+  console.log('🔔 Body length:', req.body ? req.body.length : 'No body');
+  
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  console.log('🔔 Webhook secret configured:', !!endpointSecret);
+  console.log('🔔 Signature present:', !!sig);
 
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('✅ Webhook signature verified successfully');
   } catch (err) {
     console.log('❌ Webhook signature verification failed:', err.message);
+    console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  console.log('🔔 Webhook received:', event.type);
+  console.log('🔔 ===== STRIPE WEBHOOK PROCESSING =====');
+  console.log('🔔 Webhook event type:', event.type);
+  console.log('🔔 Webhook event ID:', event.id);
 
   // Handle the event
   switch (event.type) {
     case 'invoice.payment_succeeded':
       const invoice = event.data.object;
-      console.log('✅ Payment succeeded for invoice:', invoice.id);
+      console.log('✅ ===== PAYMENT SUCCEEDED WEBHOOK =====');
+      console.log('💳 Invoice ID:', invoice.id);
+      console.log('💳 Subscription ID:', invoice.subscription);
       
       if (invoice.subscription) {
-        // Update user to premium
-        dbHelpers.updatePremiumStatusBySubscriptionId(invoice.subscription, true)
-          .then(() => console.log('✅ User updated to premium'))
-          .catch(err => console.error('❌ Failed to update premium status:', err));
+        console.log('💾 Payment succeeded, updating premium status...');
+        
+        try {
+          // Update premium status using subscription ID (this should work since it uses stripe_subscription_id)
+          const [updateErr, updatedUser] = await dbHelpers.updatePremiumStatusBySubscriptionId(
+            invoice.subscription, 
+            true
+          );
+          
+          if (updateErr) {
+            console.error('❌ Webhook: Failed to update premium status:', updateErr);
+          } else if (updatedUser) {
+            console.log('✅ Webhook: User updated to premium:', {
+              id: updatedUser.id,
+              email: updatedUser.email,
+              is_premium: updatedUser.is_premium,
+              stripe_subscription_id: updatedUser.stripe_subscription_id
+            });
+            
+            // Send confirmation email via webhook
+            if (emailService && emailService.isEmailConfigured()) {
+              try {
+                const emailResult = await emailService.sendSubscriptionConfirmationEmail(
+                  updatedUser.email,
+                  updatedUser.username || updatedUser.email.split('@')[0]
+                );
+                
+                if (emailResult.success) {
+                  console.log('✅ Webhook: Confirmation email sent successfully');
+                } else {
+                  console.error('❌ Webhook: Failed to send confirmation email:', emailResult);
+                }
+              } catch (emailError) {
+                console.error('❌ Webhook: Error sending confirmation email:', emailError);
+              }
+            }
+          } else {
+            console.error('❌ Webhook: No user found for subscription:', invoice.subscription);
+            console.log('🔍 This might indicate the stripe_subscription_id was not saved properly');
+          }
+        } catch (webhookError) {
+          console.error('❌ Webhook: Error processing payment success:', webhookError);
+        }
       }
       break;
       
     case 'customer.subscription.deleted':
       const deletedSubscription = event.data.object;
-      console.log('❌ Subscription deleted:', deletedSubscription.id);
+      console.log('❌ ===== SUBSCRIPTION DELETED =====');
+      console.log('📋 Subscription ID:', deletedSubscription.id);
+      console.log('💳 Customer ID:', deletedSubscription.customer);
       
       // Update user to not premium
+      console.log('💾 Updating user to not premium status...');
       dbHelpers.updatePremiumStatusBySubscriptionId(deletedSubscription.id, false)
         .then(() => console.log('✅ User updated to not premium'))
         .catch(err => console.error('❌ Failed to update premium status:', err));
@@ -3792,18 +4081,22 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), (req, res) => 
       
     case 'invoice.payment_failed':
       const failedInvoice = event.data.object;
-      console.log('❌ Payment failed for invoice:', failedInvoice.id);
+      console.log('❌ ===== PAYMENT FAILED =====');
+      console.log('💳 Invoice ID:', failedInvoice.id);
+      console.log('💳 Subscription ID:', failedInvoice.subscription);
+      console.log('💳 Customer ID:', failedInvoice.customer);
       
       if (failedInvoice.subscription) {
         // Update user to not premium
+        console.log('💾 Updating user to not premium due to payment failure...');
         dbHelpers.updatePremiumStatusBySubscriptionId(failedInvoice.subscription, false)
-          .then(() => console.log('✅ User updated to not premium'))
+          .then(() => console.log('✅ User updated to not premium due to payment failure'))
           .catch(err => console.error('❌ Failed to update premium status:', err));
       }
       break;
       
     default:
-      console.log(`Unhandled event type ${event.type}`);
+      console.log('⚠️ Unhandled webhook event type:', event.type);
   }
 
   res.json({received: true});

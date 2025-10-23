@@ -61,6 +61,7 @@ async function createTables() {
       auth_provider VARCHAR(50) DEFAULT 'google',
       is_premium BOOLEAN DEFAULT FALSE,
       premium_since TIMESTAMP,
+      stripe_customer_id VARCHAR(255),
       stripe_subscription_id VARCHAR(255)
     )
   `;
@@ -1078,30 +1079,76 @@ const dbHelpers = {
     }
   },
 
-  // Update premium status
+  // Update premium status with proper error handling like the other functions
   updatePremiumStatus: async (userId, isPremium) => {
     try {
+      console.log('🔧 updatePremiumStatus called with:', { userId, isPremium });
+      
+      // Verify user exists first
+      const userCheck = await pool.query('SELECT id, email FROM users WHERE id = $1', [userId]);
+      if (userCheck.rows.length === 0) {
+        console.error('❌ User not found for premium update:', userId);
+        return [new Error('User not found'), null];
+      }
+      
+      console.log('🔧 Found user for premium update:', userCheck.rows[0].email);
+      
       const premiumSince = isPremium ? new Date() : null;
+      console.log('🔧 Setting is_premium to:', isPremium);
+      console.log('🔧 premium_since value:', premiumSince);
+      
       const result = await pool.query(
-        'UPDATE users SET is_premium = $1, premium_since = $2 WHERE id = $3 RETURNING *',
+        'UPDATE users SET is_premium = $1, premium_since = $2 WHERE id = $3 RETURNING id, email, is_premium, premium_since',
         [isPremium, premiumSince, userId]
       );
+      
+      console.log('🔧 SQL query executed successfully');
+      console.log('🔧 Rows affected:', result.rowCount);
+      console.log('🔧 Updated user data:', result.rows[0]);
+      
+      if (result.rows.length === 0) {
+        console.error('❌ No rows updated - user might not exist');
+        return [new Error('No user updated'), null];
+      }
+      
+      // Verify the update
+      const verifyResult = await pool.query(
+        'SELECT id, email, is_premium, premium_since FROM users WHERE id = $1',
+        [userId]
+      );
+      
+      console.log('🔧 Verification query result:', verifyResult.rows[0]);
+      
       return [null, result.rows[0]];
     } catch (error) {
+      console.error('🔧 updatePremiumStatus error:', error);
+      console.error('🔧 Error message:', error.message);
+      console.error('🔧 Error stack:', error.stack);
       return [error, null];
     }
   },
 
-  // Update premium status by subscription ID
+  // Update premium status by subscription ID with proper error handling
   updatePremiumStatusBySubscriptionId: async (subscriptionId, isPremium) => {
     try {
+      console.log('🔧 updatePremiumStatusBySubscriptionId called with:', { subscriptionId, isPremium });
+      
       const premiumSince = isPremium ? new Date() : null;
       const result = await pool.query(
-        'UPDATE users SET is_premium = $1, premium_since = $2 WHERE stripe_subscription_id = $3 RETURNING *',
+        'UPDATE users SET is_premium = $1, premium_since = $2 WHERE stripe_subscription_id = $3 RETURNING id, email, is_premium, stripe_subscription_id',
         [isPremium, premiumSince, subscriptionId]
       );
+      
+      console.log('🔧 updatePremiumStatusBySubscriptionId - Rows affected:', result.rowCount);
+      if (result.rows.length > 0) {
+        console.log('🔧 Updated user:', result.rows[0]);
+      } else {
+        console.error('❌ No user found with subscription ID:', subscriptionId);
+      }
+      
       return [null, result.rows[0]];
     } catch (error) {
+      console.error('🔧 updatePremiumStatusBySubscriptionId error:', error);
       return [error, null];
     }
   },

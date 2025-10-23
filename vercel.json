@@ -36,6 +36,10 @@
       "dest": "/public/$1.html"
     },
     {
+      "src": "/subscribe/success",
+      "dest": "/public/subscribe/success.html"
+    },
+    {
       "src": "/(about|admin|advertise|advertiser|auth|charity|impact|lander|reset-password|subscribe|verify-email|tutorial)\\.html",
       "dest": "/public/$1.html"
     },

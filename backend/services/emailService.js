@@ -2,50 +2,89 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
-    this.isConfigured = false;
+    this.isConfigured = this.checkEmailConfiguration();
     this.transporter = null;
-    this.initialize();
+    this.initializeTransporter();
+    console.log('📧 Email service constructor called');
+    console.log('📧 Email service configured:', this.isConfigured);
   }
 
-  initialize() {
-    // Email configuration - prioritize environment variables
-    const emailConfig = {
-      host: process.env.EMAIL_HOST,
-      port: parseInt(process.env.EMAIL_PORT) || 587,
-      secure: false, // true for 465, false for other ports
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      },
-      // Optimize for faster delivery
-      pool: false, // Disable pooling for faster individual sends
-      connectionTimeout: 20000, // 20 seconds
-      greetingTimeout: 10000, // 10 seconds
-      socketTimeout: 20000, // 20 seconds
-      // Simplified retry configuration
-      retryDelay: 1000, // 1 second between retries
-      retryAttempts: 1, // Single retry attempt for speed
-      // Remove potentially problematic settings
-      tls: {
-        rejectUnauthorized: true // Use secure connections
-      }
-    };
+  // Check if all required email environment variables are set
+  checkEmailConfiguration() {
+    const required = ['EMAIL_HOST', 'EMAIL_PORT', 'EMAIL_USER', 'EMAIL_PASS'];
+    const missing = required.filter(key => !process.env[key]);
+    
+    if (missing.length > 0) {
+      console.error('❌ Missing email configuration:', missing);
+      return false;
+    }
+    
+    console.log('✅ Email configuration check passed');
+    console.log('📧 Email host:', process.env.EMAIL_HOST);
+    console.log('📧 Email port:', process.env.EMAIL_PORT);
+    console.log('📧 Email user:', process.env.EMAIL_USER);
+    console.log('📧 Email pass length:', process.env.EMAIL_PASS ? process.env.EMAIL_PASS.length : 'MISSING');
+    
+    return true;
+  }
 
-    // Check if email service is properly configured
-    this.isConfigured = emailConfig.host && emailConfig.auth.user && emailConfig.auth.pass;
+  // Initialize the email transporter
+  initializeTransporter() {
+    if (!this.isConfigured) {
+      console.error('❌ Cannot initialize transporter - email not configured');
+      return;
+    }
 
-    if (this.isConfigured) {
-      this.transporter = nodemailer.createTransport(emailConfig);
-      console.log('✅ Email service configured');
-    } else {
-      console.log('⚠️ Email service not configured - set EMAIL_HOST, EMAIL_USER, and EMAIL_PASS environment variables');
+    try {
+      // Remove any spaces from the app password (common issue with .env files)
+      const cleanEmailPass = process.env.EMAIL_PASS.replace(/\s+/g, '');
+      
+      console.log('🔧 Creating email transporter...');
+      this.transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT),
+        secure: false, // true for 465, false for other ports
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: cleanEmailPass, // Use cleaned password
+        },
+        // Add connection timeout
+        connectionTimeout: 10000,
+        // Add greeting timeout
+        greetingTimeout: 10000,
+      });
+
+      console.log('✅ Email transporter created, verifying connection...');
+      
+      // Verify transporter configuration
+      this.transporter.verify((error, success) => {
+        if (error) {
+          console.error('❌ Email transporter verification failed:', error);
+          console.error('❌ Error details:', error.message);
+          this.transporter = null;
+        } else {
+          console.log('✅ Email transporter is ready to send messages');
+          console.log('✅ SMTP connection successful');
+        }
+      });
+      
+    } catch (error) {
+      console.error('❌ Failed to create email transporter:', error);
+      this.transporter = null;
     }
   }
 
+  // Check if email service is ready to send
+  isEmailConfigured() {
+    const isReady = this.isConfigured && this.transporter !== null;
+    console.log('📧 Email service ready check:', isReady);
+    return isReady;
+  }
+
   /**
-   * Send verification email
+   * Send verification email to user
    * @param {string} email - Recipient email
-   * @param {string} username - Recipient username (not used in greeting)
+   * @param {string} username - Recipient username
    * @param {string} token - Verification token
    * @returns {Promise<Object>} - {success: boolean, messageId?: string, error?: string}
    */
@@ -53,6 +92,7 @@ class EmailService {
     if (!this.isConfigured || !this.transporter) {
       console.log('⚠️ Email service not configured, skipping verification email');
       return { success: false, error: 'Email service not configured' };
+
     }
 
     try {
@@ -92,7 +132,7 @@ class EmailService {
       const mailOptions = {
         from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
         to: email,
-        subject: 'Welcome to Charity Stream - Start Watching Ads for Charity!',
+        subject: 'Welcome to Charity Stream!',
         html: this.getWelcomeEmailTemplate(username, frontendUrl)
       };
 
@@ -106,23 +146,181 @@ class EmailService {
   }
 
   /**
+   * Send password reset email
+   * @param {string} email - Recipient email
+   * @param {string} username - Recipient username
+   * @param {string} token - Reset token
+   * @returns {Promise<Object>} - {success: boolean, messageId?: string, error?: string}
+   */
+  async sendPasswordResetEmail(email, username, token) {
+    if (!this.isConfigured || !this.transporter) {
+      console.log('⚠️ Email service not configured, skipping password reset email');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
+      const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
+      
+      const mailOptions = {
+        from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: 'Reset Your Password - Charity Stream',
+        html: this.getPasswordResetEmailTemplate(username, resetUrl)
+      };
+
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Password reset email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Error sending password reset email:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Send subscription confirmation email
+   * @param {string} email - Recipient email
+   * @param {string} username - Recipient username
+   * @returns {Promise<Object>} - {success: boolean, messageId?: string, error?: string}
+   */
+  // Enhanced email sending with better error handling
+  async sendSubscriptionConfirmationEmail(email, username) {
+    console.log('📧 ===== ATTEMPTING TO SEND EMAIL =====');
+    console.log('📧 Recipient:', email);
+    console.log('📧 Username:', username);
+    
+    if (!this.isEmailConfigured()) {
+      console.error('❌ Email service not properly configured or transporter not ready');
+      return { success: false, error: 'Email service not configured' };
+    }
+
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
+      const mailOptions = {
+        from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: '🎉 Thank You for Your Payment - Welcome to Charity Stream Premium!',
+        html: this.getSubscriptionConfirmationEmailTemplate(username, frontendUrl),
+        text: this.getTextVersion(username, frontendUrl)
+      };
+
+      console.log('📧 Mail options prepared:', {
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject
+      });
+
+      console.log('📧 Attempting to send mail...');
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('✅ Email sent successfully!');
+      console.log('✅ Message ID:', info.messageId);
+      console.log('✅ Response:', info.response);
+      
+      return { success: true, messageId: info.messageId, response: info.response };
+    } catch (error) {
+      console.error('❌ Email sending failed:', error);
+      console.error('❌ Error name:', error.name);
+      console.error('❌ Error code:', error.code);
+      console.error('❌ Error command:', error.command);
+      console.error('❌ Full error details:', error);
+      
+      return { 
+        success: false, 
+        error: error.message, 
+        code: error.code,
+        command: error.command 
+      };
+    }
+  }
+
+  // Add text version for email
+  getTextVersion(username, frontendUrl) {
+    return `
+Hi ${username}!
+
+Thank you for your payment! You're now a Charity Stream Premium member. Your subscription helps support our mission while giving you access to exclusive features.
+
+🌟 Premium Benefits Unlocked:
+• Pop-out player (Chrome extension)
+• 1.25x ad speed for faster watching  
+• Fewer interruptions during your session
+• HD quality videos (up to 1080p)
+• Direct support for charity causes
+
+Start watching premium ads: ${frontendUrl}
+
+Your subscription will automatically renew monthly. You can manage your subscription anytime from your account settings.
+
+Thank you for supporting our mission to make a positive impact through ad watching!
+
+-- The Charity Stream Team
+    `;
+  }
+
+  /**
+   * Get subscription confirmation email HTML template
+   * @param {string} username - User's username
+   * @param {string} frontendUrl - Frontend URL
+   * @returns {string} - HTML template
+   */
+  getSubscriptionConfirmationEmailTemplate(username, frontendUrl) {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <div style="background-color: #2F7D31; color: white; padding: 20px; text-align: center;">
+          <h1>🎉 Welcome to Charity Stream Premium!</h1>
+        </div>
+        <div style="padding: 20px; background-color: #f9fafb;">
+          <h2>Hi ${username}!</h2>
+          <p>Thank you for your payment! You're now a Charity Stream Premium member. Your subscription helps support our mission while giving you access to exclusive features.</p>
+          
+          <div style="background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
+            <h3>🌟 Premium Benefits Unlocked:</h3>
+            <ul>
+              <li>Pop-out player (Chrome extension)</li>
+              <li>1.25x ad speed for faster watching</li>
+              <li>Fewer interruptions during your session</li>
+              <li>HD quality videos (up to 1080p)</li>
+              <li>Direct support for charity causes</li>
+            </ul>
+          </div>
+          
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${frontendUrl}" 
+               style="background-color: #2F7D31; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              Start Watching Premium Ads
+            </a>
+          </div>
+          
+          <p>Your subscription will automatically renew monthly. You can manage your subscription anytime from your account settings.</p>
+          
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 14px;">
+            Thank you for supporting our mission to make a positive impact through ad watching!
+          </p>
+        </div>
+      </div>
+    `;
+  }
+
+  /**
    * Get verification email HTML template
    * @param {string} verificationUrl - Verification URL
-   * @returns {string} - HTML email template
+   * @returns {string} - HTML template
    */
   getVerificationEmailTemplate(verificationUrl) {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #3f9d5e; color: white; padding: 20px; text-align: center;">
-          <h1>Welcome to Charity Stream!</h1>
+        <div style="background-color: #2F7D31; color: white; padding: 20px; text-align: center;">
+          <h1>Verify Your Email</h1>
         </div>
         <div style="padding: 20px; background-color: #f9fafb;">
-          <h2>Hello!</h2>
-          <p>Thank you for signing up! To complete your registration and start watching ads for charity, please verify your email address.</p>
+          <h2>Welcome to Charity Stream!</h2>
+          <p>Please click the button below to verify your email address and complete your registration:</p>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="${verificationUrl}" 
-               style="background-color: #3f9d5e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+               style="background-color: #2F7D31; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
               Verify Email Address
             </a>
           </div>
@@ -130,11 +328,9 @@ class EmailService {
           <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
           <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
           
-          <p><strong>This link will expire in 30 minutes for security reasons.</strong></p>
-          
           <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
           <p style="color: #666; font-size: 14px;">
-            If you didn't create an account with Charity Stream, you can safely ignore this email.
+            This verification link will expire in 24 hours. If you didn't create an account, please ignore this email.
           </p>
         </div>
       </div>
@@ -143,144 +339,61 @@ class EmailService {
 
   /**
    * Get welcome email HTML template
-   * @param {string} username - Username
+   * @param {string} username - User's username
    * @param {string} frontendUrl - Frontend URL
-   * @returns {string} - HTML email template
+   * @returns {string} - HTML template
    */
   getWelcomeEmailTemplate(username, frontendUrl) {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #3f9d5e; color: white; padding: 20px; text-align: center;">
-          <h1>🎉 Welcome to Charity Stream!</h1>
+        <div style="background-color: #2F7D31; color: white; padding: 20px; text-align: center;">
+          <h1>Welcome to Charity Stream!</h1>
         </div>
         <div style="padding: 20px; background-color: #f9fafb;">
           <h2>Hi ${username}!</h2>
-          <p>Your email has been verified successfully! You're now ready to start watching ads for charity.</p>
+          <p>Your email has been verified and your account is now active. Welcome to Charity Stream!</p>
           
           <div style="background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0;">
-            <h3>🚀 What's Next?</h3>
+            <h3>🎯 What's Next?</h3>
             <ul>
-              <li>Start watching ads to earn money for charity</li>
-              <li>Compete on the leaderboard with other users</li>
-              <li>Track your impact and see how much you've raised</li>
-              <li>Upgrade to premium for higher quality videos</li>
+              <li>Start watching ads to support charity causes</li>
+              <li>Track your impact on our leaderboard</li>
+              <li>Earn rewards for your contributions</li>
+              <li>Connect with other users making a difference</li>
             </ul>
           </div>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="${frontendUrl}" 
-               style="background-color: #3f9d5e; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
+               style="background-color: #2F7D31; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
               Start Watching Ads
             </a>
           </div>
           
-          <p>Thank you for joining our mission to make a positive impact through ad watching!</p>
+          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+          <p style="color: #666; font-size: 14px;">
+            Thank you for joining our mission to make a positive impact through ad watching!
+          </p>
         </div>
       </div>
     `;
   }
 
   /**
-   * Send password reset email
-   * @param {string} email - Recipient email
-   * @param {string} username - Recipient username
-   * @param {string} token - Reset token
-   * @param {boolean} isGoogleUser - Whether this is for a Google user setting up their first password
-   * @returns {Promise<Object>} - {success: boolean, messageId?: string, error?: string}
-   */
-  async sendPasswordResetEmail(email, username, token, isGoogleUser = false) {
-    if (!this.isConfigured || !this.transporter) {
-      console.log('⚠️ Email service not configured, skipping password reset email');
-      return { success: false, error: 'Email service not configured' };
-    }
-
-    try {
-      const startTime = Date.now();
-      console.log(`📧 Starting password reset email to ${email} at ${new Date().toISOString()}`);
-      
-      const frontendUrl = process.env.FRONTEND_URL || 'https://stream.charity';
-      const resetUrl = `${frontendUrl}/reset-password.html?token=${token}`;
-      
-      const subject = isGoogleUser 
-        ? 'Set Up Your Password - Charity Stream' 
-        : 'Reset Your Password - Charity Stream';
-        
-      const mailOptions = {
-        from: `"Charity Stream" <${process.env.EMAIL_USER}>`,
-        to: email,
-        subject: subject,
-        html: isGoogleUser 
-          ? this.getGooglePasswordSetupEmailTemplate(username, resetUrl)
-          : this.getPasswordResetEmailTemplate(username, resetUrl)
-      };
-
-      // Create a fresh transporter for faster delivery
-      const emailConfig = {
-        host: process.env.EMAIL_HOST,
-        port: parseInt(process.env.EMAIL_PORT) || 587,
-        secure: false,
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS
-        },
-        connectionTimeout: 15000, // 15 seconds
-        greetingTimeout: 8000, // 8 seconds
-        socketTimeout: 15000 // 15 seconds
-      };
-      
-      const freshTransporter = nodemailer.createTransporter(emailConfig);
-
-      // Add timeout wrapper to prevent long waits
-      const emailPromise = freshTransporter.sendMail(mailOptions);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Email sending timeout after 25 seconds')), 25000)
-      );
-
-      const info = await Promise.race([emailPromise, timeoutPromise]);
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      
-      // Close the fresh transporter
-      freshTransporter.close();
-      
-      console.log(`✅ Password reset email sent to ${email} in ${duration}ms:`, info.messageId);
-      console.log(`📧 Email sent at: ${new Date().toISOString()}`);
-      return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('❌ Error sending password reset email:', error);
-      
-      // Provide more specific error messages
-      if (error.message.includes('timeout')) {
-        return { 
-          success: false, 
-          error: 'Email service timeout - please try again in a few minutes' 
-        };
-      } else if (error.message.includes('rate limit') || error.message.includes('quota')) {
-        return { 
-          success: false, 
-          error: 'Email rate limit reached - please wait before trying again' 
-        };
-      } else {
-        return { success: false, error: error.message };
-      }
-    }
-  }
-
-  /**
    * Get password reset email HTML template
-   * @param {string} username - Username
+   * @param {string} username - User's username
    * @param {string} resetUrl - Reset URL
-   * @returns {string} - HTML email template
+   * @returns {string} - HTML template
    */
   getPasswordResetEmailTemplate(username, resetUrl) {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <div style="background-color: #2F7D31; color: white; padding: 20px; text-align: center;">
-          <h1>Password Reset Request</h1>
+          <h1>Reset Your Password</h1>
         </div>
         <div style="padding: 20px; background-color: #f9fafb;">
           <h2>Hi ${username}!</h2>
-          <p>We received a request to reset your password for your Charity Stream account.</p>
+          <p>You requested to reset your password. Click the button below to create a new password:</p>
           
           <div style="text-align: center; margin: 30px 0;">
             <a href="${resetUrl}" 
@@ -292,62 +405,15 @@ class EmailService {
           <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
           <p style="word-break: break-all; color: #666;">${resetUrl}</p>
           
-          <p><strong>This link will expire in 30 minutes for security reasons.</strong></p>
-          
           <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
           <p style="color: #666; font-size: 14px;">
-            If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+            This reset link will expire in 1 hour. If you didn't request a password reset, please ignore this email.
           </p>
         </div>
       </div>
     `;
-  }
-
-  /**
-   * Get Google password setup email HTML template
-   * @param {string} username - Username
-   * @param {string} resetUrl - Setup URL
-   * @returns {string} - HTML email template
-   */
-  getGooglePasswordSetupEmailTemplate(username, resetUrl) {
-    return `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <div style="background-color: #2F7D31; color: white; padding: 20px; text-align: center;">
-          <h1>Set Up Your Password</h1>
-        </div>
-        <div style="padding: 20px; background-color: #f9fafb;">
-          <h2>Hi ${username}!</h2>
-          <p>You signed up for Charity Stream using Google, but you can also log in manually with your email and password.</p>
-          <p>To enable manual login, please set up a password for your account.</p>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" 
-               style="background-color: #2F7D31; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px; display: inline-block;">
-              Set Up Password
-            </a>
-          </div>
-          
-          <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
-          <p style="word-break: break-all; color: #666;">${resetUrl}</p>
-          
-          <p><strong>This link will expire in 30 minutes for security reasons.</strong></p>
-          
-          <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
-          <p style="color: #666; font-size: 14px;">
-            You can still log in with Google at any time. Setting up a password just gives you another way to access your account.
-          </p>
-        </div>
-      </div>
-    `;
-  }
-
-  /**
-   * Check if email service is configured
-   * @returns {boolean} - True if configured
-   */
-  isEmailConfigured() {
-    return this.isConfigured;
   }
 }
 
+// Export a singleton instance
 module.exports = new EmailService();
