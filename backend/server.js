@@ -209,13 +209,12 @@ const generateJWTToken = (payload, expiresIn = '7d') => {
   });
   
   // Generate token with explicit expiration
+  // Note: exp should NOT be in options - only expiresIn is allowed
   const token = jwt.sign(
     payload,
     JWT_SECRET,
     { 
-      expiresIn: expiresIn,
-      // Add explicit expiration as backup
-      exp: Math.floor(expirationMs / 1000)
+      expiresIn: expiresIn
     }
   );
   
