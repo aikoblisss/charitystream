@@ -3943,16 +3943,46 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
       return res.status(500).json({ error: 'Database connection not available' });
     }
     
-    // File will be uploaded directly to R2 in the webhook, not stored in database
-    let fileMetadata = null;
+    // Upload file to R2 immediately with final filename (no pending prefix)
+    let mediaUrl = null;
+    
     if (req.file) {
-      fileMetadata = {
-        originalname: req.file.originalname,
-        mimetype: req.file.mimetype,
-        size: req.file.size
-      };
-      console.log('📁 File received for direct R2 upload:', req.file.originalname);
-      // Store only metadata, NOT the buffer
+      console.log('📁 File received, uploading to R2 immediately:', req.file.originalname);
+      console.log('📁 File size:', req.file.size, 'bytes');
+      
+      try {
+        // Generate final filename (no pending prefix - file is uploaded directly)
+        const timestamp = Date.now();
+        const sanitizedFileName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+        const finalFileName = `${timestamp}-${sanitizedFileName}`;
+        
+        console.log(`📤 Uploading file to R2: ${finalFileName}`);
+        
+        // Upload to R2 immediately with final filename
+        const uploadCommand = new PutObjectCommand({
+          Bucket: 'advertiser-media',
+          Key: finalFileName,
+          Body: req.file.buffer,
+          ContentType: req.file.mimetype,
+        });
+        
+        await r2Client.send(uploadCommand);
+        
+        // Generate public URL immediately
+        mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${finalFileName}`;
+        
+        console.log('✅ File uploaded to R2 successfully:', mediaUrl);
+        console.log('💡 File is uploaded but payment_completed = false until payment succeeds');
+        
+      } catch (uploadError) {
+        console.error('❌ Failed to upload file to R2:', uploadError);
+        console.error('❌ Upload error details:', uploadError.message);
+        return res.status(500).json({
+          error: 'File upload failed',
+          message: 'Failed to upload file to storage. Please try again.',
+          details: uploadError.message
+        });
+      }
     }
     
     const advertiserResult = await pool.query(
@@ -3960,8 +3990,8 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
         company_name, website_url, first_name, last_name, 
         email, title_role, ad_format, weekly_budget_cap, cpm_rate, 
         recurring_weekly, expedited, click_tracking, destination_url,
-        application_status, approved, completed, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'payment_pending', false, false, CURRENT_TIMESTAMP)
+        media_r2_link, payment_completed, application_status, approved, completed, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, 'payment_pending', false, false, CURRENT_TIMESTAMP)
       RETURNING id, email, company_name`,
       [
         companyName || null,
@@ -3976,15 +4006,18 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
         isRecurring === 'true' || isRecurring === true,
         expeditedApproval === 'true' || expeditedApproval === true,
         clickTracking === 'true' || clickTracking === true,
-        destinationUrl || null
+        destinationUrl || null,
+        mediaUrl // Store R2 URL immediately
       ]
     );
     
     const advertiser = advertiserResult.rows[0];
-    console.log('✅ Payment pending advertiser created:', { id: advertiser.id, email: advertiser.email });
-    
-    // NOTE: File data is NOT stored in database - it will be uploaded directly to R2 in the webhook
-    // No file storage in database to avoid performance issues
+    console.log('✅ Payment pending advertiser created:', { 
+      id: advertiser.id, 
+      email: advertiser.email,
+      media_r2_link: mediaUrl,
+      payment_completed: false
+    });
     
     // Calculate pricing and line items
     const lineItems = [];
@@ -4022,23 +4055,41 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
     
     // Create Stripe customer for ALL advertisers
     console.log('👤 Creating Stripe customer for ALL advertisers...');
+    const customerMetadata = {
+      advertiserId: String(advertiser.id),
+      companyName: companyName,
+      campaignType: 'advertiser',
+      hasFile: !!req.file ? 'true' : 'false'
+    };
+    
+    // Add file metadata to customer (for reference)
+    if (req.file) {
+      customerMetadata.fileName = req.file.originalname;
+      customerMetadata.fileMimeType = req.file.mimetype;
+      customerMetadata.fileSize = String(req.file.size);
+    }
+    
     const customer = await stripe.customers.create({
       email: email,
       name: `${firstName} ${lastName}`,
-      metadata: {
-        advertiserId: advertiser.id,
-        companyName: companyName,
-        campaignType: 'advertiser',
-        hasFile: !!req.file,
-        fileName: fileMetadata ? fileMetadata.originalname : null,
-        fileMimeType: fileMetadata ? fileMetadata.mimetype : null
-      }
+      metadata: customerMetadata
     });
     
     console.log('✅ Stripe customer created:', customer.id);
     
     // Create Stripe Checkout Session
     console.log('🛒 Creating Stripe checkout session...');
+    
+    // Build subscription metadata (webhook will use advertiserId to update payment_completed)
+    const subscriptionMetadata = {
+      advertiserId: String(advertiser.id),
+      campaignType: 'advertiser',
+      companyName: companyName,
+      hasFile: !!req.file ? 'true' : 'false'
+    };
+    
+    console.log('📦 Subscription metadata prepared for webhook:', subscriptionMetadata);
+    
     const sessionConfig = {
       customer: customer.id,
       payment_method_types: ['card'],
@@ -4046,22 +4097,16 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser.html`,
       metadata: {
-        advertiserId: advertiser.id,
+        advertiserId: String(advertiser.id),
         companyName: companyName,
         campaignType: 'advertiser',
-        hasFile: !!req.file,
-        fileName: fileMetadata ? fileMetadata.originalname : null,
-        fileMimeType: fileMetadata ? fileMetadata.mimetype : null,
-        isRecurring: isRecurring === 'true' || isRecurring === true,
-        weeklyBudget: weeklyBudget,
-        cpmRate: cpmRate
+        hasFile: !!req.file ? 'true' : 'false',
+        isRecurring: isRecurring === 'true' || isRecurring === true ? 'true' : 'false',
+        weeklyBudget: weeklyBudget || '',
+        cpmRate: cpmRate || ''
       },
       subscription_data: {
-        metadata: {
-          advertiserId: String(advertiser.id),
-          campaignType: 'advertiser',
-          companyName: companyName
-        }
+        metadata: subscriptionMetadata
       },
       line_items: lineItems
     };
@@ -4776,29 +4821,27 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
             }
             
             const advertiser = advertiserResult.rows[0];
-            console.log('📝 Found advertiser:', { id: advertiser.id, email: advertiser.email });
-            
-            // NOTE: Files are NOT stored in database for performance reasons
-            // If a file was provided, it should have been uploaded to R2 directly
-            // The media_r2_link should already exist in the database
-            let mediaUrl = advertiser.media_r2_link || null;
-            
-            console.log('📤 File storage status:', {
-              hasMediaLink: !!advertiser.media_r2_link,
-              mediaUrl: mediaUrl
+            console.log('📝 Found advertiser:', { 
+              id: advertiser.id, 
+              email: advertiser.email,
+              payment_completed: advertiser.payment_completed,
+              media_r2_link: advertiser.media_r2_link
             });
             
-            // Update advertiser status to pending approval
+            // Simple update: mark payment as completed and update status
+            // File is already in R2 with final filename, no copying needed
+            console.log('💳 Payment successful, updating payment_completed = true');
+            
             const updateResult = await pool.query(
               `UPDATE advertisers 
                SET application_status = 'pending_approval',
+                   payment_completed = true,
                    stripe_customer_id = $1,
                    stripe_subscription_id = $2,
-                   media_r2_link = $3,
                    updated_at = CURRENT_TIMESTAMP
-               WHERE id = $4
-               RETURNING id, email, company_name, expedited, click_tracking, ad_format, cpm_rate, weekly_budget_cap`,
-              [subscription.customer, subscription.id, mediaUrl, advertiserId]
+               WHERE id = $3
+               RETURNING id, email, company_name, expedited, click_tracking, ad_format, cpm_rate, weekly_budget_cap, media_r2_link`,
+              [subscription.customer, subscription.id, advertiserId]
             );
             
             if (updateResult.rows.length > 0) {
@@ -4810,8 +4853,9 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
                 expedited: updatedAdvertiser.expedited,
                 clickTracking: updatedAdvertiser.click_tracking,
                 status: 'pending_approval',
+                payment_completed: true,
                 subscriptionId: subscription.id,
-                mediaUrl: mediaUrl
+                media_r2_link: updatedAdvertiser.media_r2_link
               });
               
               // Send confirmation email with campaign summary
@@ -5026,6 +5070,10 @@ app.get('/health', (req, res) => {
   };
   res.json(healthStatus);
 });
+
+// ===== CLEANUP JOBS =====
+// Note: Manual cleanup script can be added later to delete unpaid files
+// Query example: SELECT * FROM advertisers WHERE payment_completed = false AND created_at < NOW() - INTERVAL '24 hours'
 
 app.listen(PORT, () => {
   console.log('🚀 LetsWatchAds Server Started!');
