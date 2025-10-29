@@ -1364,7 +1364,7 @@ function activateSponsor(e) {
     <button class="modal-close" onclick="closeEnhancementModal()">&times;</button>
     <h3 class="modal-title">Boost Your Campaign Before Submitting</h3>
     
-    <div class="enhancement-option" onclick="toggleEnhancement('clickableLink')">
+    <div class="enhancement-option">
       <div class="enhancement-header">
         <input type="checkbox" id="clickableLinkEnhancement" class="enhancement-checkbox">
         <div>
@@ -1377,7 +1377,7 @@ function activateSponsor(e) {
       <input type="url" id="destinationUrl" name="destinationUrl" class="url-input" placeholder="https://yourwebsite.com/landing-page" onclick="event.stopPropagation()">
     </div>
 
-    <div class="enhancement-option" onclick="toggleEnhancement('expedited')">
+    <div class="enhancement-option">
       <div class="enhancement-header">
         <input type="checkbox" id="expeditedEnhancement" class="enhancement-checkbox">
         <div>
@@ -1389,8 +1389,7 @@ function activateSponsor(e) {
     </div>
 
     <div class="modal-buttons">
-      <button class="modal-btn modal-btn-primary" onclick="submitWithEnhancements()">Add Enhancements & Submit</button>
-      <button class="modal-btn modal-btn-secondary" onclick="submitBasicCampaign()">Submit Basic Campaign Only</button>
+      <button class="modal-btn modal-btn-primary" onclick="proceedToCheckout()">Proceed to checkout</button>
     </div>
   </div>
 </div>
@@ -1453,7 +1452,7 @@ function activateSponsor(e) {
 .url-input.active{display:block}
 .url-label{font-size:.875rem;color:var(--gray-700);margin-top:.5rem;display:none}
 .url-label.active{display:block}
-.modal-buttons{display:flex;gap:1rem;margin-top:2rem}
+.modal-buttons{display:flex;justify-content:center;margin-top:2rem}
 .modal-btn{flex:1;padding:.875rem 1.5rem;border-radius:.75rem;border:none;font-weight:600;font-size:.875rem;cursor:pointer;transition:.2s;white-space:nowrap}
 .modal-btn-primary{background:var(--brand-600);color:#fff}
 .modal-btn-primary:hover{background:var(--brand-700)}
@@ -1483,24 +1482,38 @@ document.getElementById('advertiserForm').addEventListener('submit', function(e)
   showEnhancementModal();
 });
 
-// Modal functions
-function showEnhancementModal() {
-  document.getElementById('enhancementModal').classList.add('active');
-  document.body.style.overflow = 'hidden';
+// Enhanced enhancement handling
+function setupEnhancementHandlers() {
+  // Set up click handlers for the entire enhancement options
+  document.querySelectorAll('.enhancement-option').forEach(option => {
+    option.addEventListener('click', function(e) {
+      // Don't trigger if click was directly on the checkbox (handled separately)
+      if (e.target.type === 'checkbox') return;
+      
+      const checkbox = this.querySelector('.enhancement-checkbox');
+      const type = checkbox.id.replace('Enhancement', '');
+      toggleEnhancement(type, !checkbox.checked);
+    });
+  });
+
+  // Set up change handlers for the checkboxes directly
+  document.querySelectorAll('.enhancement-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', function() {
+      const type = this.id.replace('Enhancement', '');
+      toggleEnhancement(type, this.checked);
+    });
+  });
 }
 
-function closeEnhancementModal() {
-  document.getElementById('enhancementModal').classList.remove('active');
-  document.getElementById('successModal').classList.remove('active');
-  document.body.style.overflow = 'auto';
-}
-
-function toggleEnhancement(type) {
+// Updated toggleEnhancement function
+function toggleEnhancement(type, shouldBeChecked) {
   const checkbox = document.getElementById(type + 'Enhancement');
   const option = checkbox.closest('.enhancement-option');
   
-  checkbox.checked = !checkbox.checked;
+  // Ensure checkbox state matches the intended state
+  checkbox.checked = shouldBeChecked;
   
+  // Update visual styling
   if (checkbox.checked) {
     option.classList.add('selected');
   } else {
@@ -1521,6 +1534,131 @@ function toggleEnhancement(type) {
       urlInput.value = '';
     }
   }
+}
+
+// Modal functions
+function showEnhancementModal() {
+  document.getElementById('enhancementModal').classList.add('active');
+  document.body.style.overflow = 'hidden';
+  setupEnhancementHandlers(); // Initialize the handlers
+}
+
+function closeEnhancementModal() {
+  document.getElementById('enhancementModal').classList.remove('active');
+  document.getElementById('successModal').classList.remove('active');
+  document.body.style.overflow = 'auto';
+}
+
+function proceedToCheckout() {
+  console.log('🚀 ===== PROCEEDING TO CHECKOUT =====');
+  
+  try {
+    // Collect all form data
+    const formData = collectFormData();
+    console.log('📝 Form data collected:', formData);
+    
+    // Validate required fields
+    if (!formData.email || !formData.companyName || !formData.firstName || !formData.lastName) {
+      alert('Please fill in all required fields (Company Name, Email, First Name, Last Name)');
+      return;
+    }
+    
+    // Check if file is uploaded
+    const fileInput = document.getElementById('fileUpload');
+    if (!fileInput.files || fileInput.files.length === 0) {
+      alert('Please upload your ad creative before proceeding to checkout');
+      return;
+    }
+    
+    // Show loading state
+    const checkoutButton = document.querySelector('.modal-btn-primary');
+    const originalText = checkoutButton.textContent;
+    checkoutButton.textContent = 'Processing...';
+    checkoutButton.disabled = true;
+    
+    // Create FormData for file upload
+    const submitData = new FormData();
+    
+    // Add form fields
+    Object.keys(formData).forEach(key => {
+      submitData.append(key, formData[key]);
+    });
+    
+    // Add file
+    submitData.append('creative', fileInput.files[0]);
+    
+    console.log('📤 Submitting to checkout endpoint...');
+    
+    // Submit to backend
+    fetch('/api/advertiser/create-checkout-session', {
+      method: 'POST',
+      body: submitData
+    })
+    .then(response => response.json())
+    .then(data => {
+      console.log('✅ Checkout session created:', data);
+      
+      if (data.checkoutUrl) {
+        // Redirect to Stripe Checkout
+        console.log('🛒 Redirecting to Stripe Checkout...');
+        window.location.href = data.checkoutUrl;
+      } else {
+        throw new Error('No checkout URL received');
+      }
+    })
+    .catch(error => {
+      console.error('❌ Checkout error:', error);
+      alert('Failed to create checkout session. Please try again.');
+      
+      // Restore button state
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+    });
+    
+  } catch (error) {
+    console.error('❌ Error in proceedToCheckout:', error);
+    alert('An error occurred. Please try again.');
+  }
+}
+
+// Collect all form data including enhancements
+function collectFormData() {
+  const form = document.getElementById('advertiserForm');
+  const formData = new FormData(form);
+  
+  // Get basic form data
+  const data = {
+    companyName: document.getElementById('companyName').value,
+    websiteUrl: document.getElementById('websiteUrl').value,
+    firstName: document.getElementById('firstName').value,
+    lastName: document.getElementById('lastName').value,
+    email: document.getElementById('email').value,
+    jobTitle: document.getElementById('jobTitle').value,
+    adFormat: document.querySelector('input[name="adFormat"]:checked')?.value,
+    weeklyBudget: document.getElementById('budget').value,
+    cpmRate: document.querySelector('input[name="cpmRate"]:checked')?.value,
+    isRecurring: document.getElementById('recurringSpend').checked
+  };
+  
+  // Handle custom CPM rate
+  if (data.cpmRate === 'custom') {
+    const customSlider = document.getElementById('cpmSlider');
+    if (customSlider) {
+      data.cpmRate = customSlider.value;
+    }
+  }
+  
+  // Get enhancement selections
+  data.expeditedApproval = document.getElementById('expeditedEnhancement').checked;
+  data.clickTracking = document.getElementById('clickableLinkEnhancement').checked;
+  
+  // Get destination URL if clickable link is selected
+  if (data.clickTracking) {
+    data.destinationUrl = document.getElementById('destinationUrl').value;
+  }
+  
+  console.log('📋 Collected form data:', data);
+  return data;
 }
 
 function submitWithEnhancements() {
@@ -1651,6 +1789,13 @@ function submitAnother() {
   document.getElementById('destinationUrl').classList.remove('active');
   document.getElementById('urlLabel').classList.remove('active');
   document.getElementById('destinationUrl').value = '';
+  
+  // Reset file upload UI
+  const uploadArea = document.querySelector('#advertiserForm .upload-area .upload-text');
+  if (uploadArea) uploadArea.textContent = 'Click to upload your ad creative';
+  
+  const uploadSubtext = document.querySelector('#advertiserForm .upload-area .upload-subtext');
+  if (uploadSubtext) uploadSubtext.textContent = 'MP4 video (max 15s) or PNG/JPG image';
   
   // Close modal
   closeEnhancementModal();

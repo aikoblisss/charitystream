@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaign Submitted - Charity Stream</title>
+    
+    <!-- Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            font-feature-settings: 'liga' 1, 'calt' 1, 'tnum' 1;
+            background-color: #f8f9fa;
+            color: #333;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: white;
+            border-radius: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .title {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        
+        .subtitle {
+            font-size: 1.125rem;
+            color: #6b7280;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        
+        .highlight-box {
+            background: #f0f9ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .highlight-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: #1e40af;
+            margin-bottom: 0.5rem;
+        }
+        
+        .highlight-text {
+            color: #374151;
+            line-height: 1.6;
+        }
+        
+        .next-steps {
+            text-align: left;
+            margin: 2rem 0;
+        }
+        
+        .next-steps h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        
+        .next-steps ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .next-steps li {
+            padding: 0.5rem 0;
+            color: #374151;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+        
+        .next-steps li::before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: bold;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+        
+        .loading {
+            display: none;
+        }
+        
+        .loading.show {
+            display: block;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #2563eb;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="loading" id="loading">
+            <div class="spinner"></div>
+            <p>Processing your campaign submission...</p>
+        </div>
+        
+        <div id="success-content" style="display: none;">
+            <div class="success-icon">🎉</div>
+            <h1 class="title">Campaign Submitted Successfully!</h1>
+            <p class="subtitle">
+                Thank you for choosing Charity Stream. Your advertising campaign has been submitted and is now under review.
+            </p>
+            
+            <div class="highlight-box" id="expedited-box" style="display: none;">
+                <div class="highlight-title">🚀 Expedited Processing</div>
+                <div class="highlight-text">
+                    Your campaign will receive priority review and should be approved within 24-48 hours instead of the standard 3-5 business days.
+                </div>
+            </div>
+            
+            <div class="next-steps">
+                <h3>What happens next?</h3>
+                <ul>
+                    <li>Our team will review your campaign and creative materials</li>
+                    <li>You'll receive an email notification once approved</li>
+                    <li>Your ads will start running and generating charitable impact</li>
+                    <li>Monitor your campaign performance in real-time</li>
+                </ul>
+            </div>
+            
+            <div class="cta-buttons">
+                <a href="/advertiser.html" class="btn btn-primary">Submit Another Campaign</a>
+                <a href="/" class="btn btn-secondary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get session ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const sessionId = urlParams.get('session_id');
+        
+        console.log('🎉 Advertiser success page loaded');
+        console.log('🛒 Session ID:', sessionId);
+        
+        // Show loading initially
+        document.getElementById('loading').classList.add('show');
+        
+        // Simulate processing time and then show success
+        setTimeout(() => {
+            document.getElementById('loading').classList.remove('show');
+            document.getElementById('success-content').style.display = 'block';
+            
+            // Check if this was an expedited campaign (you could fetch this from backend)
+            // For now, we'll show it if there's a session ID
+            if (sessionId) {
+                document.getElementById('expedited-box').style.display = 'block';
+            }
+        }, 2000);
+        
+        // Optional: Fetch campaign details from backend using session ID
+        if (sessionId) {
+            fetch(`/api/advertiser/session-details?session_id=${sessionId}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log('📊 Campaign details:', data);
+                    // Update UI based on campaign details if needed
+                })
+                .catch(error => {
+                    console.error('❌ Error fetching campaign details:', error);
+                });
+        }
+    </script>
+</body>
+</html>

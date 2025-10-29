@@ -134,11 +134,23 @@ try {
   console.log('🚀 Initializing email service...');
   if (emailService.isEmailConfigured()) {
     console.log('✅ Email service is properly configured and ready');
+    console.log('🔍 DEBUG: emailService available:', !!emailService);
+    console.log('🔍 DEBUG: emailService.isEmailConfigured:', emailService.isEmailConfigured());
+    console.log('🔍 DEBUG: emailService.transporter:', !!emailService.transporter);
   } else {
     console.error('❌ Email service failed to initialize - check your .env configuration');
+    console.error('🔍 DEBUG: emailService available:', !!emailService);
+    console.error('🔍 DEBUG: emailService.isConfigured:', emailService.isConfigured);
+    console.error('🔍 DEBUG: Missing env vars:', {
+      EMAIL_HOST: !!process.env.EMAIL_HOST,
+      EMAIL_PORT: !!process.env.EMAIL_PORT,
+      EMAIL_USER: !!process.env.EMAIL_USER,
+      EMAIL_PASS: !!process.env.EMAIL_PASS
+    });
   }
 } catch (error) {
   console.log('⚠️ Email service not available:', error.message);
+  console.error('🔍 DEBUG: emailService import error:', error);
 }
 
 try {
@@ -163,6 +175,77 @@ const getTokenExpiry = () => {
 const app = express();
 const PORT = process.env.PORT || 3001;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-in-production';
+
+// 🚨 CRITICAL: Robust JWT token generation function
+const generateJWTToken = (payload, expiresIn = '7d') => {
+  const now = new Date();
+  const systemTime = now.toISOString();
+  
+  console.log(`🔑 GENERATING JWT TOKEN:`, {
+    payload: { userId: payload.userId, username: payload.username, email: payload.email },
+    expiresIn: expiresIn,
+    currentTime: systemTime,
+    currentTimestamp: now.getTime()
+  });
+  
+  // Calculate expiration time manually to ensure it's in the future
+  let expirationMs;
+  if (expiresIn === '7d') {
+    expirationMs = now.getTime() + (7 * 24 * 60 * 60 * 1000);
+  } else if (expiresIn === '30d') {
+    expirationMs = now.getTime() + (30 * 24 * 60 * 60 * 1000);
+  } else {
+    // Default to 7 days
+    expirationMs = now.getTime() + (7 * 24 * 60 * 60 * 1000);
+  }
+  
+  const expirationDate = new Date(expirationMs);
+  
+  console.log(`🕐 CALCULATED EXPIRATION:`, {
+    expirationMs: expirationMs,
+    expirationDate: expirationDate.toISOString(),
+    timeDifference: expirationMs - now.getTime(),
+    isValidExpiration: expirationMs > now.getTime()
+  });
+  
+  // Generate token with explicit expiration
+  const token = jwt.sign(
+    payload,
+    JWT_SECRET,
+    { 
+      expiresIn: expiresIn,
+      // Add explicit expiration as backup
+      exp: Math.floor(expirationMs / 1000)
+    }
+  );
+  
+  // Verify the generated token
+  try {
+    const decoded = jwt.decode(token);
+    console.log(`🔍 TOKEN VERIFICATION:`, {
+      generatedExpiry: decoded.exp,
+      generatedExpiryDate: new Date(decoded.exp * 1000).toISOString(),
+      currentTime: systemTime,
+      timeDifference: (decoded.exp * 1000) - now.getTime(),
+      isValidExpiration: (decoded.exp * 1000) > now.getTime(),
+      tokenLength: token.length
+    });
+    
+    // Check if token is valid
+    if ((decoded.exp * 1000) <= now.getTime()) {
+      console.error(`❌ CRITICAL ERROR: Generated token is already expired!`);
+      console.error(`❌ Token expires at: ${new Date(decoded.exp * 1000).toISOString()}`);
+      console.error(`❌ Current time: ${systemTime}`);
+      throw new Error('Generated JWT token is already expired');
+    }
+    
+  } catch (verifyErr) {
+    console.error(`❌ Token verification failed:`, verifyErr);
+    throw verifyErr;
+  }
+  
+  return token;
+};
 
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
@@ -254,7 +337,14 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(bodyParser.json());
+// Body parser - but skip for webhook endpoint (it needs raw body)
+app.use((req, res, next) => {
+  // Skip body parsing for webhook endpoint
+  if (req.path === '/api/webhook') {
+    return next();
+  }
+  return bodyParser.json()(req, res, next);
+});
 
 // TEMPORARY: Video proxy to bypass CORS issues while diagnosing R2
 app.get('/proxy-video/:videoName', async (req, res) => {
@@ -340,6 +430,18 @@ const authenticateToken = (req, res, next) => {
         message: err.message,
         expiredAt: err.expiredAt
       });
+      
+      // 🚨 CRITICAL DEBUG: Check system time vs token expiration
+      const now = new Date();
+      const systemTime = now.toISOString();
+      console.log(`🕐 SYSTEM TIME DEBUG:`, {
+        currentTime: systemTime,
+        currentTimestamp: now.getTime(),
+        tokenExpiredAt: err.expiredAt,
+        timeDifference: err.expiredAt ? (now.getTime() - new Date(err.expiredAt).getTime()) : 'N/A',
+        isExpiredInPast: err.expiredAt ? (now.getTime() > new Date(err.expiredAt).getTime()) : 'N/A'
+      });
+      
       return res.status(403).json({ error: 'Invalid token' });
     }
     
@@ -367,13 +469,109 @@ const trackRequest = (req, res, next) => {
   next();
 };
 
-// Debug endpoint to test authentication
-app.get('/api/debug/auth-test', authenticateToken, (req, res) => {
-  res.json({
-    message: 'Authentication working!',
-    user: req.user,
-    timestamp: new Date().toISOString()
-  });
+// Token refresh endpoint for expired tokens
+app.post('/api/auth/refresh-token', async (req, res) => {
+  try {
+    const { token } = req.body;
+    
+    if (!token) {
+      return res.status(400).json({ error: 'Token is required' });
+    }
+    
+    // Try to decode the expired token (without verification)
+    let decoded;
+    try {
+      decoded = jwt.decode(token);
+    } catch (decodeErr) {
+      console.error('❌ Failed to decode token:', decodeErr);
+      return res.status(400).json({ error: 'Invalid token format' });
+    }
+    
+    if (!decoded || !decoded.userId) {
+      return res.status(400).json({ error: 'Invalid token payload' });
+    }
+    
+    // Check if token is actually expired
+    const now = Math.floor(Date.now() / 1000);
+    if (decoded.exp && decoded.exp > now) {
+      // Token is not expired, return it as-is
+      return res.json({ 
+        message: 'Token is still valid',
+        token: token,
+        refreshed: false
+      });
+    }
+    
+    // Token is expired, get user from database
+    const [err, user] = await dbHelpers.getUserById(decoded.userId);
+    if (err || !user) {
+      console.error('❌ User not found for token refresh:', err);
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Generate new token
+    const newToken = generateJWTToken(
+      { userId: user.id, username: user.username, email: user.email },
+      '7d'
+    );
+    
+    console.log(`✅ Token refreshed for user: ${user.username}`);
+    
+    res.json({
+      message: 'Token refreshed successfully',
+      token: newToken,
+      refreshed: true,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        totalMinutesWatched: user.total_minutes_watched,
+        currentMonthMinutes: user.current_month_minutes,
+        subscriptionTier: user.subscription_tier
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Token refresh error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Debug endpoint to test JWT token generation
+app.get('/api/debug/test-jwt-generation', async (req, res) => {
+  try {
+    console.log('🧪 Testing JWT token generation...');
+    
+    const testPayload = { 
+      userId: 999, 
+      username: 'testuser', 
+      email: 'test@example.com' 
+    };
+    
+    const token = generateJWTToken(testPayload, '7d');
+    
+    // Verify the token
+    const decoded = jwt.decode(token);
+    const now = Math.floor(Date.now() / 1000);
+    
+    res.json({
+      message: 'JWT token generation test completed',
+      token: token,
+      decoded: decoded,
+      currentTime: new Date().toISOString(),
+      tokenExpiry: new Date(decoded.exp * 1000).toISOString(),
+      timeDifference: (decoded.exp * 1000) - Date.now(),
+      isValidExpiration: decoded.exp > now,
+      testPayload: testPayload
+    });
+    
+  } catch (error) {
+    console.error('❌ JWT generation test failed:', error);
+    res.status(500).json({ 
+      error: 'JWT generation test failed',
+      details: error.message 
+    });
+  }
 });
 
 // ===== USER AUTHENTICATION ROUTES =====
@@ -546,12 +744,12 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate JWT token with extended expiry for remember me
     const tokenExpiry = rememberMe ? '30d' : '7d'; // 30 days if remember me, 7 days otherwise
     console.log(`🔑 Generating JWT token for user ${user.id} with secret length:`, JWT_SECRET ? JWT_SECRET.length : 0);
-    const token = jwt.sign(
+    
+    // Use robust token generation function
+    const token = generateJWTToken(
       { userId: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: tokenExpiry }
+      tokenExpiry
     );
-    console.log(`🔑 Generated token length:`, token.length);
 
     console.log(`✅ User logged in: ${user.username}`);
     res.json({
@@ -733,11 +931,10 @@ app.post('/api/auth/setup-password', async (req, res) => {
 
     console.log(`✅ Password set up for Google user: ${user.email}`);
 
-    // Generate JWT token for immediate login
-    const token = jwt.sign(
+    // Generate JWT token for immediate login using robust function
+    const token = generateJWTToken(
       { userId: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      '7d'
     );
 
     res.json({
@@ -1012,11 +1209,10 @@ app.get('/auth/google/callback', async (req, res) => {
       // Update last login
       await dbHelpers.updateLastLogin(user.id);
       
-      // Generate JWT token
-      const token = jwt.sign(
+      // Generate JWT token using robust function
+      const token = generateJWTToken(
         { userId: user.id, username: user.username, email: user.email },
-        JWT_SECRET,
-        { expiresIn: '30d' }
+        '30d'
       );
       
       console.log(`✅ Desktop app OAuth successful for: ${user.email}`);
@@ -1148,12 +1344,12 @@ app.get('/api/auth/google/callback',
       // All users coming through this callback are Google users and already verified by Google
       console.log('✅ Google OAuth callback - skipping email verification for:', user.email);
 
-      // Generate JWT token
+      // Generate JWT token using robust function
       console.log('🔑 Generating JWT token for user:', user.id);
-      const token = jwt.sign(
+      
+      const token = generateJWTToken(
         { userId: user.id, username: user.username, email: user.email },
-        JWT_SECRET,
-        { expiresIn: '7d' }
+        '7d'
       );
 
       // Update last login
@@ -1233,11 +1429,10 @@ app.get('/api/auth/verify-email/:token', async (req, res) => {
 
     console.log(`✅ Email verified for user: ${user.email}`);
 
-    // Generate JWT token for immediate login
-    const jwtToken = jwt.sign(
+    // Generate JWT token for immediate login using robust function
+    const jwtToken = generateJWTToken(
       { userId: user.id, username: user.username },
-      JWT_SECRET,
-      { expiresIn: '7d' }
+      '7d'
     );
 
     // Check if user needs to set username (manual signup users)
@@ -2409,9 +2604,10 @@ const requestTracker = {
 };
 
 // Print dashboard every 30 seconds
-setInterval(() => {
-  requestTracker.printDashboard();
-}, 30000);
+// TEMPORARILY DISABLED FOR CLEANER CONSOLE OUTPUT
+// setInterval(() => {
+//   requestTracker.printDashboard();
+// }, 30000);
 
 // Rate limiting middleware for tracking endpoints
 function trackingRateLimit(req, res, next) {
@@ -3682,7 +3878,281 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
   });
 });
 
-// ===== SERVER STARTUP =====
+// ===== ADVERTISER CHECKOUT ROUTES =====
+
+// Create advertiser checkout session
+app.post('/api/advertiser/create-checkout-session', upload.single('creative'), async (req, res) => {
+  try {
+    console.log('🚀 ===== ADVERTISER CHECKOUT SESSION CREATION STARTED =====');
+    
+    const {
+      companyName,
+      websiteUrl,
+      firstName,
+      lastName,
+      email,
+      jobTitle,
+      adFormat,
+      weeklyBudget,
+      cpmRate,
+      isRecurring,
+      expeditedApproval,
+      clickTracking,
+      destinationUrl
+    } = req.body;
+    
+    console.log('📝 Campaign data received:', {
+      companyName,
+      email,
+      adFormat,
+      weeklyBudget,
+      cpmRate,
+      expeditedApproval,
+      clickTracking,
+      destinationUrl
+    });
+    
+    // Validate required fields
+    if (!email || !companyName || !firstName || !lastName) {
+      return res.status(400).json({
+        error: 'Missing required fields',
+        message: 'Company name, email, first name, and last name are required'
+      });
+    }
+    
+    // Check Stripe configuration
+    if (!process.env.STRIPE_SECRET_KEY) {
+      console.error('❌ STRIPE_SECRET_KEY environment variable is not set');
+      return res.status(500).json({ error: 'Stripe configuration missing' });
+    }
+    
+    // Map frontend ad format to database format
+    let databaseAdFormat;
+    if (adFormat === 'static') {
+      databaseAdFormat = 'static_image';
+    } else if (adFormat === 'video') {
+      databaseAdFormat = 'video';
+    } else {
+      databaseAdFormat = adFormat;
+    }
+    
+    // Create payment_pending advertiser record in database (NO R2 upload yet)
+    console.log('💾 Creating payment_pending advertiser record...');
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // File will be uploaded directly to R2 in the webhook, not stored in database
+    let fileMetadata = null;
+    if (req.file) {
+      fileMetadata = {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        size: req.file.size
+      };
+      console.log('📁 File received for direct R2 upload:', req.file.originalname);
+      // Store only metadata, NOT the buffer
+    }
+    
+    const advertiserResult = await pool.query(
+      `INSERT INTO advertisers (
+        company_name, website_url, first_name, last_name, 
+        email, title_role, ad_format, weekly_budget_cap, cpm_rate, 
+        recurring_weekly, expedited, click_tracking, destination_url,
+        application_status, approved, completed, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'payment_pending', false, false, CURRENT_TIMESTAMP)
+      RETURNING id, email, company_name`,
+      [
+        companyName || null,
+        websiteUrl || null,
+        firstName || null,
+        lastName || null,
+        email,
+        jobTitle || null,
+        databaseAdFormat || null,
+        weeklyBudget ? parseFloat(weeklyBudget) : null,
+        cpmRate ? parseFloat(cpmRate) : null,
+        isRecurring === 'true' || isRecurring === true,
+        expeditedApproval === 'true' || expeditedApproval === true,
+        clickTracking === 'true' || clickTracking === true,
+        destinationUrl || null
+      ]
+    );
+    
+    const advertiser = advertiserResult.rows[0];
+    console.log('✅ Payment pending advertiser created:', { id: advertiser.id, email: advertiser.email });
+    
+    // NOTE: File data is NOT stored in database - it will be uploaded directly to R2 in the webhook
+    // No file storage in database to avoid performance issues
+    
+    // Calculate pricing and line items
+    const lineItems = [];
+    let totalAmount = 0;
+    
+    // ALL advertisers get CPM Impressions product (for usage-based billing)
+    // Note: This is a metered product, so no quantity needed
+    lineItems.push({
+      price: 'price_1SLI8i0CutcpJ738GEgo3GtO' // CPM Impressions price ID (metered)
+    });
+    
+    // Add Click Tracking if selected
+    if (clickTracking === 'true' || clickTracking === true) {
+      lineItems.push({
+        price: 'price_1SLI9X0CutcpJ738vcuk6LPD' // Click Tracking price ID (metered, no quantity)
+      });
+    }
+    
+    // Add Expedited Approval if selected (this has upfront cost)
+    if (expeditedApproval === 'true' || expeditedApproval === true) {
+      lineItems.push({
+        price: 'price_1SKv1E0CutcpJ738y51YDWa8', // Expedited Approval price ID
+        quantity: 1
+      });
+      totalAmount += 500; // $5.00 in cents
+    }
+    
+    console.log('💰 Pricing calculated:', {
+      cpmImpressions: true, // Always included
+      clickTracking: clickTracking === 'true' || clickTracking === true,
+      expeditedApproval: expeditedApproval === 'true' || expeditedApproval === true,
+      totalAmount: totalAmount,
+      lineItems: lineItems.length
+    });
+    
+    // Create Stripe customer for ALL advertisers
+    console.log('👤 Creating Stripe customer for ALL advertisers...');
+    const customer = await stripe.customers.create({
+      email: email,
+      name: `${firstName} ${lastName}`,
+      metadata: {
+        advertiserId: advertiser.id,
+        companyName: companyName,
+        campaignType: 'advertiser',
+        hasFile: !!req.file,
+        fileName: fileMetadata ? fileMetadata.originalname : null,
+        fileMimeType: fileMetadata ? fileMetadata.mimetype : null
+      }
+    });
+    
+    console.log('✅ Stripe customer created:', customer.id);
+    
+    // Create Stripe Checkout Session
+    console.log('🛒 Creating Stripe checkout session...');
+    const sessionConfig = {
+      customer: customer.id,
+      payment_method_types: ['card'],
+      mode: 'subscription', // MUST be subscription for usage-based billing
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser.html`,
+      metadata: {
+        advertiserId: advertiser.id,
+        companyName: companyName,
+        campaignType: 'advertiser',
+        hasFile: !!req.file,
+        fileName: fileMetadata ? fileMetadata.originalname : null,
+        fileMimeType: fileMetadata ? fileMetadata.mimetype : null,
+        isRecurring: isRecurring === 'true' || isRecurring === true,
+        weeklyBudget: weeklyBudget,
+        cpmRate: cpmRate
+      },
+      subscription_data: {
+        metadata: {
+          advertiserId: String(advertiser.id),
+          campaignType: 'advertiser',
+          companyName: companyName
+        }
+      },
+      line_items: lineItems
+    };
+    
+    // For usage-based billing, we don't need setup_future_usage
+    // The subscription mode handles recurring billing automatically
+    
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+    
+    console.log('✅ Checkout session created:', session.id);
+    console.log('🔗 Checkout URL:', session.url);
+    
+    // Update advertiser record with Stripe customer ID
+    await pool.query(
+      'UPDATE advertisers SET stripe_customer_id = $1 WHERE id = $2',
+      [customer.id, advertiser.id]
+    );
+    
+    console.log('🔍 ===== ADVERTISER CHECKOUT SESSION CREATION COMPLETED =====');
+    
+    res.json({
+      sessionId: session.id,
+      checkoutUrl: session.url,
+      advertiserId: advertiser.id,
+      totalAmount: totalAmount
+    });
+    
+  } catch (error) {
+    console.error('❌ ===== ADVERTISER CHECKOUT SESSION CREATION FAILED =====');
+    console.error('❌ Error details:', error.message);
+    res.status(500).json({ 
+      error: 'Failed to create checkout session', 
+      details: error.message 
+    });
+  }
+});
+
+// Get advertiser session details for success page
+app.get('/api/advertiser/session-details', async (req, res) => {
+  try {
+    const { session_id } = req.query;
+    
+    if (!session_id) {
+      return res.status(400).json({ error: 'Session ID is required' });
+    }
+    
+    console.log('🔍 Fetching session details for:', session_id);
+    
+    // Retrieve session from Stripe
+    const session = await stripe.checkout.sessions.retrieve(session_id);
+    
+    if (!session.metadata || session.metadata.campaignType !== 'advertiser') {
+      return res.status(404).json({ error: 'Session not found or not an advertiser session' });
+    }
+    
+    // Get advertiser details from database
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    const advertiserResult = await pool.query(
+      'SELECT id, company_name, email, expedited, application_status, created_at FROM advertisers WHERE id = $1',
+      [session.metadata.advertiserId]
+    );
+    
+    if (advertiserResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Advertiser not found' });
+    }
+    
+    const advertiser = advertiserResult.rows[0];
+    
+    res.json({
+      sessionId: session.id,
+      paymentStatus: session.payment_status,
+      advertiser: {
+        id: advertiser.id,
+        companyName: advertiser.company_name,
+        email: advertiser.email,
+        expedited: advertiser.expedited,
+        applicationStatus: advertiser.application_status,
+        createdAt: advertiser.created_at
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching session details:', error);
+    res.status(500).json({ error: 'Failed to fetch session details' });
+  }
+});
 
 // ===== STRIPE INTEGRATION =====
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
@@ -3740,7 +4210,7 @@ app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, 
         
         // Check if customer is not deleted and matches our user
         if (customer && !customer.deleted) {
-          customerId = customer.id;
+        customerId = customer.id;
           console.log('✅ Using verified existing customer:', customerId);
         } else {
           console.log('⚠️ Existing customer was deleted in Stripe, creating new one');
@@ -3776,20 +4246,20 @@ app.post('/api/subscribe/create-payment-intent', authenticateToken, async (req, 
           }
         } else {
           // Create brand new customer
-          customer = await stripe.customers.create({
-            email: req.user.email,
-            name: req.user.username,
-            metadata: {
-              userId: req.user.userId,
-              username: req.user.username
-            }
-          });
-          customerId = customer.id;
-          console.log('✅ Created new customer:', customerId);
+        customer = await stripe.customers.create({
+          email: req.user.email,
+          name: req.user.username,
+          metadata: {
+            userId: req.user.userId,
+            username: req.user.username
+          }
+        });
+        customerId = customer.id;
+        console.log('✅ Created new customer:', customerId);
 
-          // Save customer ID to database
-          const [updateErr] = await dbHelpers.updateStripeCustomerId(req.user.userId, customerId);
-          if (updateErr) {
+        // Save customer ID to database
+        const [updateErr] = await dbHelpers.updateStripeCustomerId(req.user.userId, customerId);
+        if (updateErr) {
             console.error('❌ Failed to save customer ID to database:', updateErr);
           } else {
             console.log('✅ Customer ID saved to database');
@@ -3904,7 +4374,7 @@ app.get('/api/subscribe/status', authenticateToken, async (req, res) => {
     // Retrieve subscription from Stripe
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
     console.log('📊 Subscription status:', subscription.status);
-    
+
     const isActive = subscription.status === 'active' || subscription.status === 'trialing';
     console.log('✅ Is subscription active?', isActive);
     
@@ -3914,11 +4384,11 @@ app.get('/api/subscribe/status', authenticateToken, async (req, res) => {
       // 🔧 USE THE DATABASE ID, NOT THE AUTH TOKEN ID
       const actualUserId = dbUser.id; // Use the verified database ID
       console.log('🔧 Using database user ID for premium update:', actualUserId);
-      
-      // Update user's premium status in database
+    
+    // Update user's premium status in database
       const [updateErr, updatedUser] = await dbHelpers.updatePremiumStatus(actualUserId, true);
-      if (updateErr) {
-        console.error('❌ Failed to update premium status:', updateErr);
+    if (updateErr) {
+      console.error('❌ Failed to update premium status:', updateErr);
         // Don't fail the request, just log the error
       } else if (updatedUser) {
         console.log('✅ Premium status updated successfully');
@@ -3984,27 +4454,269 @@ app.get('/api/subscribe/status', authenticateToken, async (req, res) => {
   }
 });
 
+// ===== MANUAL WEBHOOK TRIGGER FOR TESTING =====
+// This endpoint manually triggers the advertiser subscription webhook for testing
+app.post('/trigger-advertiser-webhook', async (req, res) => {
+  console.log('🧪 ===== MANUAL WEBHOOK TRIGGER FOR ADVERTISER EMAIL =====');
+  
+  try {
+    const { advertiserId } = req.body;
+    
+    if (!advertiserId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'advertiserId is required' 
+      });
+    }
+    
+    console.log('📝 Looking up advertiser ID:', advertiserId);
+    
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Database pool not available' 
+      });
+    }
+    
+    const advertiserResult = await pool.query(
+      'SELECT * FROM advertisers WHERE id = $1',
+      [advertiserId]
+    );
+    
+    if (advertiserResult.rows.length === 0) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Advertiser not found' 
+      });
+    }
+    
+    const advertiser = advertiserResult.rows[0];
+    console.log('📝 Found advertiser:', { id: advertiser.id, email: advertiser.email, application_status: advertiser.application_status });
+    
+    // Build campaign summary
+    const campaignSummary = {
+      ad_format: advertiser.ad_format,
+      cpm_rate: advertiser.cpm_rate,
+      weekly_budget_cap: advertiser.weekly_budget_cap,
+      expedited: advertiser.expedited,
+      click_tracking: advertiser.click_tracking
+    };
+    
+    console.log('📧 Campaign summary:', campaignSummary);
+    
+    // Send email
+    if (emailService && emailService.isEmailConfigured()) {
+      console.log('🔍 DEBUG: About to check email service...');
+      console.log('🔍 DEBUG: emailService exists:', !!emailService);
+      console.log('🔍 DEBUG: emailService.isEmailConfigured:', emailService ? emailService.isEmailConfigured() : 'N/A');
+      
+      console.log('🔍 DEBUG: Email service is configured, proceeding to send email');
+      console.log('🔍 DEBUG: Reached email sending point in manual trigger');
+      console.log('📧 Sending advertiser confirmation email to:', advertiser.email);
+      console.log('📧 Campaign summary data:', JSON.stringify(campaignSummary, null, 2));
+      
+      const emailResult = await emailService.sendAdvertiserConfirmationEmail(
+        advertiser.email,
+        advertiser.company_name,
+        campaignSummary
+      );
+      
+      if (emailResult.success) {
+        console.log('✅ Advertiser confirmation email sent successfully');
+        console.log('📧 Email message ID:', emailResult.messageId);
+      } else {
+        console.error('❌ Failed to send confirmation email:', emailResult);
+      }
+      
+      res.json({ 
+        success: emailResult.success, 
+        result: emailResult,
+        advertiser: {
+          id: advertiser.id,
+          email: advertiser.email,
+          status: advertiser.application_status
+        }
+      });
+    } else {
+      console.warn('⚠️ Email service NOT configured');
+      res.json({ 
+        success: false, 
+        error: 'Email service not configured',
+        debug: {
+          emailServiceExists: !!emailService,
+          isConfigured: emailService ? emailService.isEmailConfigured() : false,
+          hasTransporter: emailService ? !!emailService.transporter : false
+        }
+      });
+    }
+  } catch (error) {
+    console.error('❌ Manual webhook trigger error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
+// ===== TEST ENDPOINT FOR ADVERTISER EMAIL =====
+// This endpoint allows manual testing of the advertiser confirmation email
+app.post('/test-advertiser-email', async (req, res) => {
+  console.log('🧪 ===== TEST ADVERTISER EMAIL ENDPOINT CALLED =====');
+  console.log('🧪 Request body:', req.body);
+  
+  try {
+    const { email, companyName } = req.body;
+    
+    if (!email || !companyName) {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Email and companyName are required' 
+      });
+    }
+    
+    // Check if email service is available
+    console.log('🔍 DEBUG: Testing email service availability...');
+    console.log('🔍 DEBUG: emailService exists:', !!emailService);
+    
+    if (!emailService) {
+      console.error('❌ Email service not loaded');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Email service not loaded - check server startup logs' 
+      });
+    }
+    
+    console.log('🔍 DEBUG: emailService.isEmailConfigured:', emailService.isEmailConfigured());
+    console.log('🔍 DEBUG: emailService.transporter:', !!emailService.transporter);
+    
+    if (!emailService.isEmailConfigured()) {
+      console.error('❌ Email service not properly configured');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Email service not configured - check your .env file for EMAIL_* variables' 
+      });
+    }
+    
+    // Build test campaign summary
+    const campaignSummary = {
+      ad_format: 'video',
+      cpm_rate: 15.00,
+      weekly_budget_cap: 1000,
+      expedited: true,
+      click_tracking: true
+    };
+    
+    console.log('📧 Attempting to send test email...');
+    console.log('📧 To:', email);
+    console.log('📧 Company Name:', companyName);
+    console.log('📧 Campaign Summary:', campaignSummary);
+    
+    const result = await emailService.sendAdvertiserConfirmationEmail(
+      email, 
+      companyName, 
+      campaignSummary
+    );
+    
+    console.log('📧 Email send result:', result);
+    
+    if (result.success) {
+      console.log('✅ Test email sent successfully!');
+      console.log('📧 Message ID:', result.messageId);
+    } else {
+      console.error('❌ Test email failed:', result);
+    }
+    
+    res.json({ 
+      success: result.success, 
+      result: result,
+      debug: {
+        emailServiceAvailable: !!emailService,
+        emailServiceConfigured: emailService.isEmailConfigured(),
+        hasTransporter: !!emailService.transporter
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Test email error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      stack: error.stack 
+    });
+  }
+});
+
 // Stripe webhook endpoint
 app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  console.log('🔔🔔🔔 WEBHOOK ENDPOINT CALLED!');
+  console.log('🔔 Method:', req.method);
+  console.log('🔔 URL:', req.url);
   console.log('🔔 ===== WEBHOOK RECEIVED =====');
+  
+  // ✅ CRITICAL: Check if body is a Buffer (raw format Stripe needs)
+  console.log('🔍 RAW BODY CHECK:');
+  console.log('🔍 Body type:', typeof req.body);
+  console.log('🔍 Is Buffer?', Buffer.isBuffer(req.body));
+  console.log('🔍 Body length:', req.body ? req.body.length : 'No body');
+  console.log('🔍 Body toString preview:', req.body ? req.body.toString().substring(0, 100) : 'No body');
+  
   console.log('🔔 Headers:', req.headers);
-  console.log('🔔 Body length:', req.body ? req.body.length : 'No body');
+  console.log('🔔 User-Agent:', req.headers['user-agent']);
+  console.log('🔔 Stripe-Event-Id:', req.headers['stripe-event-id']);
   
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const isDevelopment = process.env.NODE_ENV !== 'production';
 
   console.log('🔔 Webhook secret configured:', !!endpointSecret);
+  console.log('🔔 Webhook secret value:', endpointSecret ? `${endpointSecret.substring(0, 8)}...` : 'NOT SET');
   console.log('🔔 Signature present:', !!sig);
-
+  console.log('🔔 Environment:', isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION');
+  
   let event;
 
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('✅ Webhook signature verified successfully');
-  } catch (err) {
-    console.log('❌ Webhook signature verification failed:', err.message);
-    console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+  // In development/test mode, skip signature verification
+  if (isDevelopment && process.env.SKIP_WEBHOOK_VERIFICATION !== 'false') {
+    console.log('⚠️ DEVELOPMENT MODE: Skipping webhook signature verification');
+    try {
+      // Ensure body is a buffer (it should be from express.raw())
+      const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+      event = JSON.parse(bodyBuffer.toString('utf8'));
+      console.log('✅ Webhook event parsed (development mode, no signature verification)');
+      console.log('🔔 Event Type:', event.type);
+    } catch (err) {
+      console.error('❌ Failed to parse webhook body as JSON:', err.message);
+      console.error('❌ Error details:', err);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  } else {
+    // Production mode - verify signature
+    if (!endpointSecret) {
+      console.error('❌ STRIPE_WEBHOOK_SECRET is NOT set in environment variables!');
+      console.error('❌ Without this, webhooks will fail signature verification.');
+      return res.status(400).send('Webhook Error: STRIPE_WEBHOOK_SECRET not configured');
+    }
+
+    try {
+      // Ensure body is a buffer for signature verification
+      const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+      
+      event = stripe.webhooks.constructEvent(bodyBuffer, sig, endpointSecret);
+      console.log('✅ Webhook signature verified successfully');
+      console.log('🔔 Event ID:', event.id);
+      console.log('🔔 Event Type:', event.type);
+      console.log('🔔 Event Created:', new Date(event.created * 1000).toISOString());
+    } catch (err) {
+      console.log('❌ Webhook signature verification failed:', err.message);
+      console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
+      console.log('❌ Signature received:', sig);
+      console.log('❌ Error details:', err);
+      console.log('⚠️ To skip verification in dev, set SKIP_WEBHOOK_VERIFICATION=true in .env');
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
   }
 
   console.log('🔔 ===== STRIPE WEBHOOK PROCESSING =====');
@@ -4013,6 +4725,154 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
 
   // Handle the event
   switch (event.type) {
+      case 'customer.subscription.created':
+        const subscription = event.data.object;
+        console.log('✅ ===== SUBSCRIPTION CREATED =====');
+        console.log('📋 Subscription ID:', subscription.id);
+        console.log('👤 Customer ID:', subscription.customer);
+        console.log('🏷️ Metadata:', subscription.metadata);
+        
+        // Handle advertiser subscription creation
+        console.log('🔍 DEBUG: Checking if this is an advertiser subscription...');
+        console.log('🔍 DEBUG: Full subscription object:', JSON.stringify(subscription, null, 2));
+        console.log('🔍 DEBUG: Subscription metadata:', subscription.metadata);
+        console.log('🔍 DEBUG: Has metadata property?', Object.prototype.hasOwnProperty.call(subscription, 'metadata'));
+        console.log('🔍 DEBUG: Metadata keys:', Object.keys(subscription.metadata || {}));
+
+        let campaignType = subscription.metadata?.campaignType;
+        let advertiserId = subscription.metadata?.advertiserId;
+        
+        if (!campaignType) {
+          console.log('⚠️ No campaignType in subscription.metadata, checking alternatives...');
+          if (subscription.metadata && Object.keys(subscription.metadata).length === 0) {
+            console.log('⚠️ Subscription metadata exists but is empty object');
+          }
+          if (!advertiserId) {
+            console.log('🔍 Checking for advertiserId in description or other fields...');
+          }
+        }
+        console.log('🔍 FINAL - campaignType:', campaignType, 'advertiserId:', advertiserId);
+        
+        if (campaignType === 'advertiser') {
+          console.log('📝 Processing advertiser subscription creation...');
+          
+          try {
+            console.log('📝 Advertiser ID:', advertiserId);
+            
+            // Get advertiser details from database
+            const pool = getPool();
+            if (!pool) {
+              console.error('❌ Database pool not available in webhook');
+              return;
+            }
+            
+            const advertiserResult = await pool.query(
+              'SELECT * FROM advertisers WHERE id = $1',
+              [advertiserId]
+            );
+            
+            if (advertiserResult.rows.length === 0) {
+              console.error('❌ Advertiser not found:', advertiserId);
+              return;
+            }
+            
+            const advertiser = advertiserResult.rows[0];
+            console.log('📝 Found advertiser:', { id: advertiser.id, email: advertiser.email });
+            
+            // NOTE: Files are NOT stored in database for performance reasons
+            // If a file was provided, it should have been uploaded to R2 directly
+            // The media_r2_link should already exist in the database
+            let mediaUrl = advertiser.media_r2_link || null;
+            
+            console.log('📤 File storage status:', {
+              hasMediaLink: !!advertiser.media_r2_link,
+              mediaUrl: mediaUrl
+            });
+            
+            // Update advertiser status to pending approval
+            const updateResult = await pool.query(
+              `UPDATE advertisers 
+               SET application_status = 'pending_approval',
+                   stripe_customer_id = $1,
+                   stripe_subscription_id = $2,
+                   media_r2_link = $3,
+                   updated_at = CURRENT_TIMESTAMP
+               WHERE id = $4
+               RETURNING id, email, company_name, expedited, click_tracking, ad_format, cpm_rate, weekly_budget_cap`,
+              [subscription.customer, subscription.id, mediaUrl, advertiserId]
+            );
+            
+            if (updateResult.rows.length > 0) {
+              const updatedAdvertiser = updateResult.rows[0];
+              console.log('✅ Advertiser status updated:', {
+                id: updatedAdvertiser.id,
+                email: updatedAdvertiser.email,
+                companyName: updatedAdvertiser.company_name,
+                expedited: updatedAdvertiser.expedited,
+                clickTracking: updatedAdvertiser.click_tracking,
+                status: 'pending_approval',
+                subscriptionId: subscription.id,
+                mediaUrl: mediaUrl
+              });
+              
+              // Send confirmation email with campaign summary
+              console.log('🔍 DEBUG: About to check email service...');
+              console.log('🔍 DEBUG: emailService exists:', !!emailService);
+              console.log('🔍 DEBUG: emailService.isEmailConfigured:', emailService ? emailService.isEmailConfigured() : 'N/A');
+              
+              if (emailService && emailService.isEmailConfigured()) {
+                console.log('🔍 DEBUG: Email service is configured, proceeding to send email');
+                try {
+                  // Build campaign summary object
+                  const campaignSummary = {
+                    ad_format: updatedAdvertiser.ad_format,
+                    cpm_rate: updatedAdvertiser.cpm_rate,
+                    weekly_budget_cap: updatedAdvertiser.weekly_budget_cap,
+                    expedited: updatedAdvertiser.expedited,
+                    click_tracking: updatedAdvertiser.click_tracking
+                  };
+                  
+                  console.log('🔍 DEBUG: Reached email sending point in webhook');
+                  console.log('📧 Sending advertiser confirmation email to:', updatedAdvertiser.email);
+                  console.log('📧 Campaign summary data:', JSON.stringify(campaignSummary, null, 2));
+                  
+                  const emailResult = await emailService.sendAdvertiserConfirmationEmail(
+                    updatedAdvertiser.email,
+                    updatedAdvertiser.company_name,
+                    campaignSummary
+                  );
+                  
+                  if (emailResult.success) {
+                    console.log('✅ Advertiser confirmation email sent successfully');
+                    console.log('📧 Email message ID:', emailResult.messageId);
+                  } else {
+                    console.error('❌ Failed to send confirmation email:', emailResult);
+                  }
+                } catch (emailError) {
+                  console.error('❌ Error sending confirmation email:', emailError);
+                  console.error('❌ Email error stack:', emailError.stack);
+                }
+              } else {
+                console.warn('⚠️ Email service NOT configured - skipping email');
+                console.warn('⚠️ Details:', {
+                  emailServiceExists: !!emailService,
+                  isConfigured: emailService ? emailService.isEmailConfigured() : false,
+                  hasTransporter: emailService ? !!emailService.transporter : false
+                });
+              }
+            } else {
+              console.error('❌ No advertiser found for update:', advertiserId);
+            }
+          } catch (advertiserError) {
+            console.error('❌ Error processing advertiser subscription:', advertiserError);
+          }
+        } else {
+          console.log('⚠️ Subscription metadata missing or not an advertiser campaign');
+          console.log('⚠️ This is likely a test webhook without proper metadata');
+          console.log('⚠️ Tip: Use /trigger-advertiser-webhook endpoint with a real advertiser ID');
+        }
+        break;
+        
     case 'invoice.payment_succeeded':
       const invoice = event.data.object;
       console.log('✅ ===== PAYMENT SUCCEEDED WEBHOOK =====');
@@ -4181,10 +5041,11 @@ app.listen(PORT, () => {
   console.log('\n📋 Available endpoints:');
   
   // Periodic health logging
-  setInterval(() => {
-    const pool = getPool();
-    console.log(`💓 Server health - DB: ${pool ? 'OK' : 'ERROR'}, Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
-  }, 60000); // Every minute
+  // TEMPORARILY DISABLED FOR CLEANER CONSOLE OUTPUT
+  // setInterval(() => {
+  //   const pool = getPool();
+  //   console.log(`💓 Server health - DB: ${pool ? 'OK' : 'ERROR'}, Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
+  // }, 60000); // Every minute
   console.log('   POST /api/auth/register');
   console.log('   POST /api/auth/login');
   console.log('   GET  /api/auth/me');

@@ -1506,9 +1506,9 @@
 
   <!-- Top Nav -->
   <header class="header">
-    <div class="header-container">
+      <div class="header-container">
       <!-- LOGO (Top Left) -->
-      <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+        <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       
       <!-- NAVIGATION (Top Right) -->
       <nav class="nav">
@@ -2473,18 +2473,18 @@
           return null;
         }
 
-        const requestKey = `start_session_${videoName}_${quality}`;
-        
-        // If same request is already pending, return that promise
-        if (pendingSessionRequests.has(requestKey)) {
-          console.log('⏸️ Reusing pending session request');
-          return pendingSessionRequests.get(requestKey);
-        }
+      const requestKey = `start_session_${videoName}_${quality}`;
+      
+      // If same request is already pending, return that promise
+      if (pendingSessionRequests.has(requestKey)) {
+        console.log('⏸️ Reusing pending session request');
+        return pendingSessionRequests.get(requestKey);
+      }
 
-        const sessionPromise = (async () => {
-          try {
-            // Add timeout to prevent hanging
-            const controller = new AbortController();
+      const sessionPromise = (async () => {
+        try {
+          // Add timeout to prevent hanging
+          const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
 
           const response = await trackedFetch('/api/tracking/start-session', {
@@ -2671,14 +2671,14 @@
         console.log('⚡ Loading impact data immediately (skip debounce for ad completion)');
         try {
           const response = await trackedFetch('/api/user/impact?force=true', {
-            headers: {
-              'Authorization': `Bearer ${authToken}`
-            }
-          });
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
 
-          if (response.ok) {
-            const result = await response.json();
-            const impact = result.impact;
+        if (response.ok) {
+          const result = await response.json();
+          const impact = result.impact;
             
             // Cache the result
             userImpactCache = {
@@ -2735,41 +2735,41 @@
         currentRank: impact.currentRank,
         timestamp: new Date().toLocaleTimeString()
       });
-      
-      // Update UI with impact data (remove skeleton classes)
-      const adsWatchedElement = document.getElementById('adsWatchedToday');
-      const totalAdsElement = document.getElementById('totalAdsWatched');
-      const rankElement = document.getElementById('currentRank');
-      
-      if (adsWatchedElement) {
+          
+          // Update UI with impact data (remove skeleton classes)
+          const adsWatchedElement = document.getElementById('adsWatchedToday');
+          const totalAdsElement = document.getElementById('totalAdsWatched');
+          const rankElement = document.getElementById('currentRank');
+          
+          if (adsWatchedElement) {
         const oldValue = adsWatchedElement.innerHTML;
-        adsWatchedElement.innerHTML = impact.adsWatchedToday;
-        adsWatchedElement.classList.add('data-loaded');
+            adsWatchedElement.innerHTML = impact.adsWatchedToday;
+            adsWatchedElement.classList.add('data-loaded');
         console.log(`📊 Ads Today: ${oldValue} → ${impact.adsWatchedToday}`);
-      }
-      
-      if (totalAdsElement) {
+          }
+          
+          if (totalAdsElement) {
         const oldValue = totalAdsElement.innerHTML;
-        totalAdsElement.innerHTML = impact.totalAdsWatched;
-        totalAdsElement.classList.add('data-loaded');
+            totalAdsElement.innerHTML = impact.totalAdsWatched;
+            totalAdsElement.classList.add('data-loaded');
         console.log(`📊 Total Ads: ${oldValue} → ${impact.totalAdsWatched}`);
-      }
-      
-      // Show dash for 0 minutes, otherwise show rank number
-      const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
-      if (rankElement) {
-        rankElement.innerHTML = rankDisplay;
-        rankElement.classList.add('data-loaded');
-      }
-      
-      document.getElementById('userMinutesDisplay').innerHTML = `${impact.watchTimeMinutes} mins`;
-      
-      // Update user rank in leaderboard
-      const userRankElement = document.getElementById('userRankDisplay');
-      if (userRankElement) {
-        userRankElement.innerHTML = rankDisplay;
-        userRankElement.classList.add('data-loaded');
-      }
+          }
+          
+          // Show dash for 0 minutes, otherwise show rank number
+          const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
+          if (rankElement) {
+            rankElement.innerHTML = rankDisplay;
+            rankElement.classList.add('data-loaded');
+          }
+          
+          document.getElementById('userMinutesDisplay').innerHTML = `${impact.watchTimeMinutes} mins`;
+          
+          // Update user rank in leaderboard
+          const userRankElement = document.getElementById('userRankDisplay');
+          if (userRankElement) {
+            userRankElement.innerHTML = rankDisplay;
+            userRankElement.classList.add('data-loaded');
+          }
       
       console.log('✅ Impact UI update completed');
     }
@@ -2878,7 +2878,7 @@
       // Auto-remove after 8 seconds
       setTimeout(() => {
         if (toast.parentNode) {
-          toast.remove();
+        toast.remove();
         }
       }, 8000);
     }
@@ -2949,7 +2949,7 @@
       
       try {
         const response = await trackedFetch(`/api/videos/${videoFilename}/advertiser`, {
-          headers: {
+            headers: {
             'Authorization': `Bearer ${authToken}`
           }
         });
@@ -3306,14 +3306,14 @@
               if (!sessionId) {
                 // Failed to start - desktop app active or rate limited
                 console.log('❌ Cannot start session - pausing video');
-                player.pause();
-                showConflictToast();
-                return;
-              }
-              
+            player.pause();
+            showConflictToast();
+            return;
+          }
+          
               // Session started successfully
               currentSessionId = sessionId;
-              sessionStartTime = Date.now();
+            sessionStartTime = Date.now();
               currentVideoStartTime = Date.now();
               pausedCount = 0;
               console.log('✅ Session started:', sessionId);
@@ -3321,9 +3321,9 @@
               // Start ad tracking
               if (!currentAdTrackingId) {
                 console.log('📺 Starting ad tracking for session:', currentSessionId);
-                startAdTracking(currentSessionId).then(adTrackingId => {
-                  if (adTrackingId) {
-                    currentAdTrackingId = adTrackingId;
+            startAdTracking(currentSessionId).then(adTrackingId => {
+              if (adTrackingId) {
+                currentAdTrackingId = adTrackingId;
                     isAdPlaying = true;  // CRITICAL: Set ad playing flag
                     adStartTime = Date.now();  // CRITICAL: Set ad start time
                     console.log('📺 Ad tracking started with ID:', adTrackingId);
@@ -3334,7 +3334,7 @@
                 }).catch(error => {
                   console.error('❌ Error starting ad tracking:', error);
                 });
-              } else {
+          } else {
                 console.log('📺 Ad tracking already active:', currentAdTrackingId);
               }
             });
@@ -3673,7 +3673,7 @@
         initializePlaylist().then(() => {
           if (playlist.length > 0) {
             console.log('✅ Playlist loaded, starting first video');
-            loadVideoWithQuality(0);
+        loadVideoWithQuality(0);
           } else {
             console.error('❌ Playlist is empty, cannot load video');
           }
