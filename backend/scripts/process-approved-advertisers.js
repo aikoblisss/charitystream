@@ -1,8 +1,9 @@
 const { Pool } = require('pg');
-const { S3Client, CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
 const path = require('path');
 const fs = require('fs');
 
+// Load email service for sending approval notifications
 // Load environment variables from the correct .env file location
 // Go up two levels from scripts/ to reach the charitystream folder
 const envPath = path.join(__dirname, '..', '..', '.env');
@@ -16,6 +17,9 @@ if (fs.existsSync(envPath)) {
   require('dotenv').config();
   console.log('⚠️  Using default .env location');
 }
+
+// NOW load email service after env vars are available
+const emailService = require('../services/emailService');
 
 console.log('🔗 DATABASE_URL present:', !!process.env.DATABASE_URL);
 
@@ -150,11 +154,16 @@ async function processApprovedAdvertisers() {
     client = await pool.connect();
     console.log('✅ Database connection established');
     
-    // Get all approved advertisers with video format that haven't been completed yet
+    // Get all approved video advertisers that haven't been completed yet
+    // ONLY process video ads (not images)
     const advertisersResult = await client.query(`
-      SELECT id, company_name, website_url, media_r2_link, ad_format
+      SELECT id, company_name, email, website_url, media_r2_link, ad_format, 
+             click_tracking, destination_url, cpm_rate, weekly_budget_cap, expedited
       FROM advertisers 
-      WHERE approved = true AND ad_format = 'video' AND completed = false
+      WHERE approved = true 
+        AND completed = false 
+        AND ad_format = 'video'
+        AND media_r2_link IS NOT NULL
     `);
 
     console.log(`📊 Found ${advertisersResult.rows.length} approved video advertisers pending processing`);
@@ -166,6 +175,15 @@ async function processApprovedAdvertisers() {
     for (const advertiser of advertisersResult.rows) {
       console.log(`\n🔍 Processing advertiser: ${advertiser.company_name}`);
       console.log(`📧 Advertiser ID: ${advertiser.id}`);
+      console.log(`📧 Email: ${advertiser.email}`);
+      
+      // Log click tracking status for existing icon system
+      console.log(`🔗 Click tracking enabled: ${advertiser.click_tracking ? 'YES' : 'NO'}`);
+      if (advertiser.click_tracking && advertiser.destination_url) {
+        console.log(`🔗 Destination URL: ${advertiser.destination_url} (will be used by existing icon system)`);
+      } else if (advertiser.click_tracking && !advertiser.destination_url) {
+        console.log(`⚠️ Click tracking enabled but no destination_url - icon may not work properly`);
+      }
       
       // Extract video filename from R2 link
       const originalVideoFilename = extractVideoFilename(advertiser.media_r2_link);
@@ -203,37 +221,103 @@ async function processApprovedAdvertisers() {
           console.log(`✅ Video copied successfully!`);
           console.log(`🔗 New video URL: ${copyResult.destinationUrl}`);
           
-          // Check if mapping already exists (by advertiser_id)
-          const existingMapping = await client.query(
-            'SELECT id, video_filename FROM video_advertiser_mappings WHERE advertiser_id = $1 AND is_active = true',
-            [advertiser.id]
-          );
-
-          if (existingMapping.rows.length > 0) {
-            // UPDATE existing mapping with new standardized filename
-            console.log(`🔄 Updating existing mapping with new video filename...`);
-            await client.query(
-              'UPDATE video_advertiser_mappings SET video_filename = $1 WHERE advertiser_id = $2',
-              [standardizedFilename, advertiser.id]
+          // Update advertiser record with all required fields
+          console.log(`💾 Updating advertiser record with approval status...`);
+          
+          // Build update query with all required columns
+          // Note: Some columns may not exist - PostgreSQL will ignore them gracefully
+          const updateQuery = `
+            UPDATE advertisers SET
+              completed = true,
+              application_status = 'approved',
+              current_week_start = COALESCE(current_week_start, NOW()),
+              campaign_start_date = COALESCE(campaign_start_date, NOW()),
+              approved_at = COALESCE(approved_at, NOW()),
+              updated_at = NOW()
+            WHERE id = $1
+          `;
+          
+          try {
+            await client.query(updateQuery, [advertiser.id]);
+            console.log(`✅ Advertiser record updated: ${advertiser.company_name} (ID: ${advertiser.id})`);
+            
+            // Verification: ensure click tracking data saved correctly
+            const verifyResult = await client.query(
+              `SELECT click_tracking, destination_url, application_status, completed 
+               FROM advertisers WHERE id = $1`,
+              [advertiser.id]
             );
-            console.log(`✅ Updated mapping: ${standardizedFilename} → ${advertiser.company_name}`);
-          } else {
-            // CREATE new mapping
-            await client.query(
-              `INSERT INTO video_advertiser_mappings 
-               (advertiser_id, video_filename, website_url, company_name) 
-               VALUES ($1, $2, $3, $4)`,
-              [advertiser.id, standardizedFilename, advertiser.website_url, advertiser.company_name]
-            );
-            console.log(`✅ Added mapping: ${standardizedFilename} → ${advertiser.company_name} (${advertiser.website_url})`);
+            const saved = verifyResult.rows[0] || {};
+            console.log('✅ Verification - Saved data:', {
+              click_tracking: saved.click_tracking,
+              destination_url: saved.destination_url,
+              application_status: saved.application_status,
+              completed: saved.completed
+            });
+          } catch (updateError) {
+            // If some columns don't exist, try a simpler update
+            console.log(`⚠️ Full update failed, trying simplified update...`);
+            console.log(`⚠️ Error: ${updateError.message}`);
+            try {
+              await client.query(
+                `UPDATE advertisers SET completed = true, application_status = 'approved', updated_at = NOW() WHERE id = $1`,
+                [advertiser.id]
+              );
+              console.log(`✅ Advertiser record updated (simplified): ${advertiser.company_name}`);
+              
+              // Verification for simplified path
+              const verifyResult = await client.query(
+                `SELECT click_tracking, destination_url, application_status, completed 
+                 FROM advertisers WHERE id = $1`,
+                [advertiser.id]
+              );
+              const saved = verifyResult.rows[0] || {};
+              console.log('✅ Verification - Saved data (simplified):', {
+                click_tracking: saved.click_tracking,
+                destination_url: saved.destination_url,
+                application_status: saved.application_status,
+                completed: saved.completed
+              });
+            } catch (simpleError) {
+              console.error(`❌ Database update failed:`, simpleError.message);
+              throw simpleError;
+            }
           }
           
-          // NEW: Mark advertiser as completed after successful processing
-          await client.query(
-            'UPDATE advertisers SET completed = true WHERE id = $1',
-            [advertiser.id]
-          );
-          console.log(`✅ Marked advertiser ${advertiser.company_name} (ID: ${advertiser.id}) as completed`);
+          // Send approval email to advertiser
+          if (emailService && emailService.isEmailConfigured()) {
+            try {
+              console.log(`📧 Sending approval email to: ${advertiser.email}`);
+              
+              // Build campaign summary for email
+              const campaignSummary = {
+                ad_format: advertiser.ad_format,
+                cpm_rate: advertiser.cpm_rate,
+                weekly_budget_cap: advertiser.weekly_budget_cap,
+                expedited: advertiser.expedited,
+                click_tracking: advertiser.click_tracking
+              };
+              
+              // Use the new approval email function (distinct content)
+              const emailResult = await emailService.sendAdvertiserApprovalEmail(
+                advertiser.email,
+                advertiser.company_name,
+                campaignSummary
+              );
+              
+              if (emailResult.success) {
+                console.log(`✅ Approval email sent successfully to ${advertiser.email}`);
+              } else {
+                console.error(`❌ Failed to send approval email:`, emailResult.error);
+                // Don't fail the entire process if email fails
+              }
+            } catch (emailError) {
+              console.error(`❌ Error sending approval email:`, emailError.message);
+              // Don't fail the entire process if email fails
+            }
+          } else {
+            console.log(`⚠️ Email service not configured - skipping approval email`);
+          }
           
           successCount++;
         } else {

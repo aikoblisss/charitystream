@@ -3654,9 +3654,10 @@ const advertiserCache = new Map();
 const ADVERTISER_CACHE_TTL = 300000; // 5 minutes
 
 // GET endpoint to fetch advertiser info for a specific video
-app.get('/api/videos/:videoFilename/advertiser', authenticateToken, async (req, res) => {
+app.get('/api/videos/:videoFilename/advertiser', async (req, res) => {
   try {
     const { videoFilename } = req.params;
+    console.log('🔍 Video advertiser endpoint called for:', videoFilename);
     
     // Check cache first
     const cacheKey = `advertiser_${videoFilename}`;
@@ -3671,9 +3672,14 @@ app.get('/api/videos/:videoFilename/advertiser', authenticateToken, async (req, 
     }
     
     const result = await pool.query(`
-      SELECT company_name, website_url, video_filename
-      FROM video_advertiser_mappings 
-      WHERE video_filename = $1 AND is_active = true
+      SELECT 
+        m.video_filename,
+        COALESCE(a.company_name, m.company_name) AS company_name,
+        COALESCE(a.destination_url, m.website_url) AS destination_url,
+        a.click_tracking
+      FROM video_advertiser_mappings m
+      LEFT JOIN advertisers a ON a.id = m.advertiser_id
+      WHERE m.video_filename = $1 AND m.is_active = true
       LIMIT 1
     `, [videoFilename]);
     
@@ -3684,6 +3690,7 @@ app.get('/api/videos/:videoFilename/advertiser', authenticateToken, async (req, 
       hasAdvertiser: false,
       advertiser: null
     };
+    console.log('📊 Advertiser endpoint returning:', responseData);
     
     // Cache the result
     advertiserCache.set(cacheKey, {
@@ -4997,6 +5004,56 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
           .catch(err => console.error('❌ Failed to update premium status:', err));
       }
       break;
+    
+    case 'checkout.session.completed':
+      const sessionCompleted = event.data.object;
+      console.log('💰 ===== DONATION PAYMENT COMPLETED =====');
+      console.log('💰 Session ID:', sessionCompleted.id);
+      console.log('💰 Customer email:', sessionCompleted.customer_details?.email);
+      console.log('💰 Amount total:', sessionCompleted.amount_total);
+      console.log('💰 Metadata:', sessionCompleted.metadata);
+      
+      try {
+        if (sessionCompleted.metadata?.donationType === 'direct_donation') {
+          const userIdMeta = sessionCompleted.metadata?.userId;
+          const donationAmount = sessionCompleted.amount_total;
+          const customerEmail = sessionCompleted.customer_details?.email;
+          
+          if (customerEmail && userIdMeta) {
+            const pool = getPool();
+            if (pool) {
+              try {
+                const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userIdMeta]);
+                const username = userResult.rows?.[0]?.username || 'Charity Stream Supporter';
+                console.log('📧 Sending donation thank you email to:', customerEmail, 'username:', username);
+                
+                if (emailService && emailService.isEmailConfigured()) {
+                  const emailResult = await emailService.sendDonationThankYouEmail(
+                    customerEmail,
+                    username,
+                    donationAmount,
+                    sessionCompleted.customer
+                  );
+                  if (!emailResult.success) {
+                    console.error('❌ Failed to send donation thank you email:', emailResult.error);
+                  }
+                } else {
+                  console.log('⚠️ Email service not configured - skipping donation thank you email');
+                }
+              } catch (userLookupErr) {
+                console.error('❌ Error looking up user for donation thank you email:', userLookupErr);
+              }
+            } else {
+              console.error('❌ No database pool available for donation email user lookup');
+            }
+          } else {
+            console.log('⚠️ Missing customer email or userId for donation email');
+          }
+        }
+      } catch (donationErr) {
+        console.error('❌ Error processing donation completion:', donationErr);
+      }
+      break;
       
     default:
       console.log('⚠️ Unhandled webhook event type:', event.type);
@@ -5196,4 +5253,38 @@ app.get('/api/stripe/config', (req, res) => {
   
   console.log('✅ Sending Stripe config response');
   res.json(response);
+});
+
+// Donation checkout session endpoint
+app.post('/api/donate/create-checkout-session', authenticateToken, async (req, res) => {
+  try {
+    console.log('💰 Donation checkout session requested');
+    const { amount = 300 } = req.body || {};
+    // Basic validation
+    if (typeof amount !== 'number' || isNaN(amount) || amount < 100) {
+      return res.status(400).json({ error: 'Minimum donation amount is $1.00' });
+    }
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: 'price_1SNmrt0CutcpJ738Sh6lSLeZ',
+          quantity: 1,
+        },
+      ],
+      mode: 'payment',
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/donation/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/`,
+      metadata: {
+        donationType: 'direct_donation',
+        amount: String(amount),
+        userId: String(req.user?.userId || ''),
+      }
+    });
+    console.log('✅ Donation checkout session created:', session.id);
+    res.json({ url: session.url });
+  } catch (error) {
+    console.error('❌ Donation session creation failed:', error);
+    res.status(500).json({ error: 'Failed to create donation session' });
+  }
 });

@@ -14,6 +14,22 @@
   <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet" />
   
   <style>
+    .donate-btn {
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-right: 10px;
+    }
+    .donate-btn:hover {
+      background: linear-gradient(135deg, #ff5252, #e84118);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+    }
     /* Reset and base styles */
     *, *::before, *::after {
       margin: 0;
@@ -1591,7 +1607,10 @@
         </div>
         <div class="video-controls">
           <div class="quality-text">Quality: <span class="quality-number" id="currentQualityDisplay">HD</span></div>
-          <button class="upgrade-btn" onclick="window.location.href='/subscribe'">Upgrade to get pop-out player</button>
+          <div class="action-buttons-container" style="display: flex; align-items: center; gap: 10px;">
+            <button id="donateButton" class="action-button donate-btn">💝 Donate to Charity</button>
+            <button id="upgradeButton" class="action-button upgrade-btn" onclick="window.location.href='/subscribe'">Upgrade to get pop-out player</button>
+          </div>
         </div>
       </section>
 
@@ -2933,8 +2952,22 @@
     // Cache advertiser info to avoid repeated lookups
     const advertiserInfoCache = new Map();
 
+    // Helper to retrieve auth token if not in memory
+    function getAuthToken() {
+      try {
+        return (typeof authToken !== 'undefined' && authToken) 
+          || localStorage.getItem('authToken') 
+          || sessionStorage.getItem('authToken') 
+          || (document.cookie.match(/authToken=([^;]+)/) || [])[1] 
+          || '';
+      } catch (e) {
+        return '';
+      }
+    }
+
     // Function to fetch advertiser info for current video
     async function fetchAdvertiserInfo(videoFilename) {
+      console.log('🎯 Fetching advertiser data for video:', videoFilename);
       // Check cache first
       if (advertiserInfoCache.has(videoFilename)) {
         const cached = advertiserInfoCache.get(videoFilename);
@@ -2948,10 +2981,9 @@
       }
       
       try {
+        const token = (typeof authToken !== 'undefined' && authToken) ? authToken : getAuthToken();
         const response = await trackedFetch(`/api/videos/${videoFilename}/advertiser`, {
-            headers: {
-            'Authorization': `Bearer ${authToken}`
-          }
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
         
         if (response.status === 429) {
@@ -2970,7 +3002,19 @@
           return;
         }
         
+        if (!response.ok) {
+          console.error('❌ Advertiser fetch failed:', response.status, response.statusText);
+          try {
+            const errText = await response.text();
+            console.error('❌ Error body:', errText);
+          } catch {}
+          currentAdvertiserInfo = null;
+          hideInfoButton();
+          return;
+        }
+
         const data = await response.json();
+        console.log('📦 Received advertiser data:', data);
         
         // Cache the result
         advertiserInfoCache.set(videoFilename, data);
@@ -2978,6 +3022,8 @@
         if (data.hasAdvertiser) {
           currentAdvertiserInfo = data.advertiser;
           console.log(`📢 Advertiser found: ${data.advertiser.company_name}`);
+          console.log('🔗 Destination URL:', currentAdvertiserInfo.destination_url);
+          console.log('👁️ Should show icon?', !!currentAdvertiserInfo?.destination_url);
           showInfoButton();
         } else {
           currentAdvertiserInfo = null;
@@ -2995,7 +3041,14 @@
       // Remove existing button if any
       hideInfoButton();
       
+      console.log('🔄 showInfoButton called with:', currentAdvertiserInfo);
       if (!currentAdvertiserInfo) return;
+      const dest = currentAdvertiserInfo.destination_url;
+      console.log('🔗 destination_url present:', dest);
+      if (!dest) {
+        console.log('🚫 destination_url missing - hiding icon');
+        return; // do not show icon without destination_url
+      }
       
       const infoButton = document.createElement('button');
       infoButton.id = 'advertiser-info-btn';
@@ -3032,9 +3085,12 @@
       });
       
       infoButton.addEventListener('click', () => {
-        if (currentAdvertiserInfo && currentAdvertiserInfo.website_url) {
-          console.log(`🔗 Opening advertiser website: ${currentAdvertiserInfo.website_url}`);
-          window.open(currentAdvertiserInfo.website_url, '_blank', 'noopener,noreferrer');
+        const destUrl = currentAdvertiserInfo?.destination_url;
+        if (destUrl) {
+          console.log(`🔗 Opening advertiser destination: ${destUrl}`);
+          window.open(destUrl, '_blank', 'noopener,noreferrer');
+        } else {
+          console.log('⚠️ No destination_url available; not opening link');
         }
       });
       
@@ -3059,6 +3115,34 @@
     }
 
     // ========== END ADVERTISER INFO SYSTEM ==========
+
+    // Donate button handler
+    document.getElementById('donateButton')?.addEventListener('click', async function() {
+      try {
+        console.log('🎯 Donate button clicked');
+        const token = (typeof authToken !== 'undefined' && authToken) ? authToken : getAuthToken();
+        const response = await fetch('/api/donate/create-checkout-session', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify({ amount: 300 }) // $3.00 default
+        });
+        if (!response.ok) {
+          console.error('❌ Donation create session failed:', response.status, response.statusText);
+          const errText = await response.text();
+          console.error('❌ Error body:', errText);
+          throw new Error('Failed to create donation session');
+        }
+        const { url } = await response.json();
+        console.log('✅ Donation session created, redirecting to:', url);
+        window.location.href = url;
+      } catch (error) {
+        console.error('❌ Donation error:', error);
+        alert('Failed to process donation. Please try again.');
+      }
+    });
 
     // Initialize full video player functionality for authenticated users
     function initializeVideoPlayer() {
