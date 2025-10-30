@@ -4702,9 +4702,13 @@ app.post('/test-advertiser-email', async (req, res) => {
 
 // Stripe webhook endpoint
 app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
-  console.log('🔔🔔🔔 WEBHOOK ENDPOINT CALLED!');
+  console.log('🌐 ===== WEBHOOK RECEIVED - ENTRY POINT =====');
+  console.log('📦 Request received at:', new Date().toISOString());
   console.log('🔔 Method:', req.method);
   console.log('🔔 URL:', req.url);
+  console.log('📦 Raw body length:', req.body ? req.body.length : 'undefined');
+  console.log('🔍 Stripe signature header:', req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING');
+  console.log('🔍 User-Agent:', req.headers['user-agent']);
   console.log('🔔 ===== WEBHOOK RECEIVED =====');
   
   // ✅ CRITICAL: Check if body is a Buffer (raw format Stripe needs)
@@ -5253,6 +5257,29 @@ app.get('/api/stripe/config', (req, res) => {
   
   console.log('✅ Sending Stripe config response');
   res.json(response);
+});
+
+// Webhook status endpoint to assist with configuration
+app.get('/api/webhook-status', (req, res) => {
+  try {
+    const webhookUrl = `${req.protocol}://${req.get('host')}/api/webhook`;
+    res.json({
+      webhookUrl: webhookUrl,
+      status: 'active',
+      environment: process.env.NODE_ENV,
+      requiredEvents: ['checkout.session.completed', 'customer.subscription.created', 'invoice.payment_succeeded'],
+      stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ? 'SET' : 'MISSING',
+      instructions: [
+        '1. Go to Stripe Dashboard → Developers → Webhooks',
+        '2. Add endpoint: ' + webhookUrl,
+        '3. Enable events: checkout.session.completed, customer.subscription.created, invoice.payment_succeeded',
+        '4. Copy webhook secret and set as STRIPE_WEBHOOK_SECRET',
+        '5. For local dev, use Stripe CLI: stripe listen --forward-to localhost:3001/api/webhook'
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to generate webhook status', details: err.message });
+  }
 });
 
 // Donation checkout session endpoint
