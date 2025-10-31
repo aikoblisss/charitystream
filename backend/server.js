@@ -4775,8 +4775,9 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
   }
 
   console.log('🔔 ===== STRIPE WEBHOOK PROCESSING =====');
-  console.log('🔔 Webhook event type:', event.type);
+  console.log('🌐 WEBHOOK RECEIVED - Event type:', event.type);
   console.log('🔔 Webhook event ID:', event.id);
+  console.log('📦 Full event object keys:', Object.keys(event.data.object || {}));
 
   // Handle the event
   switch (event.type) {
@@ -5013,7 +5014,8 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
       const sessionCompleted = event.data.object;
       console.log('💰 ===== DONATION PAYMENT COMPLETED =====');
       console.log('💰 Session ID:', sessionCompleted.id);
-      console.log('💰 Customer email:', sessionCompleted.customer_details?.email);
+      console.log('💰 Customer email (customer_email):', sessionCompleted.customer_email);
+      console.log('💰 Customer details:', sessionCompleted.customer_details);
       console.log('💰 Amount total:', sessionCompleted.amount_total);
       console.log('💰 Metadata:', sessionCompleted.metadata);
       
@@ -5021,7 +5023,15 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
         if (sessionCompleted.metadata?.donationType === 'direct_donation') {
           const userIdMeta = sessionCompleted.metadata?.userId;
           const donationAmount = sessionCompleted.amount_total;
-          const customerEmail = sessionCompleted.customer_details?.email;
+          
+          // FIX: Use customer_email instead of customer_details?.email
+          const customerEmail = sessionCompleted.customer_email || sessionCompleted.customer_details?.email;
+          
+          console.log('🔍 Email lookup result:', {
+            customer_email: sessionCompleted.customer_email,
+            customer_details_email: sessionCompleted.customer_details?.email,
+            final_customerEmail: customerEmail
+          });
           
           if (customerEmail && userIdMeta) {
             const pool = getPool();
@@ -5038,7 +5048,10 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
                     donationAmount,
                     sessionCompleted.customer
                   );
-                  if (!emailResult.success) {
+                  
+                  if (emailResult.success) {
+                    console.log('✅ Donation thank you email sent successfully!');
+                  } else {
                     console.error('❌ Failed to send donation thank you email:', emailResult.error);
                   }
                 } else {
@@ -5051,7 +5064,12 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
               console.error('❌ No database pool available for donation email user lookup');
             }
           } else {
-            console.log('⚠️ Missing customer email or userId for donation email');
+            console.log('⚠️ Missing customer email or userId for donation email:', {
+              hasCustomerEmail: !!customerEmail,
+              hasUserId: !!userIdMeta,
+              customerEmail: customerEmail,
+              userId: userIdMeta
+            });
           }
         }
       } catch (donationErr) {
