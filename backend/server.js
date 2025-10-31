@@ -5014,24 +5014,22 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
       const sessionCompleted = event.data.object;
       console.log('💰 ===== DONATION PAYMENT COMPLETED =====');
       console.log('💰 Session ID:', sessionCompleted.id);
-      console.log('💰 Customer email (customer_email):', sessionCompleted.customer_email);
-      console.log('💰 Customer details:', sessionCompleted.customer_details);
-      console.log('💰 Amount total:', sessionCompleted.amount_total);
       console.log('💰 Metadata:', sessionCompleted.metadata);
       
       try {
         if (sessionCompleted.metadata?.donationType === 'direct_donation') {
           const userIdMeta = sessionCompleted.metadata?.userId;
+          const userEmail = sessionCompleted.metadata?.userEmail; // Use email from metadata (user's Charity Stream email)
           const donationAmount = sessionCompleted.amount_total;
           
-          // FIX: Use customer_email instead of customer_details?.email
-          const customerEmail = sessionCompleted.customer_email || sessionCompleted.customer_details?.email;
-          
-          console.log('🔍 Email lookup result:', {
-            customer_email: sessionCompleted.customer_email,
-            customer_details_email: sessionCompleted.customer_details?.email,
-            final_customerEmail: customerEmail
+          console.log('🔍 Donation email lookup:', {
+            metadataUserEmail: userEmail,
+            stripeCustomerEmail: sessionCompleted.customer_email,
+            userId: userIdMeta
           });
+          
+          // Use the email from metadata (user's Charity Stream email) first, then fall back to Stripe customer_email
+          const customerEmail = userEmail || sessionCompleted.customer_email;
           
           if (customerEmail && userIdMeta) {
             const pool = getPool();
@@ -5045,8 +5043,7 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
                   const emailResult = await emailService.sendDonationThankYouEmail(
                     customerEmail,
                     username,
-                    donationAmount,
-                    sessionCompleted.customer
+                    donationAmount
                   );
                   
                   if (emailResult.success) {
@@ -5066,9 +5063,7 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
           } else {
             console.log('⚠️ Missing customer email or userId for donation email:', {
               hasCustomerEmail: !!customerEmail,
-              hasUserId: !!userIdMeta,
-              customerEmail: customerEmail,
-              userId: userIdMeta
+              hasUserId: !!userIdMeta
             });
           }
         }
@@ -5303,12 +5298,14 @@ app.get('/api/webhook-status', (req, res) => {
 // Donation checkout session endpoint
 app.post('/api/donate/create-checkout-session', authenticateToken, async (req, res) => {
   try {
-    console.log('💰 Donation checkout session requested');
+    console.log('💰 Donation checkout session requested for user:', req.user.email);
     const { amount = 300 } = req.body || {};
+    
     // Basic validation
     if (typeof amount !== 'number' || isNaN(amount) || amount < 100) {
       return res.status(400).json({ error: 'Minimum donation amount is $1.00' });
     }
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -5320,14 +5317,19 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/donation/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/`,
+      customer_email: req.user.email, // PRE-FILL WITH USER'S CHARITY STREAM EMAIL
       metadata: {
         donationType: 'direct_donation',
         amount: String(amount),
-        userId: String(req.user?.userId || ''),
+        userId: String(req.user.userId),
+        userEmail: req.user.email // Store email in metadata as backup
       }
     });
+    
     console.log('✅ Donation checkout session created:', session.id);
+    console.log('📧 Pre-filled email in Stripe checkout:', req.user.email);
     res.json({ url: session.url });
+    
   } catch (error) {
     console.error('❌ Donation session creation failed:', error);
     res.status(500).json({ error: 'Failed to create donation session' });
