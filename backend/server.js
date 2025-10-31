@@ -5057,8 +5057,12 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
           
           console.log('🔍 Donation lookup:', {
             donationId: donationId,
+            donationIdType: typeof donationId,
+            donationIdPresent: !!donationId,
             userId: userIdMeta,
-            amount: donationAmount
+            amount: donationAmount,
+            metadataKeys: Object.keys(sessionCompleted.metadata || {}),
+            fullMetadata: sessionCompleted.metadata
           });
           
           if (donationId) {
@@ -5472,6 +5476,16 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
     });
     
     // Create Stripe checkout session with donationId in metadata
+    const sessionMetadata = {
+      donationType: 'direct_donation',
+      amount: String(amount),
+      userId: String(req.user.userId),
+      userEmail: req.user.email, // Store email in metadata as backup
+      donationId: String(donationId) // Store donation ID for webhook lookup
+    };
+    
+    console.log('📦 Session metadata prepared:', sessionMetadata);
+    
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -5483,13 +5497,7 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/donation/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/`,
-      metadata: {
-        donationType: 'direct_donation',
-        amount: String(amount),
-        userId: String(req.user.userId),
-        userEmail: req.user.email, // Store email in metadata as backup
-        donationId: String(donationId) // Store donation ID for webhook lookup
-      }
+      metadata: sessionMetadata
     });
     
     // Update donation record with session ID
@@ -5500,10 +5508,109 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
     
     console.log('✅ Donation checkout session created:', session.id);
     console.log('💾 Donation record updated with session ID:', session.id);
+    console.log('🔍 Session metadata stored:', {
+      donationId: sessionMetadata.donationId,
+      userId: sessionMetadata.userId,
+      donationType: sessionMetadata.donationType,
+      amount: sessionMetadata.amount
+    });
     res.json({ url: session.url });
     
   } catch (error) {
     console.error('❌ Donation session creation failed:', error);
     res.status(500).json({ error: 'Failed to create donation session' });
+  }
+});
+
+// Test endpoint for donation email (for debugging)
+app.post('/api/test/donation-email', authenticateToken, async (req, res) => {
+  try {
+    console.log('🧪 ===== TEST DONATION EMAIL ENDPOINT =====');
+    console.log('🧪 Requested by user:', req.user.email);
+    
+    const testEmail = 'brandengreene03@gmail.com';
+    const testUsername = req.user.username || 'branden';
+    const testAmount = 300; // $3.00 in cents
+    
+    // Check email service
+    if (!emailService) {
+      console.error('❌ Email service not loaded');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Email service not loaded',
+        details: 'emailService is null'
+      });
+    }
+    
+    if (!emailService.isEmailConfigured()) {
+      console.error('❌ Email service not configured');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Email service not configured',
+        details: 'Check EMAIL_HOST, EMAIL_PORT, EMAIL_USER, EMAIL_PASS environment variables'
+      });
+    }
+    
+    if (!emailService.transporter) {
+      console.error('❌ Email transporter not initialized');
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Email transporter not initialized',
+        details: 'Transporter creation failed'
+      });
+    }
+    
+    // Verify transporter
+    console.log('🔍 Verifying email transporter connection...');
+    try {
+      await emailService.transporter.verify();
+      console.log('✅ Email transporter verified');
+    } catch (verifyError) {
+      console.error('❌ Email transporter verification failed:', verifyError.message);
+      return res.status(500).json({ 
+        success: false, 
+        error: 'Email transporter verification failed',
+        details: verifyError.message
+      });
+    }
+    
+    // Send test email
+    console.log('📧 Sending test donation thank you email...');
+    console.log('  To:', testEmail);
+    console.log('  Username:', testUsername);
+    console.log('  Amount:', testAmount);
+    
+    const result = await emailService.sendDonationThankYouEmail(
+      testEmail,
+      testUsername,
+      testAmount
+    );
+    
+    if (result.success) {
+      console.log('✅ Test email sent successfully!');
+      console.log('📧 Message ID:', result.messageId);
+      return res.json({
+        success: true,
+        message: 'Test email sent successfully',
+        messageId: result.messageId,
+        recipient: testEmail
+      });
+    } else {
+      console.error('❌ Test email failed:', result.error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to send test email',
+        details: result.error
+      });
+    }
+    
+  } catch (error) {
+    console.error('❌ Test email endpoint error:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Test email endpoint failed',
+      details: error.message,
+      stack: error.stack
+    });
   }
 });
