@@ -174,6 +174,21 @@ async function createTables() {
     )
   `;
 
+  const createDonationsTable = `
+    CREATE TABLE IF NOT EXISTS donations (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER REFERENCES users(id),
+      amount INTEGER NOT NULL,
+      currency VARCHAR(3) DEFAULT 'usd',
+      stripe_session_id VARCHAR(255),
+      stripe_payment_intent_id VARCHAR(255),
+      customer_email VARCHAR(255) NOT NULL,
+      status VARCHAR(50) DEFAULT 'pending',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
   try {
     await pool.query(createUsersTable);
     console.log('✅ Users table ready');
@@ -193,6 +208,8 @@ async function createTables() {
     console.log('✅ Advertisers table ready');
     await pool.query(createSponsorsTable);
     console.log('✅ Sponsors table ready');
+    await pool.query(createDonationsTable);
+    console.log('✅ Donations table ready');
     
     // Add missing columns if they don't exist
     await addMissingColumns();

@@ -5051,67 +5051,150 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
         if (isDonation && isOneTimePayment && hasDonationMetadata) {
           console.log('🟢 PROCEEDING WITH DONATION EMAIL');
           
+          const donationId = sessionCompleted.metadata?.donationId;
           const userIdMeta = sessionCompleted.metadata?.userId;
-          const userEmail = sessionCompleted.metadata?.userEmail;
           const donationAmount = sessionCompleted.amount_total;
           
-          // FIX: Use customer_details.email instead of customer_email
-          const customerEmail = userEmail || 
-                               sessionCompleted.customer_details?.email || 
-                               sessionCompleted.customer_email;
-          
-          console.log('🔍 Email lookup debugging:', {
-            metadataUserEmail: userEmail,
-            customer_details_email: sessionCompleted.customer_details?.email,
-            customer_email: sessionCompleted.customer_email,
-            final_customerEmail: customerEmail
+          console.log('🔍 Donation lookup:', {
+            donationId: donationId,
+            userId: userIdMeta,
+            amount: donationAmount
           });
           
-          if (customerEmail && userIdMeta) {
+          if (donationId) {
             const pool = getPool();
             if (pool) {
               try {
-                const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userIdMeta]);
-                const username = userResult.rows?.[0]?.username || 'Charity Stream Supporter';
-                console.log('📧 Sending donation thank you email to:', customerEmail, 'username:', username);
+                // Look up donation record from database (source of truth for email - same pattern as advertiser)
+                const donationResult = await pool.query(
+                  `SELECT d.*, u.username 
+                   FROM donations d 
+                   LEFT JOIN users u ON d.user_id = u.id 
+                   WHERE d.id = $1`,
+                  [donationId]
+                );
                 
-                if (emailService && emailService.isEmailConfigured()) {
-                  const emailResult = await emailService.sendDonationThankYouEmail(
-                    customerEmail,
-                    username,
-                    donationAmount
+                if (donationResult.rows.length > 0) {
+                  const donation = donationResult.rows[0];
+                  const customerEmail = donation.customer_email; // Use database email (guaranteed source)
+                  const username = donation.username || 'Charity Stream Supporter';
+                  
+                  console.log('✅ Donation found in database:', {
+                    donationId: donation.id,
+                    customerEmail: customerEmail,
+                    username: username,
+                    status: donation.status
+                  });
+                  
+                  // Update donation status to completed
+                  await pool.query(
+                    `UPDATE donations 
+                     SET status = 'completed', 
+                         stripe_payment_intent_id = $1,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = $2`,
+                    [sessionCompleted.payment_intent, donationId]
                   );
                   
-                  if (emailResult.success) {
-                    console.log('✅ Donation thank you email sent successfully!');
+                  console.log('✅ Donation status updated to completed');
+                  
+                  // Send thank you email using DATABASE email (reliable source, matches advertiser pattern)
+                  if (emailService && emailService.isEmailConfigured()) {
+                    console.log('📧 Sending donation thank you email to:', customerEmail, 'username:', username);
+                    
+                    const emailResult = await emailService.sendDonationThankYouEmail(
+                      customerEmail, // From database (reliable source, same as advertiser)
+                      username,
+                      donationAmount
+                    );
+                    
+                    if (emailResult.success) {
+                      console.log('✅ Donation thank you email sent successfully!');
+                    } else {
+                      console.error('❌ Failed to send donation thank you email:', emailResult.error);
+                    }
                   } else {
-                    console.error('❌ Failed to send donation thank you email:', emailResult.error);
+                    console.log('⚠️ Email service not configured - skipping donation thank you email');
+                    console.log('⚠️ Email service state:', {
+                      emailServiceExists: !!emailService,
+                      isConfigured: emailService ? emailService.isEmailConfigured() : false,
+                      hasTransporter: emailService ? !!emailService.transporter : false
+                    });
                   }
                 } else {
-                  console.log('⚠️ Email service not configured - skipping donation thank you email');
-                  console.log('⚠️ Email service state:', {
-                    emailServiceExists: !!emailService,
-                    isConfigured: emailService ? emailService.isEmailConfigured() : false,
-                    hasTransporter: emailService ? !!emailService.transporter : false
-                  });
+                  console.error('❌ Donation record not found:', donationId);
+                  // Fallback to Stripe email if database lookup fails
+                  const fallbackEmail = sessionCompleted.customer_details?.email || 
+                                       sessionCompleted.metadata?.userEmail ||
+                                       sessionCompleted.customer_email;
+                  
+                  if (fallbackEmail && userIdMeta) {
+                    console.log('🔄 Falling back to Stripe email:', fallbackEmail);
+                    
+                    const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userIdMeta]);
+                    const username = userResult.rows?.[0]?.username || 'Charity Stream Supporter';
+                    
+                    if (emailService && emailService.isEmailConfigured()) {
+                      const emailResult = await emailService.sendDonationThankYouEmail(
+                        fallbackEmail,
+                        username,
+                        donationAmount
+                      );
+                      
+                      if (emailResult.success) {
+                        console.log('✅ Donation thank you email sent successfully (fallback)!');
+                      } else {
+                        console.error('❌ Failed to send donation thank you email (fallback):', emailResult.error);
+                      }
+                    }
+                  } else {
+                    console.error('❌ Cannot send email - missing donation record and no fallback email');
+                  }
                 }
-              } catch (userLookupErr) {
-                console.error('❌ Error looking up user for donation thank you email:', userLookupErr);
-                console.error('❌ User lookup error stack:', userLookupErr.stack);
+              } catch (donationErr) {
+                console.error('❌ Error processing donation completion:', donationErr);
+                console.error('❌ Donation error stack:', donationErr.stack);
               }
             } else {
               console.error('❌ No database pool available for donation email user lookup');
             }
           } else {
-            console.log('⚠️ Missing customer email or userId for donation email:', {
-              hasCustomerEmail: !!customerEmail,
-              hasUserId: !!userIdMeta,
-              customerEmail: customerEmail,
-              userId: userIdMeta,
-              userEmail: userEmail,
-              customerDetailsEmail: sessionCompleted.customer_details?.email,
-              customerEmailField: sessionCompleted.customer_email
-            });
+            console.log('⚠️ Missing donationId in metadata - cannot use database lookup');
+            console.log('⚠️ Falling back to Stripe email extraction');
+            
+            // Fallback to old method if donationId missing
+            const userIdMeta = sessionCompleted.metadata?.userId;
+            const userEmail = sessionCompleted.metadata?.userEmail;
+            const donationAmount = sessionCompleted.amount_total;
+            const customerEmail = userEmail || 
+                                 sessionCompleted.customer_details?.email || 
+                                 sessionCompleted.customer_email;
+            
+            if (customerEmail && userIdMeta) {
+              const pool = getPool();
+              if (pool) {
+                try {
+                  const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userIdMeta]);
+                  const username = userResult.rows?.[0]?.username || 'Charity Stream Supporter';
+                  
+                  if (emailService && emailService.isEmailConfigured()) {
+                    const emailResult = await emailService.sendDonationThankYouEmail(
+                      customerEmail,
+                      username,
+                      donationAmount
+                    );
+                    
+                    if (emailResult.success) {
+                      console.log('✅ Donation thank you email sent successfully (fallback method)!');
+                    } else {
+                      console.error('❌ Failed to send donation thank you email (fallback):', emailResult.error);
+                    }
+                  }
+                } catch (fallbackErr) {
+                  console.error('❌ Error in fallback email send:', fallbackErr);
+                }
+              }
+            }
           }
         } else {
           console.log('🔴 NOT PROCESSING - not a donation or wrong payment type');
@@ -5363,6 +5446,32 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
       return res.status(400).json({ error: 'Minimum donation amount is $1.00' });
     }
     
+    // Get database pool
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // Create donation record in database BEFORE payment (same pattern as advertiser)
+    console.log('💾 Creating donation record in database...');
+    const donationResult = await pool.query(
+      `INSERT INTO donations (user_id, amount, customer_email, status, stripe_session_id)
+       VALUES ($1, $2, $3, 'pending', NULL)
+       RETURNING id`,
+      [req.user.userId, amount, req.user.email]
+    );
+    
+    const donationId = donationResult.rows[0].id;
+    console.log('✅ Donation record created:', { 
+      donationId: donationId, 
+      userId: req.user.userId,
+      email: req.user.email,
+      amount: amount,
+      status: 'pending'
+    });
+    
+    // Create Stripe checkout session with donationId in metadata
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
@@ -5378,11 +5487,19 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
         donationType: 'direct_donation',
         amount: String(amount),
         userId: String(req.user.userId),
-        userEmail: req.user.email // Store email in metadata as backup
+        userEmail: req.user.email, // Store email in metadata as backup
+        donationId: String(donationId) // Store donation ID for webhook lookup
       }
     });
     
+    // Update donation record with session ID
+    await pool.query(
+      'UPDATE donations SET stripe_session_id = $1 WHERE id = $2',
+      [session.id, donationId]
+    );
+    
     console.log('✅ Donation checkout session created:', session.id);
+    console.log('💾 Donation record updated with session ID:', session.id);
     res.json({ url: session.url });
     
   } catch (error) {
