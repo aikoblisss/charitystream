@@ -323,18 +323,39 @@ app.use(helmet({
 
 // REMOVED: app.use('/api/', limiter);
 
-// CORS configuration
-app.use(cors({
-  origin: [
-    'http://localhost:8081',    // Electron app
-    'http://localhost:8082',    // Electron fallback
-    'http://localhost:3001',    // Your existing ports
-    'https://charitystream.vercel.app',  // Vercel production
-    'https://charitystream.com',         // Custom domain (if configured)
-    'https://www.charitystream.com'      // Custom domain www (if configured)
-  ],
-  credentials: true
-}));
+// CORS configuration - but skip for webhook endpoint (Stripe webhooks are server-to-server, no CORS needed)
+app.use((req, res, next) => {
+  // Log ALL incoming requests to /api/webhook for debugging
+  if (req.path === '/api/webhook' || req.originalUrl === '/api/webhook') {
+    console.log('🔔 ===== WEBHOOK REQUEST DETECTED IN MIDDLEWARE =====');
+    console.log('🔔 Path:', req.path);
+    console.log('🔔 Original URL:', req.originalUrl);
+    console.log('🔔 Method:', req.method);
+    console.log('🔔 Headers:', {
+      'user-agent': req.headers['user-agent'],
+      'stripe-signature': req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING',
+      'content-type': req.headers['content-type'],
+      'origin': req.headers['origin'],
+      'host': req.headers['host']
+    });
+    // Skip CORS for webhook endpoint (Stripe sends server-to-server requests)
+    return next();
+  }
+  
+  // Apply CORS for all other routes
+  cors({
+    origin: [
+      'http://localhost:8081',    // Electron app
+      'http://localhost:8082',    // Electron fallback
+      'http://localhost:3001',    // Your existing ports
+      'https://charitystream.vercel.app',  // Vercel production
+      'https://charitystream.com',         // Custom domain (if configured)
+      'https://www.charitystream.com',     // Custom domain www (if configured)
+      'https://stream.charity'             // Production domain
+    ],
+    credentials: true
+  })(req, res, next);
+});
 
 // Body parser - but skip for webhook endpoint (it needs raw body)
 app.use((req, res, next) => {
@@ -4700,15 +4721,19 @@ app.post('/test-advertiser-email', async (req, res) => {
   }
 });
 
-// Stripe webhook endpoint
+// Stripe webhook endpoint - MUST be defined early to avoid other middleware interference
 app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
   console.log('🌐 ===== WEBHOOK RECEIVED - ENTRY POINT =====');
   console.log('📦 Request received at:', new Date().toISOString());
   console.log('🔔 Method:', req.method);
   console.log('🔔 URL:', req.url);
+  console.log('🔔 Full path:', req.path);
+  console.log('🔔 Original URL:', req.originalUrl);
   console.log('📦 Raw body length:', req.body ? req.body.length : 'undefined');
   console.log('🔍 Stripe signature header:', req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING');
   console.log('🔍 User-Agent:', req.headers['user-agent']);
+  console.log('🔍 Origin:', req.headers['origin']);
+  console.log('🔍 Referer:', req.headers['referer']);
   console.log('🔔 ===== WEBHOOK RECEIVED =====');
   
   // ✅ CRITICAL: Check if body is a Buffer (raw format Stripe needs)
