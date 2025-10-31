@@ -4778,6 +4778,16 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
   console.log('🌐 WEBHOOK RECEIVED - Event type:', event.type);
   console.log('🔔 Webhook event ID:', event.id);
   console.log('📦 Full event object keys:', Object.keys(event.data.object || {}));
+  
+  // Specific logging for checkout.session.completed events
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    console.log('🎯 CHECKOUT.SESSION.COMPLETED DETECTED');
+    console.log('🎯 Is donation?', session.metadata?.donationType === 'direct_donation');
+    console.log('🎯 Full event received at:', new Date().toISOString());
+    console.log('🎯 Session mode:', session.mode);
+    console.log('🎯 Has donation metadata?', !!session.metadata?.donationType);
+  }
 
   // Handle the event
   switch (event.type) {
@@ -5012,12 +5022,35 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
     
     case 'checkout.session.completed':
       const sessionCompleted = event.data.object;
-      console.log('💰 ===== DONATION PAYMENT COMPLETED =====');
+      console.log('💰 ===== DONATION WEBHOOK DETAILED DEBUG =====');
       console.log('💰 Session ID:', sessionCompleted.id);
+      console.log('💰 Session mode:', sessionCompleted.mode);
+      console.log('💰 Customer:', sessionCompleted.customer);
+      console.log('💰 Payment intent:', sessionCompleted.payment_intent);
+      console.log('💰 Subscription:', sessionCompleted.subscription);
       console.log('💰 ALL Metadata:', sessionCompleted.metadata);
+      console.log('💰 Customer details:', sessionCompleted.customer_details);
+      console.log('💰 Amount total:', sessionCompleted.amount_total);
+      
+      // Check if this matches the donation pattern
+      const isDonation = sessionCompleted.metadata?.donationType === 'direct_donation';
+      const isOneTimePayment = sessionCompleted.mode === 'payment';
+      const hasDonationMetadata = sessionCompleted.metadata?.userId && sessionCompleted.metadata?.amount;
+      
+      console.log('🔍 Donation detection:', {
+        isDonation: isDonation,
+        isOneTimePayment: isOneTimePayment,
+        hasDonationMetadata: hasDonationMetadata,
+        shouldProcess: isDonation && isOneTimePayment && hasDonationMetadata,
+        metadataDonationType: sessionCompleted.metadata?.donationType,
+        metadataUserId: sessionCompleted.metadata?.userId,
+        metadataAmount: sessionCompleted.metadata?.amount
+      });
       
       try {
-        if (sessionCompleted.metadata?.donationType === 'direct_donation') {
+        if (isDonation && isOneTimePayment && hasDonationMetadata) {
+          console.log('🟢 PROCEEDING WITH DONATION EMAIL');
+          
           const userIdMeta = sessionCompleted.metadata?.userId;
           const userEmail = sessionCompleted.metadata?.userEmail;
           const donationAmount = sessionCompleted.amount_total;
@@ -5056,9 +5089,15 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
                   }
                 } else {
                   console.log('⚠️ Email service not configured - skipping donation thank you email');
+                  console.log('⚠️ Email service state:', {
+                    emailServiceExists: !!emailService,
+                    isConfigured: emailService ? emailService.isEmailConfigured() : false,
+                    hasTransporter: emailService ? !!emailService.transporter : false
+                  });
                 }
               } catch (userLookupErr) {
                 console.error('❌ Error looking up user for donation thank you email:', userLookupErr);
+                console.error('❌ User lookup error stack:', userLookupErr.stack);
               }
             } else {
               console.error('❌ No database pool available for donation email user lookup');
@@ -5068,14 +5107,25 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
               hasCustomerEmail: !!customerEmail,
               hasUserId: !!userIdMeta,
               customerEmail: customerEmail,
-              userId: userIdMeta
+              userId: userIdMeta,
+              userEmail: userEmail,
+              customerDetailsEmail: sessionCompleted.customer_details?.email,
+              customerEmailField: sessionCompleted.customer_email
             });
           }
         } else {
-          console.log('🔴 Not a donation - metadata.donationType:', sessionCompleted.metadata?.donationType);
+          console.log('🔴 NOT PROCESSING - not a donation or wrong payment type');
+          console.log('🔴 Reasons:', {
+            isDonation: isDonation,
+            isOneTimePayment: isOneTimePayment,
+            hasDonationMetadata: hasDonationMetadata,
+            mode: sessionCompleted.mode,
+            donationType: sessionCompleted.metadata?.donationType
+          });
         }
       } catch (donationErr) {
         console.error('❌ Error processing donation completion:', donationErr);
+        console.error('❌ Donation error stack:', donationErr.stack);
       }
       break;
       
