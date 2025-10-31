@@ -5014,22 +5014,25 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
       const sessionCompleted = event.data.object;
       console.log('💰 ===== DONATION PAYMENT COMPLETED =====');
       console.log('💰 Session ID:', sessionCompleted.id);
-      console.log('💰 Metadata:', sessionCompleted.metadata);
+      console.log('💰 ALL Metadata:', sessionCompleted.metadata);
       
       try {
         if (sessionCompleted.metadata?.donationType === 'direct_donation') {
           const userIdMeta = sessionCompleted.metadata?.userId;
-          const userEmail = sessionCompleted.metadata?.userEmail; // Use email from metadata (user's Charity Stream email)
+          const userEmail = sessionCompleted.metadata?.userEmail;
           const donationAmount = sessionCompleted.amount_total;
           
-          console.log('🔍 Donation email lookup:', {
-            metadataUserEmail: userEmail,
-            stripeCustomerEmail: sessionCompleted.customer_email,
-            userId: userIdMeta
-          });
+          // FIX: Use customer_details.email instead of customer_email
+          const customerEmail = userEmail || 
+                               sessionCompleted.customer_details?.email || 
+                               sessionCompleted.customer_email;
           
-          // Use the email from metadata (user's Charity Stream email) first, then fall back to Stripe customer_email
-          const customerEmail = userEmail || sessionCompleted.customer_email;
+          console.log('🔍 Email lookup debugging:', {
+            metadataUserEmail: userEmail,
+            customer_details_email: sessionCompleted.customer_details?.email,
+            customer_email: sessionCompleted.customer_email,
+            final_customerEmail: customerEmail
+          });
           
           if (customerEmail && userIdMeta) {
             const pool = getPool();
@@ -5063,9 +5066,13 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
           } else {
             console.log('⚠️ Missing customer email or userId for donation email:', {
               hasCustomerEmail: !!customerEmail,
-              hasUserId: !!userIdMeta
+              hasUserId: !!userIdMeta,
+              customerEmail: customerEmail,
+              userId: userIdMeta
             });
           }
+        } else {
+          console.log('🔴 Not a donation - metadata.donationType:', sessionCompleted.metadata?.donationType);
         }
       } catch (donationErr) {
         console.error('❌ Error processing donation completion:', donationErr);
@@ -5317,7 +5324,6 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
       mode: 'payment',
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/donation/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/`,
-      customer_email: req.user.email, // PRE-FILL WITH USER'S CHARITY STREAM EMAIL
       metadata: {
         donationType: 'direct_donation',
         amount: String(amount),
@@ -5327,7 +5333,6 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
     });
     
     console.log('✅ Donation checkout session created:', session.id);
-    console.log('📧 Pre-filled email in Stripe checkout:', req.user.email);
     res.json({ url: session.url });
     
   } catch (error) {
