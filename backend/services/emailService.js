@@ -39,7 +39,7 @@ class EmailService {
       // Remove any spaces from the app password (common issue with .env files)
       const cleanEmailPass = process.env.EMAIL_PASS.replace(/\s+/g, '');
       
-      console.log('🔧 Creating email transporter...');
+      console.log('🔧 Creating email transporter with enhanced timeout settings...');
       this.transporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST,
         port: parseInt(process.env.EMAIL_PORT),
@@ -48,30 +48,117 @@ class EmailService {
           user: process.env.EMAIL_USER,
           pass: cleanEmailPass, // Use cleaned password
         },
-        // Add connection timeout
-        connectionTimeout: 10000,
-        // Add greeting timeout
-        greetingTimeout: 10000,
+        // 🚨 CRITICAL: Enhanced timeout settings for Vercel/serverless environments
+        connectionTimeout: 30000, // 30 seconds - increased from 10s
+        greetingTimeout: 30000,   // 30 seconds - increased from 10s
+        socketTimeout: 30000,     // 30 seconds socket timeout
+        // Connection pool settings
+        maxConnections: 5,         // Maximum number of concurrent connections
+        maxMessages: 100,          // Maximum number of messages per connection
+        rateDelta: 1000,           // Rate limiting delay (ms)
+        rateLimit: 5,              // Maximum number of messages per rateDelta
+        // Retry settings
+        pool: true,                // Use connection pooling
+        // Additional SMTP options for better reliability
+        requireTLS: false,         // Don't require TLS (let server negotiate)
+        tls: {
+          rejectUnauthorized: false, // Accept self-signed certificates if needed
+          // Note: Modern TLS will be negotiated automatically
+        }
       });
 
       console.log('✅ Email transporter created, verifying connection...');
+      console.log('🔧 Timeout settings:', {
+        connectionTimeout: 30000,
+        greetingTimeout: 30000,
+        socketTimeout: 30000
+      });
       
-      // Verify transporter configuration
-      this.transporter.verify((error, success) => {
-        if (error) {
-          console.error('❌ Email transporter verification failed:', error);
-          console.error('❌ Error details:', error.message);
-          this.transporter = null;
-        } else {
+      // Verify transporter configuration with timeout
+      const verifyPromise = new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Email transporter verification timeout after 30 seconds'));
+        }, 30000);
+        
+        this.transporter.verify((error, success) => {
+          clearTimeout(timeout);
+          if (error) {
+            reject(error);
+          } else {
+            resolve(success);
+          }
+        });
+      });
+      
+      verifyPromise
+        .then(() => {
           console.log('✅ Email transporter is ready to send messages');
           console.log('✅ SMTP connection successful');
-        }
-      });
+        })
+        .catch((error) => {
+          console.error('❌ Email transporter verification failed:', error);
+          console.error('❌ Error details:', error.message);
+          console.error('❌ Error code:', error.code);
+          // Don't set transporter to null - allow retry on first send
+          console.log('⚠️ Transporter created but verification failed - will retry on first send');
+        });
       
     } catch (error) {
       console.error('❌ Failed to create email transporter:', error);
       this.transporter = null;
     }
+  }
+
+  // Helper method to send email with retry logic
+  async sendMailWithRetry(mailOptions, maxRetries = 3) {
+    let lastError;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📧 Attempting to send email (attempt ${attempt}/${maxRetries})...`);
+        
+        // If transporter is null, try to reinitialize
+        if (!this.transporter) {
+          console.log('⚠️ Transporter is null, reinitializing...');
+          this.initializeTransporter();
+          // Wait a bit for initialization
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        
+        const info = await this.transporter.sendMail(mailOptions);
+        console.log(`✅ Email sent successfully on attempt ${attempt}`);
+        return { success: true, messageId: info.messageId, response: info.response };
+      } catch (error) {
+        lastError = error;
+        console.error(`❌ Email send attempt ${attempt} failed:`, error.message);
+        console.error(`❌ Error code:`, error.code);
+        
+        // If it's a connection timeout error, wait before retrying
+        if (error.code === 'ETIMEDOUT' || error.message.includes('timeout') || error.message.includes('Connection timeout')) {
+          const waitTime = attempt * 2000; // Exponential backoff: 2s, 4s, 6s
+          console.log(`⏳ Connection timeout, waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          
+          // Try to reinitialize transporter on timeout
+          console.log('🔄 Reinitializing transporter after timeout...');
+          this.initializeTransporter();
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } else if (attempt < maxRetries) {
+          // For other errors, wait shorter time
+          const waitTime = attempt * 1000; // 1s, 2s, 3s
+          console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+      }
+    }
+    
+    console.error(`❌ Email send failed after ${maxRetries} attempts`);
+    return { 
+      success: false, 
+      error: lastError?.message || 'Unknown error',
+      code: lastError?.code,
+      command: lastError?.command
+    };
   }
 
   // Check if email service is ready to send
@@ -330,12 +417,19 @@ Thank you for supporting our mission to make a positive impact through ad watchi
         html: htmlContent
       };
       
-      console.log('📧 Sending donation thank you email');
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('✅ Donation thank you email sent successfully');
-      console.log('📧 Message ID:', result.messageId);
+      console.log('📧 Sending donation thank you email with retry logic...');
       
-      return { success: true, messageId: result.messageId };
+      // Use retry logic for sending
+      const result = await this.sendMailWithRetry(mailOptions, 3);
+      
+      if (result.success) {
+        console.log('✅ Donation thank you email sent successfully');
+        console.log('📧 Message ID:', result.messageId);
+      } else {
+        console.error('❌ Donation thank you email failed after retries:', result.error);
+      }
+      
+      return result;
       
     } catch (error) {
       console.error('❌ ===== DONATION THANK YOU EMAIL FAILED =====');

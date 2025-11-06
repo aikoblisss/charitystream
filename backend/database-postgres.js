@@ -7,24 +7,41 @@ let pool = null;
 async function initializeDatabase() {
   console.log('🔧 Initializing PostgreSQL database...');
   
-  // Create connection pool with timeout settings
+  // Create connection pool with enhanced timeout settings for Vercel/serverless environments
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: {
       rejectUnauthorized: false,
       require: true
     },
-    connectionTimeoutMillis: 5000, // 5 seconds (reduced)
-    idleTimeoutMillis: 10000, // 10 seconds (reduced)
-    max: 10, // Maximum number of clients in the pool (reduced)
-    min: 1,  // Minimum number of clients in the pool (reduced)
-    query_timeout: 5000, // 5 seconds query timeout
-    statement_timeout: 5000 // 5 seconds statement timeout
+    connectionTimeoutMillis: 30000, // 🚨 INCREASED: 30 seconds (was 5s) for Vercel/serverless cold starts
+    idleTimeoutMillis: 30000, // 🚨 INCREASED: 30 seconds (was 10s) 
+    max: 10, // Maximum number of clients in the pool
+    min: 1,  // Minimum number of clients in the pool
+    query_timeout: 30000, // 🚨 INCREASED: 30 seconds query timeout (was 5s)
+    statement_timeout: 30000 // 🚨 INCREASED: 30 seconds statement timeout (was 5s)
+  });
+
+  // Add error handling for pool
+  pool.on('error', (err, client) => {
+    console.error('❌ Database pool error:', err);
+    console.error('❌ Error code:', err.code);
+    console.error('❌ Error message:', err.message);
+  });
+
+  pool.on('connect', (client) => {
+    console.log('🔌 New database connection established');
   });
 
   try {
-    // Test connection
-    const result = await pool.query('SELECT NOW()');
+    // Test connection with timeout
+    console.log('🔍 Testing database connection with 30s timeout...');
+    const connectionPromise = pool.query('SELECT NOW()');
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database connection timeout after 30 seconds')), 30000)
+    );
+    
+    const result = await Promise.race([connectionPromise, timeoutPromise]);
     console.log('✅ Connected to PostgreSQL database');
     console.log('📅 Database time:', result.rows[0].now);
 
@@ -33,6 +50,10 @@ async function initializeDatabase() {
     console.log('🎉 PostgreSQL database initialization complete!');
   } catch (error) {
     console.error('❌ Database initialization failed:', error.message);
+    console.error('❌ Error code:', error.code);
+    console.error('❌ Full error:', error);
+    // Don't throw - allow server to continue with degraded functionality
+    console.log('⚠️ Server will continue but database operations may fail');
   }
 }
 

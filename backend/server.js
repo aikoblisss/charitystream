@@ -38,19 +38,28 @@ const { initializeDatabase, dbHelpers, getPool: getPoolFromDb } = require('./dat
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
 
-// IMPROVED pool configuration with better error handling
+// IMPROVED pool configuration with better error handling and increased timeouts
 const createPool = () => {
   const newPool = new Pool({
     connectionString: process.env.DATABASE_URL,
     max: 20, // Increase max connections
     idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
-    connectionTimeoutMillis: 10000, // Return error after 10 seconds if no connection
+    connectionTimeoutMillis: 30000, // 🚨 INCREASED: 30 seconds (was 10s) for Vercel/serverless cold starts
     maxUses: 7500, // Close and replace a connection after 7500 uses
+    // Additional timeout settings for query execution
+    query_timeout: 30000, // 30 seconds query timeout
+    statement_timeout: 30000, // 30 seconds statement timeout
+    // SSL settings for secure connections
+    ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? {
+      rejectUnauthorized: false
+    } : undefined
   });
 
   // ADD comprehensive error handling for the pool
   newPool.on('error', (err, client) => {
     console.error('❌ Database pool error:', err);
+    console.error('❌ Error message:', err.message);
+    console.error('❌ Error code:', err.code);
     // Don't crash the server on pool errors
   });
 
@@ -67,7 +76,7 @@ const createPool = () => {
 
 let managedPool = null;
 
-// ADD pool health check and recovery
+// ADD pool health check and recovery with retry logic
 const checkPoolHealth = async () => {
   try {
     const pool = getPool();
@@ -77,13 +86,20 @@ const checkPoolHealth = async () => {
       return false;
     }
     
-    const client = await pool.connect();
+    // Add timeout to health check
+    const healthCheckPromise = pool.connect();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Health check timeout')), 10000)
+    );
+    
+    const client = await Promise.race([healthCheckPromise, timeoutPromise]);
     await client.query('SELECT 1');
     client.release();
     console.log('✅ Database pool health check passed');
     return true;
   } catch (error) {
-    console.error('❌ Database pool health check failed:', error);
+    console.error('❌ Database pool health check failed:', error.message);
+    console.error('❌ Error code:', error.code);
     
     // Try to recreate the pool if it's unhealthy
     try {
@@ -357,10 +373,14 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
-// Body parser - but skip for webhook endpoint (it needs raw body)
+// 🚨 CRITICAL: Apply express.raw() FIRST for webhook endpoint BEFORE any JSON parsing
+// This ensures the webhook receives raw Buffer data for signature verification
+app.use('/api/webhook', express.raw({type: 'application/json'}));
+
+// Body parser for all other routes (AFTER webhook raw middleware)
 app.use((req, res, next) => {
-  // Skip body parsing for webhook endpoint
-  if (req.path === '/api/webhook') {
+  // Skip body parsing for webhook endpoint (already handled by express.raw() above)
+  if (req.path === '/api/webhook' || req.originalUrl === '/api/webhook') {
     return next();
   }
   return bodyParser.json()(req, res, next);
@@ -4722,7 +4742,8 @@ app.post('/test-advertiser-email', async (req, res) => {
 });
 
 // Stripe webhook endpoint - MUST be defined early to avoid other middleware interference
-app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+// Note: express.raw() is already applied globally above, but we keep it here for clarity
+app.post('/api/webhook', async (req, res) => {
   console.log('🌐 ===== WEBHOOK RECEIVED - ENTRY POINT =====');
   console.log('📦 Request received at:', new Date().toISOString());
   console.log('🔔 Method:', req.method);
@@ -4781,8 +4802,26 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
     }
 
     try {
-      // Ensure body is a buffer for signature verification
-      const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+      // 🚨 CRITICAL: Ensure body is a Buffer for signature verification
+      // express.raw() should provide this, but verify to be safe
+      let bodyBuffer;
+      if (Buffer.isBuffer(req.body)) {
+        bodyBuffer = req.body;
+        console.log('✅ Body is already a Buffer, length:', bodyBuffer.length);
+      } else if (typeof req.body === 'string') {
+        bodyBuffer = Buffer.from(req.body, 'utf8');
+        console.log('⚠️ Body is string, converting to Buffer, length:', bodyBuffer.length);
+      } else {
+        console.error('❌ Body is not Buffer or string:', typeof req.body);
+        console.error('❌ Body value:', req.body);
+        return res.status(400).send('Webhook Error: Invalid body format');
+      }
+      
+      console.log('🔍 Webhook signature verification:', {
+        bodyLength: bodyBuffer.length,
+        signaturePresent: !!sig,
+        endpointSecretPresent: !!endpointSecret
+      });
       
       event = stripe.webhooks.constructEvent(bodyBuffer, sig, endpointSecret);
       console.log('✅ Webhook signature verified successfully');
@@ -4792,7 +4831,9 @@ app.post('/api/webhook', express.raw({type: 'application/json'}), async (req, re
     } catch (err) {
       console.log('❌ Webhook signature verification failed:', err.message);
       console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
-      console.log('❌ Signature received:', sig);
+      console.log('❌ Signature received:', sig ? `${sig.substring(0, 20)}...` : 'Not present');
+      console.log('❌ Body type:', typeof req.body);
+      console.log('❌ Body is Buffer:', Buffer.isBuffer(req.body));
       console.log('❌ Error details:', err);
       console.log('⚠️ To skip verification in dev, set SKIP_WEBHOOK_VERIFICATION=true in .env');
       return res.status(400).send(`Webhook Error: ${err.message}`);
