@@ -2023,6 +2023,19 @@
       window.location.href = '/auth';
     }
 
+    // Validate token on page load
+    function validateTokenOnLoad() {
+      const token = getAuthToken();
+      if (token) {
+        console.log('🔐 Token found on page load, will validate with first API call');
+        // Token validation will happen on first API call
+        // If token is expired, authAwareFetch will handle it
+      } else {
+        console.log('🔐 No token found, showing login UI');
+        // UI will show login state from setInitialUIState()
+      }
+    }
+
     // Check authentication on page load
     window.onload = function() {
       console.log('🚀 Page loading, checking authentication...');
@@ -2046,6 +2059,9 @@
         hasUser: !!userStr,
         token: authToken ? 'Present' : 'Missing'
       });
+      
+      // Validate token on load
+      validateTokenOnLoad();
       
       // --- NEW: dispatch an auth-ready event for modules that need auth to be known
       window.dispatchEvent(new Event('authReady'));
@@ -2191,7 +2207,7 @@
     async function loadUserInfo() {
       try {
         console.log('📡 Loading user info with token:', authToken ? 'Present' : 'Missing');
-        const response = await fetch('/api/auth/me', {
+        const response = await authAwareFetch('/api/auth/me', {
           headers: {
             'Authorization': `Bearer ${authToken}`
           }
@@ -2222,9 +2238,17 @@
           // Load user impact and leaderboard data
           loadUserImpact();
           loadLeaderboard();
+        } else if (response.status === 403) {
+          // Auth error already handled by authAwareFetch
+          console.log('🔐 Auth error in loadUserInfo, redirecting...');
         }
       } catch (error) {
-        console.error('Error loading user info:', error);
+        if (error.message === 'Authentication required') {
+          // Already handled by authAwareFetch
+          console.log('🔐 Authentication required, redirecting...');
+        } else {
+          console.error('Error loading user info:', error);
+        }
       }
     }
 
@@ -2297,7 +2321,7 @@
       if (!authToken || !sessionId) return;
 
       try {
-        const response = await fetch('/api/tracking/complete-session', {
+        const response = await authAwareFetch('/api/tracking/complete-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -2440,7 +2464,70 @@
     // Expose to window for manual inspection
     window.debugRequests = frontendRequestTracker;
 
-    // Tracked fetch wrapper
+    // ===== AUTH ERROR HANDLING =====
+    // Global flag to prevent multiple redirects
+    let authErrorHandled = false;
+    
+    // Handle authentication errors (403 responses)
+    async function handleAuthError(response) {
+      if (response.status === 403) {
+        console.log('🔐 Auth error detected (403), checking token...');
+        
+        // Prevent multiple redirects
+        if (authErrorHandled) {
+          console.log('🔐 Auth error already handled, skipping');
+          return true;
+        }
+        
+        try {
+          // Clone response to read body without consuming original
+          const clonedResponse = response.clone();
+          const errorData = await clonedResponse.json();
+          console.log('🔐 Error response:', errorData);
+          
+          if ((errorData.error && (errorData.error.includes('jwt') || errorData.error.includes('token') || errorData.error.includes('Invalid'))) ||
+              (errorData.message && (errorData.message.includes('jwt') || errorData.message.includes('token')))) {
+            console.log('❌ Token expired or invalid, clearing and redirecting...');
+            
+            authErrorHandled = true;
+            
+            // Clear all auth storage
+            localStorage.removeItem('authToken');
+            sessionStorage.removeItem('authToken');
+            localStorage.removeItem('currentUser');
+            localStorage.removeItem('userData');
+            
+            // Clear in-memory variables
+            authToken = null;
+            currentUser = null;
+            
+            // Redirect to login page
+            window.location.href = '/auth';
+            
+            return true; // Indicates auth error was handled
+          }
+        } catch (parseError) {
+          // If we can't parse JSON, still clear tokens on 403 as precaution
+          console.log('❌ 403 error, clearing tokens as precaution...');
+          console.log('❌ Parse error:', parseError);
+          
+          authErrorHandled = true;
+          
+          localStorage.removeItem('authToken');
+          sessionStorage.removeItem('authToken');
+          localStorage.removeItem('currentUser');
+          authToken = null;
+          
+          // Redirect to login
+          window.location.href = '/auth';
+          
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Tracked fetch wrapper with auth error handling
     async function trackedFetch(url, options = {}) {
       const method = options.method || 'GET';
       const startTime = performance.now();
@@ -2449,10 +2536,46 @@
         const response = await fetch(url, options);
         const duration = Math.round(performance.now() - startTime);
         frontendRequestTracker.log(url, method, response.status, duration);
+        
+        // Check for auth errors before returning response
+        if (response.status === 403) {
+          const handled = await handleAuthError(response);
+          if (handled) {
+            // Throw error to prevent further processing
+            throw new Error('Authentication required');
+          }
+        }
+        
         return response;
       } catch (error) {
         const duration = Math.round(performance.now() - startTime);
         frontendRequestTracker.log(url, method, 'ERROR', duration);
+        
+        // If it's an auth error, re-throw it
+        if (error.message === 'Authentication required') {
+          throw error;
+        }
+        
+        throw error;
+      }
+    }
+
+    // Auth-aware fetch wrapper (for direct fetch calls)
+    async function authAwareFetch(url, options = {}) {
+      try {
+        const response = await fetch(url, options);
+        
+        // Check for auth errors
+        if (response.status === 403) {
+          const handled = await handleAuthError(response);
+          if (handled) {
+            throw new Error('Authentication required');
+          }
+        }
+        
+        return response;
+      } catch (error) {
+        console.error('❌ Fetch error:', error);
         throw error;
       }
     }
@@ -2527,6 +2650,12 @@
             currentSessionId = result.sessionId;
             console.log('📺 Watch session started:', result.sessionId);
             return result.sessionId;
+          } else if (response.status === 403) {
+            // Auth error - handled by trackedFetch, but don't show desktop app message
+            console.log('🔐 Auth error during session start (403)');
+            circuitBreaker.recordFailure();
+            // trackedFetch will handle redirect, just return null here
+            return null;
           } else if (response.status === 409) {
             // Session conflict detected (desktop app active)
             const errorData = await response.json();
@@ -2556,6 +2685,9 @@
         } catch (error) {
           if (error.name === 'AbortError') {
             console.log('📺 Watch session request timed out (non-critical)');
+          } else if (error.message === 'Authentication required') {
+            // Auth error already handled by trackedFetch
+            console.log('🔐 Auth error during session start, redirecting...');
           } else {
             console.error('Error starting watch session:', error);
             circuitBreaker.recordFailure();
@@ -3121,7 +3253,7 @@
       try {
         console.log('🎯 Donate button clicked');
         const token = (typeof authToken !== 'undefined' && authToken) ? authToken : getAuthToken();
-        const response = await fetch('/api/donate/create-checkout-session', {
+        const response = await authAwareFetch('/api/donate/create-checkout-session', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -3388,16 +3520,25 @@
             // Try to start session
             startWatchSession(playlist[currentIndex], "standard").then(sessionId => {
               if (!sessionId) {
-                // Failed to start - desktop app active or rate limited
-                console.log('❌ Cannot start session - pausing video');
-            player.pause();
-            showConflictToast();
-            return;
-          }
-          
+                // Failed to start - could be desktop app active, rate limited, or auth error
+                // Check if auth error was handled (token cleared)
+                const token = getAuthToken();
+                if (!token) {
+                  // Auth error - token was cleared, redirect will happen
+                  console.log('🔐 Auth error detected, token cleared - redirecting to login');
+                  return;
+                }
+                
+                // Not an auth error - likely desktop app active or rate limited
+                console.log('❌ Cannot start session - pausing video (likely desktop app or rate limit)');
+                player.pause();
+                showConflictToast();
+                return;
+              }
+              
               // Session started successfully
               currentSessionId = sessionId;
-            sessionStartTime = Date.now();
+              sessionStartTime = Date.now();
               currentVideoStartTime = Date.now();
               pausedCount = 0;
               console.log('✅ Session started:', sessionId);
@@ -3405,9 +3546,9 @@
               // Start ad tracking
               if (!currentAdTrackingId) {
                 console.log('📺 Starting ad tracking for session:', currentSessionId);
-            startAdTracking(currentSessionId).then(adTrackingId => {
-              if (adTrackingId) {
-                currentAdTrackingId = adTrackingId;
+                startAdTracking(currentSessionId).then(adTrackingId => {
+                  if (adTrackingId) {
+                    currentAdTrackingId = adTrackingId;
                     isAdPlaying = true;  // CRITICAL: Set ad playing flag
                     adStartTime = Date.now();  // CRITICAL: Set ad start time
                     console.log('📺 Ad tracking started with ID:', adTrackingId);
@@ -3416,10 +3557,23 @@
                     console.log('❌ Failed to start ad tracking - no ID returned');
                   }
                 }).catch(error => {
-                  console.error('❌ Error starting ad tracking:', error);
+                  if (error.message === 'Authentication required') {
+                    console.log('🔐 Auth error during ad tracking, redirecting...');
+                  } else {
+                    console.error('❌ Error starting ad tracking:', error);
+                  }
                 });
-          } else {
+              } else {
                 console.log('📺 Ad tracking already active:', currentAdTrackingId);
+              }
+            }).catch(error => {
+              if (error.message === 'Authentication required') {
+                console.log('🔐 Auth error during session start, redirecting...');
+                // Auth error already handled by trackedFetch
+              } else {
+                console.error('❌ Error starting watch session:', error);
+                player.pause();
+                showConflictToast();
               }
             });
           } else {
@@ -4385,7 +4539,7 @@
         if (!authToken) return;
 
         try {
-            const response = await fetch('/api/auth/me', {
+            const response = await authAwareFetch('/api/auth/me', {
                 headers: {
                     'Authorization': `Bearer ${authToken}`
                 }
