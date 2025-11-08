@@ -302,149 +302,52 @@ app.use('*', (req, res, next) => {
 });
 
 // Stripe webhook route - express.raw is required here for signature verification
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  console.log('🌐 ===== WEBHOOK RECEIVED - ENTRY POINT =====');
-  console.log('📦 Request received at:', new Date().toISOString());
-  console.log('🔔 Method:', req.method);
-  console.log('🔔 URL:', req.url);
-  console.log('🔔 Full path:', req.path);
-  console.log('🔔 Original URL:', req.originalUrl);
-  console.log('📦 Raw body length:', req.body ? req.body.length : 'undefined');
-  console.log('🔍 Stripe signature header:', req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING');
-  console.log('🔍 User-Agent:', req.headers['user-agent']);
-  console.log('🔍 Origin:', req.headers['origin']);
-  console.log('🔍 Referer:', req.headers['referer']);
-  console.log('🔔 ===== WEBHOOK RECEIVED =====');
 
-  console.log('🔍 RAW BODY CHECK:');
-  console.log('🔍 Body type:', typeof req.body);
-  console.log('🔍 Is Buffer?', Buffer.isBuffer(req.body));
-  console.log('🔍 Body length:', req.body ? req.body.length : 'No body');
-  console.log('🔍 Body toString preview:', req.body ? req.body.toString().substring(0, 100) : 'No body');
-
-  console.log('🔔 Headers:', req.headers);
-  console.log('🔔 User-Agent:', req.headers['user-agent']);
-  console.log('🔔 Stripe-Event-Id:', req.headers['stripe-event-id']);
-
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-
-  console.log('🔔 Webhook secret configured:', !!endpointSecret);
-  console.log('🔔 Webhook secret value:', endpointSecret ? `${endpointSecret.substring(0, 8)}...` : 'NOT SET');
-  console.log('🔔 Signature present:', !!sig);
-  console.log('🔔 Environment:', isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION');
-
-  let event;
-
-  if (isDevelopment && process.env.SKIP_WEBHOOK_VERIFICATION !== 'false') {
-    console.log('⚠️ DEVELOPMENT MODE: Skipping webhook signature verification');
-    try {
-      const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
-      event = JSON.parse(bodyBuffer.toString('utf8'));
-      console.log('✅ Webhook event parsed (development mode, no signature verification)');
-      console.log('🔔 Event Type:', event.type);
-    } catch (err) {
-      console.error('❌ Failed to parse webhook body as JSON:', err.message);
-      console.error('❌ Error details:', err);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  } else {
-    if (!endpointSecret) {
-      console.error('❌ STRIPE_WEBHOOK_SECRET is NOT set in environment variables!');
-      console.error('❌ Without this, webhooks will fail signature verification.');
-      return res.status(400).send('Webhook Error: STRIPE_WEBHOOK_SECRET not configured');
-    }
-
-    try {
-      let bodyBuffer;
-      if (Buffer.isBuffer(req.body)) {
-        bodyBuffer = req.body;
-        console.log('✅ Body is already a Buffer, length:', bodyBuffer.length);
-      } else if (typeof req.body === 'string') {
-        bodyBuffer = Buffer.from(req.body, 'utf8');
-        console.log('⚠️ Body is string, converting to Buffer, length:', bodyBuffer.length);
-      } else {
-        console.error('❌ Body is not Buffer or string:', typeof req.body);
-        console.error('❌ Body value:', req.body);
-        return res.status(400).send('Webhook Error: Invalid body format');
-      }
-
-      console.log('🔍 Webhook signature verification:', {
-        bodyLength: bodyBuffer.length,
-        signaturePresent: !!sig,
-        endpointSecretPresent: !!endpointSecret
-      });
-
-      event = stripe.webhooks.constructEvent(bodyBuffer, sig, endpointSecret);
-      console.log('✅ Webhook signature verified successfully');
-      console.log('🔔 Event ID:', event.id);
-      console.log('🔔 Event Type:', event.type);
-      console.log('🔔 Event Created:', new Date(event.created * 1000).toISOString());
-    } catch (err) {
-      console.log('❌ Webhook signature verification failed:', err.message);
-      console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
-      console.log('❌ Signature received:', sig ? `${sig.substring(0, 20)}...` : 'Not present');
-      console.log('❌ Body type:', typeof req.body);
-      console.log('❌ Body is Buffer:', Buffer.isBuffer(req.body));
-      console.log('❌ Error details:', err);
-      console.log('⚠️ To skip verification in dev, set SKIP_WEBHOOK_VERIFICATION=true in .env');
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
+class WebhookProcessingError extends Error {
+  constructor(message, statusCode = 500, details = null) {
+    super(message);
+    this.statusCode = statusCode;
+    this.details = details;
   }
+}
 
-  console.log('🔔 ===== STRIPE WEBHOOK PROCESSING =====');
-  console.log('🌐 WEBHOOK RECEIVED - Event type:', event.type);
-  console.log('🔔 Webhook event ID:', event.id);
-  console.log('📦 Full event object keys:', Object.keys(event.data.object || {}));
+const processStripeEvent = async (event) => {
+  console.log('ðŸ”” ===== STRIPE WEBHOOK PROCESSING =====');
+  console.log('ðŸŒ Event type:', event.type);
+  console.log('ðŸ”” Event ID:', event.id);
+  console.log('ðŸ“¦ Full event object keys:', Object.keys(event.data?.object || {}));
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    console.log('🎯 CHECKOUT.SESSION.COMPLETED DETECTED');
-    console.log('🎯 Is donation?', session.metadata?.donationType === 'direct_donation');
-    console.log('🎯 Full event received at:', new Date().toISOString());
-    console.log('🎯 Session mode:', session.mode);
-    console.log('🎯 Has donation metadata?', !!session.metadata?.donationType);
+    console.log('ðŸŽ¯ CHECKOUT.SESSION.COMPLETED DETECTED');
+    console.log('ðŸŽ¯ Is donation?', session.metadata?.donationType === 'direct_donation');
+    console.log('ðŸŽ¯ Session mode:', session.mode);
+    console.log('ðŸŽ¯ Has donation metadata?', !!session.metadata?.donationType);
   }
 
   switch (event.type) {
-    case 'customer.subscription.created':
+    case 'customer.subscription.created': {
       const subscription = event.data.object;
-      console.log('✅ ===== SUBSCRIPTION CREATED =====');
-      console.log('📋 Subscription ID:', subscription.id);
-      console.log('👤 Customer ID:', subscription.customer);
-      console.log('🏷️ Metadata:', subscription.metadata);
+      console.log('âœ… ===== SUBSCRIPTION CREATED =====');
+      console.log('ðŸ“‹ Subscription ID:', subscription.id);
+      console.log('ðŸ‘¤ Customer ID:', subscription.customer);
+      console.log('ðŸ·ï¸ Metadata:', subscription.metadata);
+      console.log('ðŸ” DEBUG: Full subscription object:', JSON.stringify(subscription, null, 2));
 
-      console.log('🔍 DEBUG: Checking if this is an advertiser subscription...');
-      console.log('🔍 DEBUG: Full subscription object:', JSON.stringify(subscription, null, 2));
-      console.log('🔍 DEBUG: Subscription metadata:', subscription.metadata);
-      console.log('🔍 DEBUG: Has metadata property?', Object.prototype.hasOwnProperty.call(subscription, 'metadata'));
-      console.log('🔍 DEBUG: Metadata keys:', Object.keys(subscription.metadata || {}));
+      const campaignType = subscription.metadata?.campaignType;
+      const advertiserId = subscription.metadata?.advertiserId;
 
-      let campaignType = subscription.metadata?.campaignType;
-      let advertiserId = subscription.metadata?.advertiserId;
-
-      if (!campaignType) {
-        console.log('⚠️ No campaignType in subscription.metadata, checking alternatives...');
-        if (subscription.metadata && Object.keys(subscription.metadata).length === 0) {
-          console.log('⚠️ Subscription metadata exists but is empty object');
-        }
-        if (!advertiserId) {
-          console.log('🔍 Checking for advertiserId in description or other fields...');
-        }
-      }
-      console.log('🔍 FINAL - campaignType:', campaignType, 'advertiserId:', advertiserId);
+      console.log('ðŸ” FINAL - campaignType:', campaignType, 'advertiserId:', advertiserId);
 
       if (campaignType === 'advertiser') {
-        console.log('📝 Processing advertiser subscription creation...');
+        console.log('ðŸ“ Processing advertiser subscription creation...');
 
         try {
-          console.log('📝 Advertiser ID:', advertiserId);
+          console.log('ðŸ“ Advertiser ID:', advertiserId);
 
           const pool = getPool();
           if (!pool) {
-            console.error('❌ Database pool not available in webhook');
-            return res.status(500).send('Webhook Error: Database connection not available');
+            throw new WebhookProcessingError('Database connection not available', 500);
           }
 
           const advertiserResult = await pool.query(
@@ -453,8 +356,7 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
           );
 
           if (advertiserResult.rows.length === 0) {
-            console.error('❌ Advertiser not found for ID:', advertiserId);
-            return res.status(404).send('Webhook Error: Advertiser not found');
+            throw new WebhookProcessingError('Advertiser not found', 404);
           }
 
           const advertiser = advertiserResult.rows[0];
@@ -470,10 +372,10 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
             [subscription.customer, subscription.id, advertiserId]
           );
 
-          console.log('✅ Advertiser payment marked as complete for advertiser ID:', advertiserId);
+          console.log('âœ… Advertiser payment marked as complete for advertiser ID:', advertiserId);
 
           if (emailService && emailService.isEmailConfigured()) {
-            console.log('📧 Sending advertiser confirmation email to:', advertiser.email);
+            console.log('ðŸ“§ Sending advertiser confirmation email to:', advertiser.email);
 
             const campaignSummary = {
               campaign_type: subscription.metadata?.campaignType || 'advertiser',
@@ -491,46 +393,49 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
             );
 
             if (emailResult.success) {
-              console.log('✅ Advertiser confirmation email sent successfully');
+              console.log('âœ… Advertiser confirmation email sent successfully');
             } else {
-              console.error('❌ Failed to send advertiser confirmation email:', emailResult.error);
+              console.error('âŒ Failed to send advertiser confirmation email:', emailResult.error);
             }
           } else {
-            console.warn('⚠️ Email service not configured, skipping advertiser confirmation email');
+            console.warn('âš ï¸ Email service not configured, skipping advertiser confirmation email');
           }
         } catch (subscriptionError) {
-          console.error('❌ Error processing advertiser subscription:', subscriptionError);
-          console.error('❌ Stack:', subscriptionError.stack);
-          return res.status(500).send('Webhook Error: Failed to process advertiser subscription');
+          console.error('âŒ Error processing advertiser subscription:', subscriptionError);
+          console.error('âŒ Stack:', subscriptionError.stack);
+          if (subscriptionError instanceof WebhookProcessingError) {
+            throw subscriptionError;
+          }
+          throw new WebhookProcessingError('Failed to process advertiser subscription', 500, subscriptionError.message);
         }
       }
       break;
+    }
 
-    case 'checkout.session.completed':
+    case 'checkout.session.completed': {
       const sessionCompleted = event.data.object;
 
-      console.log('🎯 WEBHOOK RECEIVED: checkout.session.completed');
-      console.log('🎯 Session ID:', sessionCompleted.id);
-      console.log('🎯 Mode:', sessionCompleted.mode);
-      console.log('🎯 Metadata:', sessionCompleted.metadata);
-      console.log('🎯 Customer:', sessionCompleted.customer);
+      console.log('ðŸŽ¯ WEBHOOK RECEIVED: checkout.session.completed');
+      console.log('ðŸŽ¯ Session ID:', sessionCompleted.id);
+      console.log('ðŸŽ¯ Mode:', sessionCompleted.mode);
+      console.log('ðŸŽ¯ Metadata:', sessionCompleted.metadata);
+      console.log('ðŸŽ¯ Customer:', sessionCompleted.customer);
 
       const isDonation = sessionCompleted.metadata?.donationType === 'direct_donation';
 
       if (isDonation && sessionCompleted.mode === 'payment') {
-        console.log('💰 PROCESSING DONATION PAYMENT WEBHOOK');
+        console.log('ðŸ’° PROCESSING DONATION PAYMENT WEBHOOK');
 
         try {
           const donationId = sessionCompleted.metadata?.donationId;
           const userIdMeta = sessionCompleted.metadata?.userId;
           const donationAmount = sessionCompleted.metadata?.amount;
 
-          console.log('🔍 Donation metadata extracted:', { donationId, userIdMeta, donationAmount });
+          console.log('ðŸ” Donation metadata extracted:', { donationId, userIdMeta, donationAmount });
 
           const pool = getPool();
           if (!pool) {
-            console.error('❌ Database pool not available');
-            return res.status(500).send('Webhook Error: Database connection not available');
+            throw new WebhookProcessingError('Database connection not available', 500);
           }
 
           if (donationId) {
@@ -546,13 +451,13 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
               const donation = donationResult.rows[0];
               const username = donation.username || 'Charity Stream Supporter';
 
-              let customerEmail =
+              const customerEmail =
                 donation.customer_email ||
                 sessionCompleted.metadata?.userEmail ||
                 sessionCompleted.customer_details?.email ||
                 sessionCompleted.customer_email;
 
-              console.log('📧 Donation email resolution:', {
+              console.log('ðŸ“§ Donation email resolution:', {
                 fromDatabase: donation.customer_email,
                 fromMetadata: sessionCompleted.metadata?.userEmail,
                 fromCustomerDetails: sessionCompleted.customer_details?.email,
@@ -569,13 +474,13 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
                 [sessionCompleted.payment_intent || sessionCompleted.id, donationId]
               );
 
-              console.log('✅ Donation status updated to completed for donation ID:', donationId);
+              console.log('âœ… Donation status updated to completed for donation ID:', donationId);
 
               if (emailService && emailService.isEmailConfigured()) {
                 if (!customerEmail) {
-                  console.warn('⚠️ No customer email available for donation thank you email');
+                  console.warn('âš ï¸ No customer email available for donation thank you email');
                 } else {
-                  console.log('📧 Sending donation thank you email to:', customerEmail);
+                  console.log('ðŸ“§ Sending donation thank you email to:', customerEmail);
 
                   const emailResult = await emailService.sendDonationThankYouEmail(
                     customerEmail,
@@ -585,37 +490,185 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
                   );
 
                   if (emailResult.success) {
-                    console.log('✅ Donation thank you email sent successfully');
+                    console.log('âœ… Donation thank you email sent successfully');
                   } else {
-                    console.error('❌ Failed to send donation thank you email:', emailResult.error);
+                    console.error('âŒ Failed to send donation thank you email:', emailResult.error);
                   }
                 }
               } else {
-                console.warn('⚠️ Email service not configured, skipping donation thank you email');
+                console.warn('âš ï¸ Email service not configured, skipping donation thank you email');
               }
             } else {
-              console.warn('⚠️ Donation record not found for donationId:', donationId);
+              console.warn('âš ï¸ Donation record not found for donationId:', donationId);
             }
           } else {
-            console.warn('⚠️ Donation webhook received without donationId in metadata');
+            console.warn('âš ï¸ Donation webhook received without donationId in metadata');
           }
         } catch (donationError) {
-          console.error('❌ Error processing donation webhook:', donationError);
-          console.error('❌ Stack:', donationError.stack);
-          return res.status(500).send('Webhook Error: Failed to process donation');
+          console.error('âŒ Error processing donation webhook:', donationError);
+          console.error('âŒ Stack:', donationError.stack);
+          if (donationError instanceof WebhookProcessingError) {
+            throw donationError;
+          }
+          throw new WebhookProcessingError('Failed to process donation', 500, donationError.message);
         }
       } else {
-        console.log('ℹ️ checkout.session.completed received but not a donation payment - ignoring');
+        console.log('â„¹ï¸ checkout.session.completed received but not a donation payment - ignoring');
       }
       break;
+    }
 
     default:
-      console.log(`ℹ️ Unhandled event type: ${event.type}`);
+      console.log(`â„¹ï¸ Unhandled event type: ${event.type}`);
+      break;
   }
+};
 
-  res.json({ received: true });
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('ðŸŽ¯ ===== STRIPE WEBHOOK RECEIVED =====');
+  console.log('ðŸŽ¯ Timestamp:', new Date().toISOString());
+  console.log('ðŸŽ¯ Headers:', {
+    'stripe-signature': req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING',
+    'user-agent': req.headers['user-agent'],
+    'content-type': req.headers['content-type'],
+    'content-length': req.headers['content-length']
+  });
+
+  console.log('ðŸŽ¯ Raw body details:', {
+    isBuffer: Buffer.isBuffer(req.body),
+    bodyType: typeof req.body,
+    bodyLength: req.body ? req.body.length : 0,
+    bodyPreview: req.body ? req.body.toString().substring(0, 200) + '...' : 'NO BODY'
+  });
+
+  try {
+    const sig = req.headers['stripe-signature'];
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+    console.log('ðŸŽ¯ Webhook verification:', {
+      signaturePresent: !!sig,
+      webhookSecretPresent: !!webhookSecret,
+      webhookSecretLength: webhookSecret ? webhookSecret.length : 0
+    });
+
+    if (!sig) {
+      console.error('âŒ Missing Stripe signature header');
+      return res.status(400).send('Missing Stripe signature');
+    }
+
+    if (!webhookSecret) {
+      console.error('âŒ Missing STRIPE_WEBHOOK_SECRET environment variable');
+      return res.status(500).send('Webhook secret not configured');
+    }
+
+    let event;
+    const isDevelopment = process.env.NODE_ENV !== 'production';
+    const skipVerification = isDevelopment && process.env.SKIP_WEBHOOK_VERIFICATION === 'true';
+
+    if (skipVerification) {
+      console.warn('âš ï¸ DEVELOPMENT MODE: Skipping webhook signature verification');
+      try {
+        const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+        event = JSON.parse(bodyBuffer.toString('utf8'));
+      } catch (parseError) {
+        console.error('âŒ Failed to parse webhook body as JSON:', parseError.message);
+        return res.status(400).send(`Webhook Error: ${parseError.message}`);
+      }
+    } else {
+      let bodyBuffer;
+      if (Buffer.isBuffer(req.body)) {
+        bodyBuffer = req.body;
+      } else if (typeof req.body === 'string') {
+        bodyBuffer = Buffer.from(req.body, 'utf8');
+      } else {
+        console.error('âŒ Invalid body format for webhook signature verification');
+        return res.status(400).send('Webhook Error: Invalid body format');
+      }
+
+      try {
+        event = stripe.webhooks.constructEvent(bodyBuffer, sig, webhookSecret);
+        console.log('âœ… Webhook signature verified successfully');
+        console.log('âœ… Event type:', event.type);
+        console.log('âœ… Event ID:', event.id);
+      } catch (err) {
+        console.error('âŒ Webhook signature verification failed:', err.message);
+        console.error('âŒ Verification error details:', {
+          message: err.message,
+          stack: err.stack
+        });
+        return res.status(400).send(`Webhook signature verification failed: ${err.message}`);
+      }
+    }
+
+    console.log('ðŸ”„ Processing event:', event.type);
+    await processStripeEvent(event);
+
+    res.json({ received: true });
+  } catch (error) {
+    if (error instanceof WebhookProcessingError) {
+      console.error('âŒ Webhook processing error:', {
+        message: error.message,
+        statusCode: error.statusCode,
+        details: error.details
+      });
+      return res.status(error.statusCode).send(error.message);
+    }
+
+    console.error('âŒ Webhook handler error:', error);
+    res.status(500).send('Webhook handler error');
+  }
 });
 
+app.post('/api/webhook/debug', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('ðŸ› DEBUG WEBHOOK - Testing with real Stripe-like data');
+  console.log('ðŸ› Incoming debug body:', req.body ? req.body.toString() : 'NO BODY');
+
+  const mockEvent = {
+    type: 'checkout.session.completed',
+    id: 'evt_debug_' + Date.now(),
+    data: {
+      object: {
+        id: 'cs_test_debug_' + Date.now(),
+        mode: 'payment',
+        metadata: {
+          donationType: 'direct_donation',
+          donationId: '16',
+          userId: '40',
+          amount: '300'
+        },
+        customer_details: {
+          email: 'test@example.com'
+        },
+        amount_total: 300,
+        payment_intent: 'pi_debug_' + Date.now()
+      }
+    }
+  };
+
+  console.log('ðŸ› Mock event created:', JSON.stringify(mockEvent, null, 2));
+
+  try {
+    await processStripeEvent(mockEvent);
+    res.json({ debug: true, mockEventProcessed: true });
+  } catch (error) {
+    if (error instanceof WebhookProcessingError) {
+      console.error('ðŸ› Debug processing error:', {
+        message: error.message,
+        statusCode: error.statusCode,
+        details: error.details
+      });
+      return res.status(error.statusCode).json({
+        debug: true,
+        mockEventProcessed: false,
+        error: error.message,
+        details: error.details
+      });
+    }
+
+    console.error('ðŸ› Unexpected debug error:', error);
+    res.status(500).json({ debug: true, mockEventProcessed: false, error: error.message });
+  }
+});
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
 
