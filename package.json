@@ -4,10 +4,10 @@
   "description": "Charity streaming platform",
   "main": "backend/server.js",
   "scripts": {
-    "start": "cd backend && npm start",
-    "dev": "cd backend && npm run dev",
-    "build": "cd backend && npm install",
-    "postinstall": "cd backend && npm install"
+    "start": "node backend/server.js",
+    "dev": "node backend/server.js",
+    "build": "npm install --prefix backend",
+    "postinstall": "npm install --prefix backend"
   },
   "engines": {
     "node": ">=18.0.0"

@@ -5294,3 +5294,13 @@ app.post('/api/test/donation-email', authenticateToken, async (req, res) => {
     });
   }
 });
+
+// Export the Express app for serverless environments (e.g., Vercel)
+module.exports = app;
+
+// Optional local development server
+if (process.env.NODE_ENV !== 'production' && require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT} (local development)`);
+  });
+}
