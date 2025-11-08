@@ -37,6 +37,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const { initializeDatabase, dbHelpers, getPool: getPoolFromDb } = require('./database-postgres');
 // Google OAuth - Enabled for production
 const passportConfig = require('./config/google-oauth');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 // IMPROVED pool configuration with better error handling and increased timeouts
 const createPool = () => {
@@ -262,6 +263,359 @@ const generateJWTToken = (payload, expiresIn = '7d') => {
   return token;
 };
 
+// 🚨 CRITICAL: Webhook diagnostics endpoints MUST be registered before other middleware
+app.get('/api/webhook/test', (req, res) => {
+  console.log('✅ WEBHOOK TEST ENDPOINT HIT VIA GET');
+  res.json({
+    status: 'webhook_endpoint_accessible',
+    timestamp: new Date().toISOString(),
+    message: 'Webhook endpoint is reachable via GET'
+  });
+});
+
+app.post('/api/webhook/test', express.raw({ type: 'application/json' }), (req, res) => {
+  console.log('✅ WEBHOOK TEST ENDPOINT HIT VIA POST');
+  console.log('📦 Headers:', req.headers);
+  const bodyLength = Buffer.isBuffer(req.body) ? req.body.length : (req.body ? req.body.length || 'unknown' : 'no body');
+  console.log('📦 Body length:', bodyLength);
+  console.log('📦 Body type:', Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body);
+
+  res.json({
+    received: true,
+    bodyLength: Buffer.isBuffer(req.body) ? req.body.length : 0,
+    timestamp: new Date().toISOString(),
+    message: 'Webhook endpoint is reachable via POST'
+  });
+});
+
+// 🔍 Global request logger for debugging routing issues
+app.use('*', (req, res, next) => {
+  console.log('🌐 Incoming request:', {
+    method: req.method,
+    url: req.originalUrl,
+    path: req.path,
+    contentType: req.headers['content-type'],
+    bodyPresent: !!req.body,
+    bodyType: req.body ? (req.body.constructor ? req.body.constructor.name : typeof req.body) : typeof req.body
+  });
+  next();
+});
+
+// Stripe webhook route - express.raw is required here for signature verification
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  console.log('🌐 ===== WEBHOOK RECEIVED - ENTRY POINT =====');
+  console.log('📦 Request received at:', new Date().toISOString());
+  console.log('🔔 Method:', req.method);
+  console.log('🔔 URL:', req.url);
+  console.log('🔔 Full path:', req.path);
+  console.log('🔔 Original URL:', req.originalUrl);
+  console.log('📦 Raw body length:', req.body ? req.body.length : 'undefined');
+  console.log('🔍 Stripe signature header:', req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING');
+  console.log('🔍 User-Agent:', req.headers['user-agent']);
+  console.log('🔍 Origin:', req.headers['origin']);
+  console.log('🔍 Referer:', req.headers['referer']);
+  console.log('🔔 ===== WEBHOOK RECEIVED =====');
+
+  console.log('🔍 RAW BODY CHECK:');
+  console.log('🔍 Body type:', typeof req.body);
+  console.log('🔍 Is Buffer?', Buffer.isBuffer(req.body));
+  console.log('🔍 Body length:', req.body ? req.body.length : 'No body');
+  console.log('🔍 Body toString preview:', req.body ? req.body.toString().substring(0, 100) : 'No body');
+
+  console.log('🔔 Headers:', req.headers);
+  console.log('🔔 User-Agent:', req.headers['user-agent']);
+  console.log('🔔 Stripe-Event-Id:', req.headers['stripe-event-id']);
+
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  console.log('🔔 Webhook secret configured:', !!endpointSecret);
+  console.log('🔔 Webhook secret value:', endpointSecret ? `${endpointSecret.substring(0, 8)}...` : 'NOT SET');
+  console.log('🔔 Signature present:', !!sig);
+  console.log('🔔 Environment:', isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION');
+
+  let event;
+
+  if (isDevelopment && process.env.SKIP_WEBHOOK_VERIFICATION !== 'false') {
+    console.log('⚠️ DEVELOPMENT MODE: Skipping webhook signature verification');
+    try {
+      const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
+      event = JSON.parse(bodyBuffer.toString('utf8'));
+      console.log('✅ Webhook event parsed (development mode, no signature verification)');
+      console.log('🔔 Event Type:', event.type);
+    } catch (err) {
+      console.error('❌ Failed to parse webhook body as JSON:', err.message);
+      console.error('❌ Error details:', err);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  } else {
+    if (!endpointSecret) {
+      console.error('❌ STRIPE_WEBHOOK_SECRET is NOT set in environment variables!');
+      console.error('❌ Without this, webhooks will fail signature verification.');
+      return res.status(400).send('Webhook Error: STRIPE_WEBHOOK_SECRET not configured');
+    }
+
+    try {
+      let bodyBuffer;
+      if (Buffer.isBuffer(req.body)) {
+        bodyBuffer = req.body;
+        console.log('✅ Body is already a Buffer, length:', bodyBuffer.length);
+      } else if (typeof req.body === 'string') {
+        bodyBuffer = Buffer.from(req.body, 'utf8');
+        console.log('⚠️ Body is string, converting to Buffer, length:', bodyBuffer.length);
+      } else {
+        console.error('❌ Body is not Buffer or string:', typeof req.body);
+        console.error('❌ Body value:', req.body);
+        return res.status(400).send('Webhook Error: Invalid body format');
+      }
+
+      console.log('🔍 Webhook signature verification:', {
+        bodyLength: bodyBuffer.length,
+        signaturePresent: !!sig,
+        endpointSecretPresent: !!endpointSecret
+      });
+
+      event = stripe.webhooks.constructEvent(bodyBuffer, sig, endpointSecret);
+      console.log('✅ Webhook signature verified successfully');
+      console.log('🔔 Event ID:', event.id);
+      console.log('🔔 Event Type:', event.type);
+      console.log('🔔 Event Created:', new Date(event.created * 1000).toISOString());
+    } catch (err) {
+      console.log('❌ Webhook signature verification failed:', err.message);
+      console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
+      console.log('❌ Signature received:', sig ? `${sig.substring(0, 20)}...` : 'Not present');
+      console.log('❌ Body type:', typeof req.body);
+      console.log('❌ Body is Buffer:', Buffer.isBuffer(req.body));
+      console.log('❌ Error details:', err);
+      console.log('⚠️ To skip verification in dev, set SKIP_WEBHOOK_VERIFICATION=true in .env');
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+  }
+
+  console.log('🔔 ===== STRIPE WEBHOOK PROCESSING =====');
+  console.log('🌐 WEBHOOK RECEIVED - Event type:', event.type);
+  console.log('🔔 Webhook event ID:', event.id);
+  console.log('📦 Full event object keys:', Object.keys(event.data.object || {}));
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+    console.log('🎯 CHECKOUT.SESSION.COMPLETED DETECTED');
+    console.log('🎯 Is donation?', session.metadata?.donationType === 'direct_donation');
+    console.log('🎯 Full event received at:', new Date().toISOString());
+    console.log('🎯 Session mode:', session.mode);
+    console.log('🎯 Has donation metadata?', !!session.metadata?.donationType);
+  }
+
+  switch (event.type) {
+    case 'customer.subscription.created':
+      const subscription = event.data.object;
+      console.log('✅ ===== SUBSCRIPTION CREATED =====');
+      console.log('📋 Subscription ID:', subscription.id);
+      console.log('👤 Customer ID:', subscription.customer);
+      console.log('🏷️ Metadata:', subscription.metadata);
+
+      console.log('🔍 DEBUG: Checking if this is an advertiser subscription...');
+      console.log('🔍 DEBUG: Full subscription object:', JSON.stringify(subscription, null, 2));
+      console.log('🔍 DEBUG: Subscription metadata:', subscription.metadata);
+      console.log('🔍 DEBUG: Has metadata property?', Object.prototype.hasOwnProperty.call(subscription, 'metadata'));
+      console.log('🔍 DEBUG: Metadata keys:', Object.keys(subscription.metadata || {}));
+
+      let campaignType = subscription.metadata?.campaignType;
+      let advertiserId = subscription.metadata?.advertiserId;
+
+      if (!campaignType) {
+        console.log('⚠️ No campaignType in subscription.metadata, checking alternatives...');
+        if (subscription.metadata && Object.keys(subscription.metadata).length === 0) {
+          console.log('⚠️ Subscription metadata exists but is empty object');
+        }
+        if (!advertiserId) {
+          console.log('🔍 Checking for advertiserId in description or other fields...');
+        }
+      }
+      console.log('🔍 FINAL - campaignType:', campaignType, 'advertiserId:', advertiserId);
+
+      if (campaignType === 'advertiser') {
+        console.log('📝 Processing advertiser subscription creation...');
+
+        try {
+          console.log('📝 Advertiser ID:', advertiserId);
+
+          const pool = getPool();
+          if (!pool) {
+            console.error('❌ Database pool not available in webhook');
+            return res.status(500).send('Webhook Error: Database connection not available');
+          }
+
+          const advertiserResult = await pool.query(
+            'SELECT id, email, company_name, payment_completed, application_status, stripe_customer_id FROM advertisers WHERE id = $1',
+            [advertiserId]
+          );
+
+          if (advertiserResult.rows.length === 0) {
+            console.error('❌ Advertiser not found for ID:', advertiserId);
+            return res.status(404).send('Webhook Error: Advertiser not found');
+          }
+
+          const advertiser = advertiserResult.rows[0];
+
+          await pool.query(
+            `UPDATE advertisers
+             SET payment_completed = TRUE,
+                 application_status = 'pending_approval',
+                 stripe_customer_id = $1,
+                 stripe_subscription_id = $2,
+                 updated_at = NOW()
+             WHERE id = $3`,
+            [subscription.customer, subscription.id, advertiserId]
+          );
+
+          console.log('✅ Advertiser payment marked as complete for advertiser ID:', advertiserId);
+
+          if (emailService && emailService.isEmailConfigured()) {
+            console.log('📧 Sending advertiser confirmation email to:', advertiser.email);
+
+            const campaignSummary = {
+              campaign_type: subscription.metadata?.campaignType || 'advertiser',
+              weekly_budget: subscription.metadata?.weeklyBudget,
+              cpm_rate: subscription.metadata?.cpmRate,
+              click_tracking: subscription.metadata?.clickTracking === 'true',
+              expedited: subscription.metadata?.expedited === 'true',
+              ad_format: subscription.metadata?.adFormat || 'video'
+            };
+
+            const emailResult = await emailService.sendAdvertiserConfirmationEmail(
+              advertiser.email,
+              advertiser.company_name,
+              campaignSummary
+            );
+
+            if (emailResult.success) {
+              console.log('✅ Advertiser confirmation email sent successfully');
+            } else {
+              console.error('❌ Failed to send advertiser confirmation email:', emailResult.error);
+            }
+          } else {
+            console.warn('⚠️ Email service not configured, skipping advertiser confirmation email');
+          }
+        } catch (subscriptionError) {
+          console.error('❌ Error processing advertiser subscription:', subscriptionError);
+          console.error('❌ Stack:', subscriptionError.stack);
+          return res.status(500).send('Webhook Error: Failed to process advertiser subscription');
+        }
+      }
+      break;
+
+    case 'checkout.session.completed':
+      const sessionCompleted = event.data.object;
+
+      console.log('🎯 WEBHOOK RECEIVED: checkout.session.completed');
+      console.log('🎯 Session ID:', sessionCompleted.id);
+      console.log('🎯 Mode:', sessionCompleted.mode);
+      console.log('🎯 Metadata:', sessionCompleted.metadata);
+      console.log('🎯 Customer:', sessionCompleted.customer);
+
+      const isDonation = sessionCompleted.metadata?.donationType === 'direct_donation';
+
+      if (isDonation && sessionCompleted.mode === 'payment') {
+        console.log('💰 PROCESSING DONATION PAYMENT WEBHOOK');
+
+        try {
+          const donationId = sessionCompleted.metadata?.donationId;
+          const userIdMeta = sessionCompleted.metadata?.userId;
+          const donationAmount = sessionCompleted.metadata?.amount;
+
+          console.log('🔍 Donation metadata extracted:', { donationId, userIdMeta, donationAmount });
+
+          const pool = getPool();
+          if (!pool) {
+            console.error('❌ Database pool not available');
+            return res.status(500).send('Webhook Error: Database connection not available');
+          }
+
+          if (donationId) {
+            const donationResult = await pool.query(
+              `SELECT d.*, u.username
+               FROM donations d
+               LEFT JOIN users u ON d.user_id = u.id
+               WHERE d.id = $1`,
+              [donationId]
+            );
+
+            if (donationResult.rows.length > 0) {
+              const donation = donationResult.rows[0];
+              const username = donation.username || 'Charity Stream Supporter';
+
+              let customerEmail =
+                donation.customer_email ||
+                sessionCompleted.metadata?.userEmail ||
+                sessionCompleted.customer_details?.email ||
+                sessionCompleted.customer_email;
+
+              console.log('📧 Donation email resolution:', {
+                fromDatabase: donation.customer_email,
+                fromMetadata: sessionCompleted.metadata?.userEmail,
+                fromCustomerDetails: sessionCompleted.customer_details?.email,
+                fromCustomerEmail: sessionCompleted.customer_email,
+                resolved: customerEmail
+              });
+
+              await pool.query(
+                `UPDATE donations
+                 SET status = 'completed',
+                     stripe_payment_intent_id = $1,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE id = $2`,
+                [sessionCompleted.payment_intent || sessionCompleted.id, donationId]
+              );
+
+              console.log('✅ Donation status updated to completed for donation ID:', donationId);
+
+              if (emailService && emailService.isEmailConfigured()) {
+                if (!customerEmail) {
+                  console.warn('⚠️ No customer email available for donation thank you email');
+                } else {
+                  console.log('📧 Sending donation thank you email to:', customerEmail);
+
+                  const emailResult = await emailService.sendDonationThankYouEmail(
+                    customerEmail,
+                    username,
+                    donationAmount || donation.amount,
+                    sessionCompleted.customer || null
+                  );
+
+                  if (emailResult.success) {
+                    console.log('✅ Donation thank you email sent successfully');
+                  } else {
+                    console.error('❌ Failed to send donation thank you email:', emailResult.error);
+                  }
+                }
+              } else {
+                console.warn('⚠️ Email service not configured, skipping donation thank you email');
+              }
+            } else {
+              console.warn('⚠️ Donation record not found for donationId:', donationId);
+            }
+          } else {
+            console.warn('⚠️ Donation webhook received without donationId in metadata');
+          }
+        } catch (donationError) {
+          console.error('❌ Error processing donation webhook:', donationError);
+          console.error('❌ Stack:', donationError.stack);
+          return res.status(500).send('Webhook Error: Failed to process donation');
+        }
+      } else {
+        console.log('ℹ️ checkout.session.completed received but not a donation payment - ignoring');
+      }
+      break;
+
+    default:
+      console.log(`ℹ️ Unhandled event type: ${event.type}`);
+  }
+
+  res.json({ received: true });
+});
+
 // Trust proxy for Railway deployment
 app.set('trust proxy', 1);
 
@@ -373,14 +727,14 @@ app.use((req, res, next) => {
   })(req, res, next);
 });
 
-// 🚨 CRITICAL: Apply express.raw() FIRST for webhook endpoint BEFORE any JSON parsing
-// This ensures the webhook receives raw Buffer data for signature verification
-app.use('/api/webhook', express.raw({type: 'application/json'}));
-
-// Body parser for all other routes (AFTER webhook raw middleware)
+// Body parser for all other routes (webhook routes use express.raw at route-level)
 app.use((req, res, next) => {
-  // Skip body parsing for webhook endpoint (already handled by express.raw() above)
-  if (req.path === '/api/webhook' || req.originalUrl === '/api/webhook') {
+  if (
+    req.path === '/api/webhook' ||
+    req.originalUrl === '/api/webhook' ||
+    req.path === '/api/webhook/test' ||
+    req.originalUrl === '/api/webhook/test'
+  ) {
     return next();
   }
   return bodyParser.json()(req, res, next);
@@ -4246,9 +4600,6 @@ app.get('/api/advertiser/session-details', async (req, res) => {
   }
 });
 
-// ===== STRIPE INTEGRATION =====
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
 // ===== SUBSCRIPTION ROUTES =====
 
 // Create subscription payment intent
@@ -4741,747 +5092,8 @@ app.post('/test-advertiser-email', async (req, res) => {
   }
 });
 
-// Stripe webhook endpoint - MUST be defined early to avoid other middleware interference
-// Note: express.raw() is already applied globally above, but we keep it here for clarity
-app.post('/api/webhook', async (req, res) => {
-  console.log('🌐 ===== WEBHOOK RECEIVED - ENTRY POINT =====');
-  console.log('📦 Request received at:', new Date().toISOString());
-  console.log('🔔 Method:', req.method);
-  console.log('🔔 URL:', req.url);
-  console.log('🔔 Full path:', req.path);
-  console.log('🔔 Original URL:', req.originalUrl);
-  console.log('📦 Raw body length:', req.body ? req.body.length : 'undefined');
-  console.log('🔍 Stripe signature header:', req.headers['stripe-signature'] ? 'PRESENT' : 'MISSING');
-  console.log('🔍 User-Agent:', req.headers['user-agent']);
-  console.log('🔍 Origin:', req.headers['origin']);
-  console.log('🔍 Referer:', req.headers['referer']);
-  console.log('🔔 ===== WEBHOOK RECEIVED =====');
-  
-  // ✅ CRITICAL: Check if body is a Buffer (raw format Stripe needs)
-  console.log('🔍 RAW BODY CHECK:');
-  console.log('🔍 Body type:', typeof req.body);
-  console.log('🔍 Is Buffer?', Buffer.isBuffer(req.body));
-  console.log('🔍 Body length:', req.body ? req.body.length : 'No body');
-  console.log('🔍 Body toString preview:', req.body ? req.body.toString().substring(0, 100) : 'No body');
-  
-  console.log('🔔 Headers:', req.headers);
-  console.log('🔔 User-Agent:', req.headers['user-agent']);
-  console.log('🔔 Stripe-Event-Id:', req.headers['stripe-event-id']);
-  
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  const isDevelopment = process.env.NODE_ENV !== 'production';
-
-  console.log('🔔 Webhook secret configured:', !!endpointSecret);
-  console.log('🔔 Webhook secret value:', endpointSecret ? `${endpointSecret.substring(0, 8)}...` : 'NOT SET');
-  console.log('🔔 Signature present:', !!sig);
-  console.log('🔔 Environment:', isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION');
-  
-  let event;
-
-  // In development/test mode, skip signature verification
-  if (isDevelopment && process.env.SKIP_WEBHOOK_VERIFICATION !== 'false') {
-    console.log('⚠️ DEVELOPMENT MODE: Skipping webhook signature verification');
-    try {
-      // Ensure body is a buffer (it should be from express.raw())
-      const bodyBuffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body);
-      event = JSON.parse(bodyBuffer.toString('utf8'));
-      console.log('✅ Webhook event parsed (development mode, no signature verification)');
-      console.log('🔔 Event Type:', event.type);
-    } catch (err) {
-      console.error('❌ Failed to parse webhook body as JSON:', err.message);
-      console.error('❌ Error details:', err);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  } else {
-    // Production mode - verify signature
-    if (!endpointSecret) {
-      console.error('❌ STRIPE_WEBHOOK_SECRET is NOT set in environment variables!');
-      console.error('❌ Without this, webhooks will fail signature verification.');
-      return res.status(400).send('Webhook Error: STRIPE_WEBHOOK_SECRET not configured');
-    }
-
-    try {
-      // 🚨 CRITICAL: Ensure body is a Buffer for signature verification
-      // express.raw() should provide this, but verify to be safe
-      let bodyBuffer;
-      if (Buffer.isBuffer(req.body)) {
-        bodyBuffer = req.body;
-        console.log('✅ Body is already a Buffer, length:', bodyBuffer.length);
-      } else if (typeof req.body === 'string') {
-        bodyBuffer = Buffer.from(req.body, 'utf8');
-        console.log('⚠️ Body is string, converting to Buffer, length:', bodyBuffer.length);
-      } else {
-        console.error('❌ Body is not Buffer or string:', typeof req.body);
-        console.error('❌ Body value:', req.body);
-        return res.status(400).send('Webhook Error: Invalid body format');
-      }
-      
-      console.log('🔍 Webhook signature verification:', {
-        bodyLength: bodyBuffer.length,
-        signaturePresent: !!sig,
-        endpointSecretPresent: !!endpointSecret
-      });
-      
-      event = stripe.webhooks.constructEvent(bodyBuffer, sig, endpointSecret);
-      console.log('✅ Webhook signature verified successfully');
-      console.log('🔔 Event ID:', event.id);
-      console.log('🔔 Event Type:', event.type);
-      console.log('🔔 Event Created:', new Date(event.created * 1000).toISOString());
-    } catch (err) {
-      console.log('❌ Webhook signature verification failed:', err.message);
-      console.log('❌ Webhook secret length:', endpointSecret ? endpointSecret.length : 'Not set');
-      console.log('❌ Signature received:', sig ? `${sig.substring(0, 20)}...` : 'Not present');
-      console.log('❌ Body type:', typeof req.body);
-      console.log('❌ Body is Buffer:', Buffer.isBuffer(req.body));
-      console.log('❌ Error details:', err);
-      console.log('⚠️ To skip verification in dev, set SKIP_WEBHOOK_VERIFICATION=true in .env');
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-  }
-
-  console.log('🔔 ===== STRIPE WEBHOOK PROCESSING =====');
-  console.log('🌐 WEBHOOK RECEIVED - Event type:', event.type);
-  console.log('🔔 Webhook event ID:', event.id);
-  console.log('📦 Full event object keys:', Object.keys(event.data.object || {}));
-  
-  // Specific logging for checkout.session.completed events
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-    console.log('🎯 CHECKOUT.SESSION.COMPLETED DETECTED');
-    console.log('🎯 Is donation?', session.metadata?.donationType === 'direct_donation');
-    console.log('🎯 Full event received at:', new Date().toISOString());
-    console.log('🎯 Session mode:', session.mode);
-    console.log('🎯 Has donation metadata?', !!session.metadata?.donationType);
-  }
-
-  // Handle the event
-  switch (event.type) {
-      case 'customer.subscription.created':
-        const subscription = event.data.object;
-        console.log('✅ ===== SUBSCRIPTION CREATED =====');
-        console.log('📋 Subscription ID:', subscription.id);
-        console.log('👤 Customer ID:', subscription.customer);
-        console.log('🏷️ Metadata:', subscription.metadata);
-        
-        // Handle advertiser subscription creation
-        console.log('🔍 DEBUG: Checking if this is an advertiser subscription...');
-        console.log('🔍 DEBUG: Full subscription object:', JSON.stringify(subscription, null, 2));
-        console.log('🔍 DEBUG: Subscription metadata:', subscription.metadata);
-        console.log('🔍 DEBUG: Has metadata property?', Object.prototype.hasOwnProperty.call(subscription, 'metadata'));
-        console.log('🔍 DEBUG: Metadata keys:', Object.keys(subscription.metadata || {}));
-
-        let campaignType = subscription.metadata?.campaignType;
-        let advertiserId = subscription.metadata?.advertiserId;
-        
-        if (!campaignType) {
-          console.log('⚠️ No campaignType in subscription.metadata, checking alternatives...');
-          if (subscription.metadata && Object.keys(subscription.metadata).length === 0) {
-            console.log('⚠️ Subscription metadata exists but is empty object');
-          }
-          if (!advertiserId) {
-            console.log('🔍 Checking for advertiserId in description or other fields...');
-          }
-        }
-        console.log('🔍 FINAL - campaignType:', campaignType, 'advertiserId:', advertiserId);
-        
-        if (campaignType === 'advertiser') {
-          console.log('📝 Processing advertiser subscription creation...');
-          
-          try {
-            console.log('📝 Advertiser ID:', advertiserId);
-            
-            // Get advertiser details from database
-            const pool = getPool();
-            if (!pool) {
-              console.error('❌ Database pool not available in webhook');
-              return;
-            }
-            
-            const advertiserResult = await pool.query(
-              'SELECT * FROM advertisers WHERE id = $1',
-              [advertiserId]
-            );
-            
-            if (advertiserResult.rows.length === 0) {
-              console.error('❌ Advertiser not found:', advertiserId);
-              return;
-            }
-            
-            const advertiser = advertiserResult.rows[0];
-            console.log('📝 Found advertiser:', { 
-              id: advertiser.id, 
-              email: advertiser.email,
-              payment_completed: advertiser.payment_completed,
-              media_r2_link: advertiser.media_r2_link
-            });
-            
-            // Simple update: mark payment as completed and update status
-            // File is already in R2 with final filename, no copying needed
-            console.log('💳 Payment successful, updating payment_completed = true');
-            
-            const updateResult = await pool.query(
-              `UPDATE advertisers 
-               SET application_status = 'pending_approval',
-                   payment_completed = true,
-                   stripe_customer_id = $1,
-                   stripe_subscription_id = $2,
-                   updated_at = CURRENT_TIMESTAMP
-               WHERE id = $3
-               RETURNING id, email, company_name, expedited, click_tracking, ad_format, cpm_rate, weekly_budget_cap, media_r2_link`,
-              [subscription.customer, subscription.id, advertiserId]
-            );
-            
-            if (updateResult.rows.length > 0) {
-              const updatedAdvertiser = updateResult.rows[0];
-              console.log('✅ Advertiser status updated:', {
-                id: updatedAdvertiser.id,
-                email: updatedAdvertiser.email,
-                companyName: updatedAdvertiser.company_name,
-                expedited: updatedAdvertiser.expedited,
-                clickTracking: updatedAdvertiser.click_tracking,
-                status: 'pending_approval',
-                payment_completed: true,
-                subscriptionId: subscription.id,
-                media_r2_link: updatedAdvertiser.media_r2_link
-              });
-              
-              // Send confirmation email with campaign summary
-              console.log('🔍 DEBUG: About to check email service...');
-              console.log('🔍 DEBUG: emailService exists:', !!emailService);
-              console.log('🔍 DEBUG: emailService.isEmailConfigured:', emailService ? emailService.isEmailConfigured() : 'N/A');
-              
-              if (emailService && emailService.isEmailConfigured()) {
-                console.log('🔍 DEBUG: Email service is configured, proceeding to send email');
-                try {
-                  // Build campaign summary object
-                  const campaignSummary = {
-                    ad_format: updatedAdvertiser.ad_format,
-                    cpm_rate: updatedAdvertiser.cpm_rate,
-                    weekly_budget_cap: updatedAdvertiser.weekly_budget_cap,
-                    expedited: updatedAdvertiser.expedited,
-                    click_tracking: updatedAdvertiser.click_tracking
-                  };
-                  
-                  console.log('🔍 DEBUG: Reached email sending point in webhook');
-                  console.log('📧 Sending advertiser confirmation email to:', updatedAdvertiser.email);
-                  console.log('📧 Campaign summary data:', JSON.stringify(campaignSummary, null, 2));
-                  
-                  const emailResult = await emailService.sendAdvertiserConfirmationEmail(
-                    updatedAdvertiser.email,
-                    updatedAdvertiser.company_name,
-                    campaignSummary
-                  );
-                  
-                  if (emailResult.success) {
-                    console.log('✅ Advertiser confirmation email sent successfully');
-                    console.log('📧 Email message ID:', emailResult.messageId);
-                  } else {
-                    console.error('❌ Failed to send confirmation email:', emailResult);
-                  }
-                } catch (emailError) {
-                  console.error('❌ Error sending confirmation email:', emailError);
-                  console.error('❌ Email error stack:', emailError.stack);
-                }
-              } else {
-                console.warn('⚠️ Email service NOT configured - skipping email');
-                console.warn('⚠️ Details:', {
-                  emailServiceExists: !!emailService,
-                  isConfigured: emailService ? emailService.isEmailConfigured() : false,
-                  hasTransporter: emailService ? !!emailService.transporter : false
-                });
-              }
-            } else {
-              console.error('❌ No advertiser found for update:', advertiserId);
-            }
-          } catch (advertiserError) {
-            console.error('❌ Error processing advertiser subscription:', advertiserError);
-          }
-        } else {
-          console.log('⚠️ Subscription metadata missing or not an advertiser campaign');
-          console.log('⚠️ This is likely a test webhook without proper metadata');
-          console.log('⚠️ Tip: Use /trigger-advertiser-webhook endpoint with a real advertiser ID');
-        }
-        break;
-        
-    case 'invoice.payment_succeeded':
-      const invoice = event.data.object;
-      console.log('✅ ===== PAYMENT SUCCEEDED WEBHOOK =====');
-      console.log('💳 Invoice ID:', invoice.id);
-      console.log('💳 Subscription ID:', invoice.subscription);
-      
-      if (invoice.subscription) {
-        console.log('💾 Payment succeeded, updating premium status...');
-        
-        try {
-          // Update premium status using subscription ID (this should work since it uses stripe_subscription_id)
-          const [updateErr, updatedUser] = await dbHelpers.updatePremiumStatusBySubscriptionId(
-            invoice.subscription, 
-            true
-          );
-          
-          if (updateErr) {
-            console.error('❌ Webhook: Failed to update premium status:', updateErr);
-          } else if (updatedUser) {
-            console.log('✅ Webhook: User updated to premium:', {
-              id: updatedUser.id,
-              email: updatedUser.email,
-              is_premium: updatedUser.is_premium,
-              stripe_subscription_id: updatedUser.stripe_subscription_id
-            });
-            
-            // Send confirmation email via webhook
-            if (emailService && emailService.isEmailConfigured()) {
-              try {
-                const emailResult = await emailService.sendSubscriptionConfirmationEmail(
-                  updatedUser.email,
-                  updatedUser.username || updatedUser.email.split('@')[0]
-                );
-                
-                if (emailResult.success) {
-                  console.log('✅ Webhook: Confirmation email sent successfully');
-                } else {
-                  console.error('❌ Webhook: Failed to send confirmation email:', emailResult);
-                }
-              } catch (emailError) {
-                console.error('❌ Webhook: Error sending confirmation email:', emailError);
-              }
-            }
-          } else {
-            console.error('❌ Webhook: No user found for subscription:', invoice.subscription);
-            console.log('🔍 This might indicate the stripe_subscription_id was not saved properly');
-          }
-        } catch (webhookError) {
-          console.error('❌ Webhook: Error processing payment success:', webhookError);
-        }
-      }
-      break;
-      
-    case 'customer.subscription.deleted':
-      const deletedSubscription = event.data.object;
-      console.log('❌ ===== SUBSCRIPTION DELETED =====');
-      console.log('📋 Subscription ID:', deletedSubscription.id);
-      console.log('💳 Customer ID:', deletedSubscription.customer);
-      
-      // Update user to not premium
-      console.log('💾 Updating user to not premium status...');
-      dbHelpers.updatePremiumStatusBySubscriptionId(deletedSubscription.id, false)
-        .then(() => console.log('✅ User updated to not premium'))
-        .catch(err => console.error('❌ Failed to update premium status:', err));
-      break;
-      
-    case 'invoice.payment_failed':
-      const failedInvoice = event.data.object;
-      console.log('❌ ===== PAYMENT FAILED =====');
-      console.log('💳 Invoice ID:', failedInvoice.id);
-      console.log('💳 Subscription ID:', failedInvoice.subscription);
-      console.log('💳 Customer ID:', failedInvoice.customer);
-      
-      if (failedInvoice.subscription) {
-        // Update user to not premium
-        console.log('💾 Updating user to not premium due to payment failure...');
-        dbHelpers.updatePremiumStatusBySubscriptionId(failedInvoice.subscription, false)
-          .then(() => console.log('✅ User updated to not premium due to payment failure'))
-          .catch(err => console.error('❌ Failed to update premium status:', err));
-      }
-      break;
-    
-    case 'checkout.session.completed':
-      const sessionCompleted = event.data.object;
-      console.log('💰 ===== DONATION WEBHOOK DETAILED DEBUG =====');
-      console.log('💰 Session ID:', sessionCompleted.id);
-      console.log('💰 Session mode:', sessionCompleted.mode);
-      console.log('💰 Customer:', sessionCompleted.customer);
-      console.log('💰 Payment intent:', sessionCompleted.payment_intent);
-      console.log('💰 Subscription:', sessionCompleted.subscription);
-      console.log('💰 ALL Metadata:', sessionCompleted.metadata);
-      console.log('💰 Customer details:', sessionCompleted.customer_details);
-      console.log('💰 Amount total:', sessionCompleted.amount_total);
-      
-      // Check if this matches the donation pattern
-      const isDonation = sessionCompleted.metadata?.donationType === 'direct_donation';
-      const isOneTimePayment = sessionCompleted.mode === 'payment';
-      const hasDonationMetadata = sessionCompleted.metadata?.userId && sessionCompleted.metadata?.amount;
-      
-      console.log('🔍 Donation detection:', {
-        isDonation: isDonation,
-        isOneTimePayment: isOneTimePayment,
-        hasDonationMetadata: hasDonationMetadata,
-        shouldProcess: isDonation && isOneTimePayment && hasDonationMetadata,
-        metadataDonationType: sessionCompleted.metadata?.donationType,
-        metadataUserId: sessionCompleted.metadata?.userId,
-        metadataAmount: sessionCompleted.metadata?.amount
-      });
-      
-      try {
-        if (isDonation && isOneTimePayment && hasDonationMetadata) {
-          console.log('🟢 PROCEEDING WITH DONATION EMAIL');
-          
-          const donationId = sessionCompleted.metadata?.donationId;
-          const userIdMeta = sessionCompleted.metadata?.userId;
-          const donationAmount = sessionCompleted.amount_total;
-          
-          console.log('🔍 Donation lookup:', {
-            donationId: donationId,
-            donationIdType: typeof donationId,
-            donationIdPresent: !!donationId,
-            userId: userIdMeta,
-            amount: donationAmount,
-            metadataKeys: Object.keys(sessionCompleted.metadata || {}),
-            fullMetadata: sessionCompleted.metadata
-          });
-          
-          if (donationId) {
-            const pool = getPool();
-            if (pool) {
-              try {
-                // Look up donation record from database (source of truth for email - same pattern as advertiser)
-                const donationResult = await pool.query(
-                  `SELECT d.*, u.username 
-                   FROM donations d 
-                   LEFT JOIN users u ON d.user_id = u.id 
-                   WHERE d.id = $1`,
-                  [donationId]
-                );
-                
-                if (donationResult.rows.length > 0) {
-                  const donation = donationResult.rows[0];
-                  const customerEmail = donation.customer_email; // Use database email (guaranteed source)
-                  const username = donation.username || 'Charity Stream Supporter';
-                  
-                  console.log('✅ Donation found in database:', {
-                    donationId: donation.id,
-                    customerEmail: customerEmail,
-                    username: username,
-                    status: donation.status
-                  });
-                  
-                  // Update donation status to completed
-                  await pool.query(
-                    `UPDATE donations 
-                     SET status = 'completed', 
-                         stripe_payment_intent_id = $1,
-                         updated_at = CURRENT_TIMESTAMP
-                     WHERE id = $2`,
-                    [sessionCompleted.payment_intent, donationId]
-                  );
-                  
-                  console.log('✅ Donation status updated to completed');
-                  
-                  // Send thank you email using DATABASE email (reliable source, matches advertiser pattern)
-                  if (emailService && emailService.isEmailConfigured()) {
-                    console.log('📧 Sending donation thank you email to:', customerEmail, 'username:', username);
-                    
-                    const emailResult = await emailService.sendDonationThankYouEmail(
-                      customerEmail, // From database (reliable source, same as advertiser)
-                      username,
-                      donationAmount
-                    );
-                    
-                    if (emailResult.success) {
-                      console.log('✅ Donation thank you email sent successfully!');
-                    } else {
-                      console.error('❌ Failed to send donation thank you email:', emailResult.error);
-                    }
-                  } else {
-                    console.log('⚠️ Email service not configured - skipping donation thank you email');
-                    console.log('⚠️ Email service state:', {
-                      emailServiceExists: !!emailService,
-                      isConfigured: emailService ? emailService.isEmailConfigured() : false,
-                      hasTransporter: emailService ? !!emailService.transporter : false
-                    });
-                  }
-                } else {
-                  console.error('❌ Donation record not found:', donationId);
-                  // Fallback to Stripe email if database lookup fails
-                  const fallbackEmail = sessionCompleted.customer_details?.email || 
-                                       sessionCompleted.metadata?.userEmail ||
-                                       sessionCompleted.customer_email;
-                  
-                  if (fallbackEmail && userIdMeta) {
-                    console.log('🔄 Falling back to Stripe email:', fallbackEmail);
-                    
-                    const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userIdMeta]);
-                    const username = userResult.rows?.[0]?.username || 'Charity Stream Supporter';
-                    
-                    if (emailService && emailService.isEmailConfigured()) {
-                      const emailResult = await emailService.sendDonationThankYouEmail(
-                        fallbackEmail,
-                        username,
-                        donationAmount
-                      );
-                      
-                      if (emailResult.success) {
-                        console.log('✅ Donation thank you email sent successfully (fallback)!');
-                      } else {
-                        console.error('❌ Failed to send donation thank you email (fallback):', emailResult.error);
-                      }
-                    }
-                  } else {
-                    console.error('❌ Cannot send email - missing donation record and no fallback email');
-                  }
-                }
-              } catch (donationErr) {
-                console.error('❌ Error processing donation completion:', donationErr);
-                console.error('❌ Donation error stack:', donationErr.stack);
-              }
-            } else {
-              console.error('❌ No database pool available for donation email user lookup');
-            }
-          } else {
-            console.log('⚠️ Missing donationId in metadata - cannot use database lookup');
-            console.log('⚠️ Falling back to Stripe email extraction');
-            
-            // Fallback to old method if donationId missing
-            const userIdMeta = sessionCompleted.metadata?.userId;
-            const userEmail = sessionCompleted.metadata?.userEmail;
-            const donationAmount = sessionCompleted.amount_total;
-            const customerEmail = userEmail || 
-                                 sessionCompleted.customer_details?.email || 
-                                 sessionCompleted.customer_email;
-            
-            if (customerEmail && userIdMeta) {
-              const pool = getPool();
-              if (pool) {
-                try {
-                  const userResult = await pool.query('SELECT username FROM users WHERE id = $1', [userIdMeta]);
-                  const username = userResult.rows?.[0]?.username || 'Charity Stream Supporter';
-                  
-                  if (emailService && emailService.isEmailConfigured()) {
-                    const emailResult = await emailService.sendDonationThankYouEmail(
-                      customerEmail,
-                      username,
-                      donationAmount
-                    );
-                    
-                    if (emailResult.success) {
-                      console.log('✅ Donation thank you email sent successfully (fallback method)!');
-                    } else {
-                      console.error('❌ Failed to send donation thank you email (fallback):', emailResult.error);
-                    }
-                  }
-                } catch (fallbackErr) {
-                  console.error('❌ Error in fallback email send:', fallbackErr);
-                }
-              }
-            }
-          }
-        } else {
-          console.log('🔴 NOT PROCESSING - not a donation or wrong payment type');
-          console.log('🔴 Reasons:', {
-            isDonation: isDonation,
-            isOneTimePayment: isOneTimePayment,
-            hasDonationMetadata: hasDonationMetadata,
-            mode: sessionCompleted.mode,
-            donationType: sessionCompleted.metadata?.donationType
-          });
-        }
-      } catch (donationErr) {
-        console.error('❌ Error processing donation completion:', donationErr);
-        console.error('❌ Donation error stack:', donationErr.stack);
-      }
-      break;
-      
-    default:
-      console.log('⚠️ Unhandled webhook event type:', event.type);
-  }
-
-  res.json({received: true});
-});
-
-// ===== CLEAN URL ROUTING =====
-// Handle clean URLs without .html extension
-const cleanUrlRoutes = {
-  '/about': 'about.html',
-  '/advertise': 'advertise.html', 
-  '/auth': 'auth.html',
-  '/impact': 'impact.html',
-  '/subscribe': 'subscribe.html',
-  '/admin': 'admin.html',
-  '/lander': 'lander.html',
-  '/reset-password': 'reset-password.html',
-  '/verify-email': 'verify-email.html',
-};
-
-// Add routes for clean URLs
-Object.entries(cleanUrlRoutes).forEach(([route, file]) => {
-  app.get(route, (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', file));
-  });
-});
-
-// Add specific routes for advertise sub-pages
-app.get('/advertise/company', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/advertiser.html'));
-});
-
-app.get('/advertise/charity', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/charity.html'));
-});
-
-// Serve PDF files from Terms and Conditions folder
-app.use('/Terms and Conditions', express.static(path.join(__dirname, '../public/Terms and Conditions')));
-
-// Handle frontend routing - serve index.html for any non-API routes that aren't clean URLs
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api/')) {
-    // Check if this is a clean URL route
-    const cleanUrlRoutes = ['/about', '/advertise', '/auth', '/impact', '/subscribe', '/admin', '/lander', '/reset-password', '/verify-email', '/advertise/company', '/advertise/charity'];
-    
-    if (cleanUrlRoutes.includes(req.path)) {
-      // This should have been handled by the specific routes above
-
-
-      // If we reach here, something went wrong with the specific routes
-      console.log('⚠️ Clean URL route not handled:', req.path);
-      return res.status(404).send('Route not found');
-    }
-    
-    // Serve index.html for all other routes (like /, /some-other-page, etc.)
-    res.sendFile(path.join(__dirname, '../public/index.html'));
-  }
-});
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-  const pool = getPool();
-  const healthStatus = {
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    database: pool ? 'connected' : 'disconnected',
-    uptime: process.uptime(),
-    memory: process.memoryUsage()
-  };
-  res.json(healthStatus);
-});
-
-// ===== CLEANUP JOBS =====
-// Note: Manual cleanup script can be added later to delete unpaid files
-// Query example: SELECT * FROM advertisers WHERE payment_completed = false AND created_at < NOW() - INTERVAL '24 hours'
-
-app.listen(PORT, () => {
-  console.log('🚀 LetsWatchAds Server Started!');
-  if (process.env.NODE_ENV === 'production') {
-    console.log(`🌐 Production server running on port ${PORT}`);
-    console.log(`🔗 Deployed at: https://charitystream.vercel.app`);
-  } else {
-  console.log(`📡 Server running on http://localhost:${PORT}`);
-  console.log(`🎬 Frontend served at http://localhost:${PORT}`);
-  }
-  console.log(`🔐 API endpoints available at /api/`);
-  console.log('\n📋 Available endpoints:');
-  
-  // Periodic health logging
-  // TEMPORARILY DISABLED FOR CLEANER CONSOLE OUTPUT
-  // setInterval(() => {
-  //   const pool = getPool();
-  //   console.log(`💓 Server health - DB: ${pool ? 'OK' : 'ERROR'}, Memory: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB`);
-  // }, 60000); // Every minute
-  console.log('   POST /api/auth/register');
-  console.log('   POST /api/auth/login');
-  console.log('   GET  /api/auth/me');
-  console.log('   POST /api/tracking/start-session');
-  console.log('   POST /api/tracking/complete-session');
-  console.log('   GET  /api/leaderboard');
-  console.log('   GET  /api/leaderboard/my-rank');
-  console.log('   GET  /api/admin/analytics');
-});
-
-// Test Stripe connection
-app.get('/api/test/stripe', (req, res) => {
-  try {
-    console.log('🔧 Testing Stripe connection...');
-    console.log('🔧 Stripe secret key available:', !!process.env.STRIPE_SECRET_KEY);
-    console.log('🔧 Stripe secret key starts with:', process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined');
-    console.log('🔧 Stripe publishable key available:', !!process.env.STRIPE_PUBLISHABLE_KEY);
-    console.log('🔧 Stripe publishable key starts with:', process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 7) : 'undefined');
-    console.log('🔧 Stripe price ID available:', !!process.env.STRIPE_PRICE_ID);
-    console.log('🔧 Stripe price ID:', process.env.STRIPE_PRICE_ID);
-    
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(500).json({ error: 'STRIPE_SECRET_KEY not set' });
-    }
-    
-    if (!process.env.STRIPE_PUBLISHABLE_KEY) {
-      return res.status(500).json({ error: 'STRIPE_PUBLISHABLE_KEY not set' });
-    }
-    
-    res.json({ 
-      message: 'Stripe configuration looks good',
-      hasSecretKey: !!process.env.STRIPE_SECRET_KEY,
-      hasPublishableKey: !!process.env.STRIPE_PUBLISHABLE_KEY,
-      hasPriceId: !!process.env.STRIPE_PRICE_ID,
-      keyPrefix: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined',
-      publishableKeyPrefix: process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 7) : 'undefined',
-      priceId: process.env.STRIPE_PRICE_ID
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Simple Stripe test
-app.get('/api/test/stripe-simple', (req, res) => {
-  try {
-    const hasSecretKey = !!process.env.STRIPE_SECRET_KEY;
-    const hasPublishableKey = !!process.env.STRIPE_PUBLISHABLE_KEY;
-    const hasPriceId = !!process.env.STRIPE_PRICE_ID;
-    
-    res.json({ 
-      hasSecretKey,
-      hasPublishableKey,
-      hasPriceId,
-      secretKeyPrefix: process.env.STRIPE_SECRET_KEY ? process.env.STRIPE_SECRET_KEY.substring(0, 7) : 'undefined',
-      publishableKeyPrefix: process.env.STRIPE_PUBLISHABLE_KEY ? process.env.STRIPE_PUBLISHABLE_KEY.substring(0, 7) : 'undefined',
-      priceId: process.env.STRIPE_PRICE_ID
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Basic test endpoint
-app.get('/api/test/basic', (req, res) => {
-  res.json({ message: 'Server is working', timestamp: new Date().toISOString() });
-});
-
-// Minimal PaymentIntent test
-app.post('/api/test/payment-intent', authenticateToken, async (req, res) => {
-  try {
-    console.log('Testing PaymentIntent creation...');
-    
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(500).json({ error: 'No Stripe secret key' });
-    }
-    
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: 100,
-      currency: 'usd',
-    });
-    
-    res.json({ success: true, id: paymentIntent.id });
-  } catch (error) {
-    console.error('PaymentIntent error:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Get Stripe publishable key (safe to expose to frontend)
-app.get('/api/stripe/config', (req, res) => {
-  console.log('🔧 Stripe config requested');
-  console.log('🔧 Publishable key available:', !!process.env.STRIPE_PUBLISHABLE_KEY);
-  console.log('🔧 Price ID available:', !!process.env.STRIPE_PRICE_ID);
-  
-  // Immediate response without any async operations
-  const response = {
-    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
-    priceId: process.env.STRIPE_PRICE_ID
-  };
-  
-  console.log('✅ Sending Stripe config response');
-  res.json(response);
-});
-
+// Stripe webhook endpoint - legacy copy retained below for reference only
+// Legacy webhook handler removed; see top-level definition near top of file.
 // Webhook status endpoint to assist with configuration
 app.get('/api/webhook-status', (req, res) => {
   try {
@@ -5542,6 +5154,7 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
     });
     
     // Create Stripe checkout session with donationId in metadata
+    // 🚨 REVERTED: Using payment mode (one-time) since price is one-time type
     const sessionMetadata = {
       donationType: 'direct_donation',
       amount: String(amount),
@@ -5551,19 +5164,20 @@ app.post('/api/donate/create-checkout-session', authenticateToken, async (req, r
     };
     
     console.log('📦 Session metadata prepared:', sessionMetadata);
+    console.log('💰 Using payment mode (one-time donation)');
     
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
       line_items: [
         {
-          price: 'price_1SNmrt0CutcpJ738Sh6lSLeZ',
+          price: 'price_1SNmrt0CutcpJ738Sh6lSLeZ', // One-time price
           quantity: 1,
         },
       ],
-      mode: 'payment',
-      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/donation/success?session_id={CHECKOUT_SESSION_ID}`,
+      mode: 'payment', // 🚨 REVERTED: Payment mode for one-time donations
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/?donation_success=true`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/`,
-      metadata: sessionMetadata
+      metadata: sessionMetadata // Metadata at session level for webhook lookup
     });
     
     // Update donation record with session ID
