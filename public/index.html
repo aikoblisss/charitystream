@@ -1542,7 +1542,7 @@
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="/auth" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
+          <a href="/auth.html" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -1984,7 +1984,7 @@
             window.location.href = '/';
           } else {
             // User is not logged in, go to sign in
-            window.location.href = '/auth';
+            window.location.href = '/auth.html';
           }
         };
       }
@@ -2005,7 +2005,7 @@
         watchAdsBtnGuest.onclick = function(e) {
           e.preventDefault();
           // User is not logged in, go to sign in
-          window.location.href = '/auth';
+          window.location.href = '/auth.html';
         };
       }
     });
@@ -2014,13 +2014,13 @@
     function handleWatchAdsClick(event) {
       event.preventDefault();
       // Redirect to sign in page
-      window.location.href = '/auth';
+      window.location.href = '/auth.html';
     }
 
     function handlePlayButtonClick(event) {
       event.preventDefault();
       // Redirect to sign in page
-      window.location.href = '/auth';
+      window.location.href = '/auth.html';
     }
 
     // Validate token on page load
@@ -2113,7 +2113,7 @@
     }
 
     function goToAuth() {
-      window.location.href = '/auth';
+      window.location.href = '/auth.html';
     }
 
     function logout() {
@@ -2143,7 +2143,7 @@
       
       if (!token) {
         // Redirect to login if not authenticated
-        window.location.href = '/auth';
+        window.location.href = '/auth.html';
         return;
       }
 
@@ -2170,7 +2170,7 @@
           window.location.href = '/impact';
           break;
         case 'watch':
-          window.location.href = '/auth';
+          window.location.href = '/auth.html';
           break;
       }
     }
@@ -2184,7 +2184,7 @@
         window.location.href = '/';
       } else {
         // User is not authenticated, redirect to auth page
-        window.location.href = '/auth';
+        window.location.href = '/auth.html';
       }
     }
 
@@ -2502,7 +2502,7 @@
             currentUser = null;
             
             // Redirect to login page
-            window.location.href = '/auth';
+            window.location.href = '/auth.html';
             
             return true; // Indicates auth error was handled
           }
@@ -2519,7 +2519,7 @@
           authToken = null;
           
           // Redirect to login
-          window.location.href = '/auth';
+          window.location.href = '/auth.html';
           
           return true;
         }

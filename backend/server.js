@@ -849,6 +849,11 @@ app.use((req, res, next) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Explicit route for auth.html (as backup)
+app.get('/auth.html', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/auth.html'));
+});
+
 // Authentication middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
@@ -1406,6 +1411,13 @@ app.post('/api/auth/setup-password', async (req, res) => {
 // ===== GOOGLE OAUTH ROUTES =====
 // Enabled for production
 
+// Redirect /auth to the actual Google OAuth endpoint
+app.get('/auth', (req, res) => {
+  console.log('🔐 /auth route hit, redirecting to Google OAuth');
+  const queryString = new URLSearchParams(req.query).toString();
+  const redirectUrl = queryString ? `/api/auth/google?${queryString}` : '/api/auth/google';
+  res.redirect(redirectUrl);
+});
 
 // Google OAuth login
 app.get('/api/auth/google', (req, res, next) => {
