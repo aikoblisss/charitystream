@@ -850,9 +850,52 @@ app.use((req, res, next) => {
 // Serve static files from public directory
 app.use(express.static(path.join(__dirname, '../public')));
 
-// Explicit route for auth.html (as backup)
+// Explicit routes for HTML pages (SPA-style navigation)
+// Serve the main app at root
+app.get('/', (req, res) => {
+  console.log('📄 Serving index.html (main app)');
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
+// Serve about.html at /about
+app.get('/about', (req, res) => {
+  console.log('📄 Serving about.html');
+  res.sendFile(path.join(__dirname, '../public/about.html'));
+});
+
+// Serve advertise.html at /advertise
+app.get('/advertise', (req, res) => {
+  console.log('📄 Serving advertise.html');
+  res.sendFile(path.join(__dirname, '../public/advertise.html'));
+});
+
+// Serve impact.html at /impact
+app.get('/impact', (req, res) => {
+  console.log('📄 Serving impact.html');
+  res.sendFile(path.join(__dirname, '../public/impact.html'));
+});
+
+// Serve auth.html at /auth
+app.get('/auth', (req, res) => {
+  console.log('📄 Serving auth.html');
+  res.sendFile(path.join(__dirname, '../public/auth.html'));
+});
+
+// Explicit route for auth.html (as backup - with .html extension)
 app.get('/auth.html', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/auth.html'));
+});
+
+// Serve advertiser.html at /advertiser
+app.get('/advertiser', (req, res) => {
+  console.log('📄 Serving advertiser.html');
+  res.sendFile(path.join(__dirname, '../public/advertiser.html'));
+});
+
+// Serve charity.html at /charity
+app.get('/charity', (req, res) => {
+  console.log('📄 Serving charity.html');
+  res.sendFile(path.join(__dirname, '../public/charity.html'));
 });
 
 // Authentication middleware
@@ -5359,6 +5402,29 @@ app.post('/api/test/donation-email', authenticateToken, async (req, res) => {
       stack: error.stack
     });
   }
+});
+
+// SPA fallback - serve index.html for any unknown non-API routes
+app.get('*', (req, res, next) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return next(); // Let API routes return 404
+  }
+  
+  // Skip routes we've explicitly handled
+  const handledRoutes = ['/', '/about', '/advertise', '/impact', '/auth', '/auth.html', '/advertiser', '/charity'];
+  if (handledRoutes.includes(req.path)) {
+    return next();
+  }
+  
+  // Skip static file extensions (let express.static handle them)
+  const staticExtensions = ['.css', '.js', '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.woff', '.woff2', '.ttf', '.eot', '.mp4', '.pdf'];
+  if (staticExtensions.some(ext => req.path.toLowerCase().endsWith(ext))) {
+    return next();
+  }
+  
+  console.log(`📄 SPA fallback: serving index.html for ${req.path}`);
+  res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
 // Export the Express app for serverless environments (e.g., Vercel)
