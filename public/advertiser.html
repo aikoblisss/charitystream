@@ -1549,7 +1549,7 @@ function closeEnhancementModal() {
   document.body.style.overflow = 'auto';
 }
 
-function proceedToCheckout() {
+async function proceedToCheckout() {
   console.log('🚀 ===== PROCEEDING TO CHECKOUT =====');
   
   try {
@@ -1573,51 +1573,101 @@ function proceedToCheckout() {
     // Show loading state
     const checkoutButton = document.querySelector('.modal-btn-primary');
     const originalText = checkoutButton.textContent;
-    checkoutButton.textContent = 'Processing...';
+    checkoutButton.textContent = 'Uploading file...';
     checkoutButton.disabled = true;
     
-    // Create FormData for file upload
-    const submitData = new FormData();
+    // STEP 1: Upload file first (avoids Vercel 4.5MB limit)
+    console.log('📤 Step 1: Uploading file to R2...');
+    const fileFormData = new FormData();
+    fileFormData.append('creative', fileInput.files[0]);
     
-    // Add form fields
-    Object.keys(formData).forEach(key => {
-      submitData.append(key, formData[key]);
-    });
-    
-    // Add file
-    submitData.append('creative', fileInput.files[0]);
-    
-    console.log('📤 Submitting to checkout endpoint...');
-    
-    // Submit to backend
-    fetch('/api/advertiser/create-checkout-session', {
+    const uploadResponse = await fetch('/api/advertiser/upload-file', {
       method: 'POST',
-      body: submitData
-    })
-    .then(response => response.json())
-    .then(data => {
-      console.log('✅ Checkout session created:', data);
-      
-      if (data.checkoutUrl) {
-        // Redirect to Stripe Checkout
-        console.log('🛒 Redirecting to Stripe Checkout...');
-        window.location.href = data.checkoutUrl;
-      } else {
-        throw new Error('No checkout URL received');
-      }
-    })
-    .catch(error => {
-      console.error('❌ Checkout error:', error);
-      alert('Failed to create checkout session. Please try again.');
-      
-      // Restore button state
-      checkoutButton.textContent = originalText;
-      checkoutButton.disabled = false;
+      body: fileFormData
     });
+    
+    if (!uploadResponse.ok) {
+      let errorMessage = 'File upload failed';
+      try {
+        const errorData = await uploadResponse.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        const errorText = await uploadResponse.text();
+        errorMessage = errorText || errorMessage;
+      }
+      
+      if (uploadResponse.status === 413) {
+        errorMessage = 'File is too large. Please use a smaller file (max 50MB).';
+      }
+      
+      console.error('❌ File upload failed:', uploadResponse.status, errorMessage);
+      throw new Error(errorMessage);
+    }
+    
+    const uploadData = await uploadResponse.json();
+    console.log('✅ File uploaded successfully:', uploadData);
+    
+    if (!uploadData.success || !uploadData.fileUrl) {
+      throw new Error('File upload did not return a valid URL');
+    }
+    
+    // STEP 2: Create checkout session with file URL (not the file itself)
+    checkoutButton.textContent = 'Creating checkout session...';
+    console.log('📤 Step 2: Creating checkout session with file URL...');
+    
+    const checkoutData = {
+      ...formData,
+      fileUrl: uploadData.fileUrl,
+      fileName: uploadData.fileName
+    };
+    
+    const checkoutResponse = await fetch('/api/advertiser/create-checkout-session', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(checkoutData)
+    });
+    
+    if (!checkoutResponse.ok) {
+      let errorMessage = 'Checkout session creation failed';
+      try {
+        const errorData = await checkoutResponse.json();
+        errorMessage = errorData.message || errorData.error || errorMessage;
+      } catch (e) {
+        const errorText = await checkoutResponse.text();
+        errorMessage = errorText || errorMessage;
+      }
+      
+      if (checkoutResponse.status === 413) {
+        errorMessage = 'Request too large. This should not happen - please contact support.';
+      }
+      
+      console.error('❌ Checkout session creation failed:', checkoutResponse.status, errorMessage);
+      throw new Error(errorMessage);
+    }
+    
+    const checkoutResult = await checkoutResponse.json();
+    console.log('✅ Checkout session created:', checkoutResult);
+    
+    if (checkoutResult.checkoutUrl) {
+      // Redirect to Stripe Checkout
+      console.log('🛒 Redirecting to Stripe Checkout...');
+      window.location.href = checkoutResult.checkoutUrl;
+    } else {
+      throw new Error('No checkout URL received');
+    }
     
   } catch (error) {
     console.error('❌ Error in proceedToCheckout:', error);
-    alert('An error occurred. Please try again.');
+    alert('Failed to create checkout session: ' + (error.message || 'Please try again.'));
+    
+    // Restore button state
+    const checkoutButton = document.querySelector('.modal-btn-primary');
+    if (checkoutButton) {
+      checkoutButton.textContent = 'Proceed to checkout';
+      checkoutButton.disabled = false;
+    }
   }
 }
 

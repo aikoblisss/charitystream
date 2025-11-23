@@ -5306,7 +5306,57 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 // ===== ADVERTISER CHECKOUT ROUTES =====
 
 // Create advertiser checkout session
-app.post('/api/advertiser/create-checkout-session', upload.single('creative'), async (req, res) => {
+// Separate endpoint to upload file first (avoids Vercel 4.5MB limit)
+app.post('/api/advertiser/upload-file', upload.single('creative'), async (req, res) => {
+  try {
+    console.log('📤 ===== FILE UPLOAD ENDPOINT =====');
+    
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file provided' });
+    }
+    
+    console.log('📁 File received:', req.file.originalname);
+    console.log('📁 File size:', req.file.size, 'bytes');
+    
+    // Generate final filename
+    const timestamp = Date.now();
+    const sanitizedFileName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const finalFileName = `${timestamp}-${sanitizedFileName}`;
+    
+    console.log(`📤 Uploading file to R2: ${finalFileName}`);
+    
+    // Upload to R2
+    const uploadCommand = new PutObjectCommand({
+      Bucket: 'advertiser-media',
+      Key: finalFileName,
+      Body: req.file.buffer,
+      ContentType: req.file.mimetype,
+    });
+    
+    await r2Client.send(uploadCommand);
+    
+    // Generate public URL
+    const mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${finalFileName}`;
+    
+    console.log('✅ File uploaded to R2 successfully:', mediaUrl);
+    
+    // Return the file URL and filename for use in checkout
+    res.json({
+      success: true,
+      fileUrl: mediaUrl,
+      fileName: finalFileName
+    });
+    
+  } catch (error) {
+    console.error('❌ File upload error:', error);
+    res.status(500).json({
+      error: 'File upload failed',
+      message: error.message
+    });
+  }
+});
+
+app.post('/api/advertiser/create-checkout-session', async (req, res) => {
   try {
     console.log('🚀 ===== ADVERTISER CHECKOUT SESSION CREATION STARTED =====');
     
@@ -5323,7 +5373,9 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
       isRecurring,
       expeditedApproval,
       clickTracking,
-      destinationUrl
+      destinationUrl,
+      fileUrl,  // File URL from separate upload endpoint
+      fileName  // File name from separate upload endpoint
     } = req.body;
     
     console.log('📝 Campaign data received:', {
@@ -5369,46 +5421,16 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
       return res.status(500).json({ error: 'Database connection not available' });
     }
     
-    // Upload file to R2 immediately with final filename (no pending prefix)
-    let mediaUrl = null;
+    // Get file URL from request body (file should be uploaded separately via /api/advertiser/upload-file)
+    // This avoids Vercel's 4.5MB request body limit for serverless functions
+    const mediaUrl = fileUrl || null;
+    const uploadedFileName = fileName || null;
     
-    if (req.file) {
-      console.log('📁 File received, uploading to R2 immediately:', req.file.originalname);
-      console.log('📁 File size:', req.file.size, 'bytes');
-      
-      try {
-        // Generate final filename (no pending prefix - file is uploaded directly)
-        const timestamp = Date.now();
-        const sanitizedFileName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const finalFileName = `${timestamp}-${sanitizedFileName}`;
-        
-        console.log(`📤 Uploading file to R2: ${finalFileName}`);
-        
-        // Upload to R2 immediately with final filename
-        const uploadCommand = new PutObjectCommand({
-          Bucket: 'advertiser-media',
-          Key: finalFileName,
-          Body: req.file.buffer,
-          ContentType: req.file.mimetype,
-        });
-        
-        await r2Client.send(uploadCommand);
-        
-        // Generate public URL immediately
-        mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${finalFileName}`;
-        
-        console.log('✅ File uploaded to R2 successfully:', mediaUrl);
-        console.log('💡 File is uploaded but payment_completed = false until payment succeeds');
-        
-      } catch (uploadError) {
-        console.error('❌ Failed to upload file to R2:', uploadError);
-        console.error('❌ Upload error details:', uploadError.message);
-        return res.status(500).json({
-          error: 'File upload failed',
-          message: 'Failed to upload file to storage. Please try again.',
-          details: uploadError.message
-        });
-      }
+    if (mediaUrl) {
+      console.log('📁 Using pre-uploaded file URL:', mediaUrl);
+      console.log('📁 File name:', uploadedFileName);
+    } else {
+      console.log('⚠️ No file URL provided - advertiser will need to upload file later');
     }
     
     // Calculate max_weekly_impressions based on CPM + weekly budget
