@@ -678,6 +678,7 @@ Charity Stream - Making Every View Count for Charity`;
   }
 
   // Get advertiser confirmation email template with campaign summary
+  // hamburger
   getAdvertiserConfirmationEmailTemplate(companyName, campaignSummary = {}, signupToken = null) {
     console.log('📧 [TEMPLATE] getAdvertiserConfirmationEmailTemplate called - NEW VERSION');
     console.log('📧 [TEMPLATE] Company:', companyName);
