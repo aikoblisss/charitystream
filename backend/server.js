@@ -5546,15 +5546,40 @@ app.post('/api/advertiser/create-checkout-session', async (req, res) => {
     // Create Stripe Checkout Session
     console.log('🛒 Creating Stripe checkout session...');
     
-    // Build subscription metadata (webhook will use advertiserId to update payment_completed)
+    // Build complete subscription metadata (webhook reads from subscription.metadata)
+    // This must include ALL fields needed for the email template
     const subscriptionMetadata = {
       advertiserId: String(advertiser.id),
       campaignType: 'advertiser',
       companyName: companyName,
-      hasFile: !!req.file ? 'true' : 'false'
+      hasFile: !!req.file ? 'true' : 'false',
+      isRecurring: isRecurring === 'true' || isRecurring === true ? 'true' : 'false',
+      // REQUIRED fields for email summary
+      weeklyBudget: weeklyBudget || '',
+      cpmRate: cpmRate || '',
+      clickTracking: clickTracking === 'true' || clickTracking === true ? 'true' : 'false',
+      expedited: expeditedApproval === 'true' || expeditedApproval === true ? 'true' : 'false',
+      adFormat: adFormat || ''
     };
     
-    console.log('📦 Subscription metadata prepared for webhook:', subscriptionMetadata);
+    console.log('📦 Complete subscription metadata prepared for webhook:', subscriptionMetadata);
+    
+    // Session metadata (also include all fields for consistency)
+    const sessionMetadata = {
+      advertiserId: String(advertiser.id),
+      companyName: companyName,
+      campaignType: 'advertiser',
+      hasFile: !!req.file ? 'true' : 'false',
+      isRecurring: isRecurring === 'true' || isRecurring === true ? 'true' : 'false',
+      // REQUIRED fields for email summary
+      weeklyBudget: weeklyBudget || '',
+      cpmRate: cpmRate || '',
+      clickTracking: clickTracking === 'true' || clickTracking === true ? 'true' : 'false',
+      expedited: expeditedApproval === 'true' || expeditedApproval === true ? 'true' : 'false',
+      adFormat: adFormat || ''
+    };
+    
+    console.log('📦 Complete session metadata prepared:', sessionMetadata);
     
     const sessionConfig = {
       customer: customer.id,
@@ -5562,15 +5587,7 @@ app.post('/api/advertiser/create-checkout-session', async (req, res) => {
       mode: 'subscription', // MUST be subscription for usage-based billing
       success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser.html?payment_success=true`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser.html`,
-      metadata: {
-        advertiserId: String(advertiser.id),
-        companyName: companyName,
-        campaignType: 'advertiser',
-        hasFile: !!req.file ? 'true' : 'false',
-        isRecurring: isRecurring === 'true' || isRecurring === true ? 'true' : 'false',
-        weeklyBudget: weeklyBudget || '',
-        cpmRate: cpmRate || ''
-      },
+      metadata: sessionMetadata,
       subscription_data: {
         metadata: subscriptionMetadata
       },
