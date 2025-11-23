@@ -226,10 +226,12 @@ async function processApprovedAdvertisers() {
           
           // Build update query with all required columns
           // Note: Some columns may not exist - PostgreSQL will ignore them gracefully
+          // IMPORTANT: Only set video_filename if it's NULL (don't overwrite existing values)
           const updateQuery = `
             UPDATE advertisers SET
               completed = true,
               application_status = 'approved',
+              video_filename = COALESCE(video_filename, $2),
               current_week_start = COALESCE(current_week_start, NOW()),
               campaign_start_date = COALESCE(campaign_start_date, NOW()),
               approved_at = COALESCE(approved_at, NOW()),
@@ -238,8 +240,9 @@ async function processApprovedAdvertisers() {
           `;
           
           try {
-            await client.query(updateQuery, [advertiser.id]);
+            await client.query(updateQuery, [advertiser.id, standardizedFilename]);
             console.log(`✅ Advertiser record updated: ${advertiser.company_name} (ID: ${advertiser.id})`);
+            console.log(`📹 Video filename set: ${standardizedFilename}`);
             
             // Verification: ensure click tracking data saved correctly
             const verifyResult = await client.query(
@@ -259,11 +262,18 @@ async function processApprovedAdvertisers() {
             console.log(`⚠️ Full update failed, trying simplified update...`);
             console.log(`⚠️ Error: ${updateError.message}`);
             try {
+              // Still try to set video_filename in simplified update
               await client.query(
-                `UPDATE advertisers SET completed = true, application_status = 'approved', updated_at = NOW() WHERE id = $1`,
-                [advertiser.id]
+                `UPDATE advertisers SET 
+                  completed = true, 
+                  application_status = 'approved', 
+                  video_filename = COALESCE(video_filename, $2),
+                  updated_at = NOW() 
+                WHERE id = $1`,
+                [advertiser.id, standardizedFilename]
               );
               console.log(`✅ Advertiser record updated (simplified): ${advertiser.company_name}`);
+              console.log(`📹 Video filename set: ${standardizedFilename}`);
               
               // Verification for simplified path
               const verifyResult = await client.query(
@@ -289,6 +299,24 @@ async function processApprovedAdvertisers() {
             try {
               console.log(`📧 Sending approval email to: ${advertiser.email}`);
               
+              // Generate portal signup token for approval email
+              const crypto = require('crypto');
+              const portalSignupToken = crypto.randomUUID();
+              console.log(`🔑 [PORTAL SIGNUP] Generated token for advertiser approval: ${portalSignupToken.substring(0, 8)}...`);
+              
+              // Save token to database
+              try {
+                await client.query(`
+                  UPDATE advertisers
+                  SET portal_signup_token = $1,
+                      portal_signup_token_created_at = NOW()
+                  WHERE id = $2
+                `, [portalSignupToken, advertiser.id]);
+                console.log(`✅ [PORTAL SIGNUP] Token saved to database for advertiser: ${advertiser.id}`);
+              } catch (tokenError) {
+                console.error(`❌ [PORTAL SIGNUP] Failed to save token:`, tokenError.message);
+              }
+              
               // Build campaign summary for email
               const campaignSummary = {
                 ad_format: advertiser.ad_format,
@@ -302,7 +330,8 @@ async function processApprovedAdvertisers() {
               const emailResult = await emailService.sendAdvertiserApprovalEmail(
                 advertiser.email,
                 advertiser.company_name,
-                campaignSummary
+                campaignSummary,
+                portalSignupToken
               );
               
               if (emailResult.success) {

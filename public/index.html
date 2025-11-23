@@ -3337,12 +3337,14 @@
         
         // DYNAMIC PLAYLIST FROM BACKEND
         let playlist = [];
+        let playlistData = []; // Full playlist data with advertiser info
         let videoUrls = {}; // Map video names to R2 URLs
         let currentIndex = 0;
         let currentQuality = "standard"; // Changed from quality-based to standard
         let isQualitySwitching = false;
         let isInitialLoad = true;
         let isPlaying = false;
+        let hasSentImpression = false; // Track if impression sent for current video
         
         // Fetch playlist from backend dynamically
         async function initializePlaylist() {
@@ -3355,8 +3357,14 @@
             });
             const data = await response.json();
             
+            // Store full playlist data (includes advertiserId and videoFilename)
+            playlistData = data.videos;
+            
+            // Defensive filter: Remove capped videos (backend already filters, but this is extra safety)
+            playlistData = playlistData.filter(video => !video.isCapped);
+            
             // Extract video names and URLs from backend response
-            playlist = data.videos.map(video => {
+            playlist = playlistData.map(video => {
               const videoName = video.title; // e.g., "video_1"
               videoUrls[videoName] = video.videoUrl; // Store the full R2 URL
               return videoName;
@@ -3364,12 +3372,22 @@
             
             console.log('✅ Dynamic playlist loaded from R2:', playlist);
             console.log('✅ Video URLs mapped:', videoUrls);
+            console.log('✅ Playlist data with advertiser info:', playlistData);
+            console.log(`📊 Filtered playlist: ${playlist.length} videos (capped videos excluded)`);
             
             return true;
           } catch (error) {
             console.error('❌ Failed to load dynamic playlist, using fallback:', error);
             // Fallback to hardcoded playlist
             playlist = ['video_1', 'video_2', 'video_3', 'video_4', 'video_5'];
+            playlistData = playlist.map((name, index) => ({
+              videoId: index + 1,
+              title: name,
+              videoUrl: `https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev/${name}.mp4`,
+              duration: 60,
+              advertiserId: null,
+              videoFilename: null
+            }));
             
             // Initialize fallback URLs for hardcoded playlist
             playlist.forEach(videoName => {
@@ -3414,6 +3432,10 @@
           console.log(`🎬 Current playlist:`, playlist);
           
           currentIndex = index;
+          
+          // Reset impression flag when loading new video
+          hasSentImpression = false;
+          
           const source = getCurrentVideoSource();
           console.log(`🎬 Loading video ${index + 1} (${playlist[index]}): ${source.src}`);
           console.log(`🎬 Full video path: videos/${playlist[index]}.mp4`);
@@ -3457,6 +3479,68 @@
           
           // Don't start session automatically - only start when user actually plays video
           console.log('🎬 Video player initialized - session will start when user plays video');
+        }
+        
+        // Function to send impression event
+        function sendImpressionEvent() {
+          // Guard: Only fire ONCE per video load
+          if (hasSentImpression) {
+            console.log('📊 Impression already sent for this video, skipping');
+            return;
+          }
+          
+          // Get current video's advertiser info from playlist
+          if (currentIndex >= playlistData.length) {
+            console.log('⚠️ Current index out of bounds for playlist data');
+            return;
+          }
+          
+          const currentVideo = playlistData[currentIndex];
+          const advertiserId = currentVideo?.advertiserId;
+          const videoFilename = currentVideo?.videoFilename;
+          
+          // Guard: Old videos with NULL advertiserId → skip safely
+          if (!advertiserId || !videoFilename) {
+            console.log('📊 Skipping impression - old video without tracking:', {
+              advertiserId,
+              videoFilename,
+              videoTitle: currentVideo?.title
+            });
+            return;
+          }
+          
+          // Mark as sent immediately to prevent double-triggering
+          hasSentImpression = true;
+          
+          console.log('📊 Sending impression event:', {
+            advertiserId,
+            videoFilename
+          });
+          
+          // Send impression to backend
+          fetch('/api/impressions/record', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              advertiserId: advertiserId,
+              videoFilename: videoFilename
+            })
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              console.log('✅ Impression recorded successfully:', data);
+            } else {
+              console.log('⚠️ Impression recording returned:', data);
+            }
+          })
+          .catch(error => {
+            console.error('❌ Error recording impression:', error);
+            // Reset flag on error so it can be retried
+            hasSentImpression = false;
+          });
         }
 
         function disableDoubleClickFullscreen() {
@@ -3512,6 +3596,9 @@
           console.log('🎬 Video play event triggered');
           isPlaying = true;
           console.log('▶️ Video started playing');
+          
+          // Send impression event when video starts playing
+          sendImpressionEvent();
           
           // Only check for conflicts when starting a NEW session
           if (!currentSessionId) {
@@ -3748,7 +3835,96 @@
           }
           
           if (!isQualitySwitching) {
-            // Move to next video in playlist
+            // Check cap for current video before switching
+            const currentAd = playlistData[currentIndex];
+            if (currentAd && currentAd.advertiserId) {
+              try {
+                const checkCapResponse = await trackedFetch('/api/advertisers/check-cap', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${authToken}`
+                  },
+                  body: JSON.stringify({
+                    advertiserId: currentAd.advertiserId,
+                    videoFilename: currentAd.videoFilename
+                  })
+                });
+                
+                if (checkCapResponse.ok) {
+                  const capData = await checkCapResponse.json();
+                  if (capData.capped || capData.archived) {
+                    console.log(`🛑 Video ${playlist[currentIndex]} is now capped/archived - will be excluded from future playlists`);
+                  }
+                }
+                
+                // Step A — Ask backend if this ad is now capped
+                // Re-fetch advertiser status to see if it got capped
+                const statusRes = await trackedFetch(`/api/advertisers/${currentAd.advertiserId}/status`, {
+                  headers: {
+                    'Authorization': `Bearer ${authToken}`
+                  }
+                });
+                
+                if (statusRes.ok) {
+                  const status = await statusRes.json();
+                  if (status.capped === true) {
+                    console.log("⏹️ Ad hit budget cap — refreshing playlist");
+                    
+                    // Refresh playlist from backend
+                    const newPlaylistRes = await trackedFetch('/api/videos/playlist', {
+                      headers: {
+                        'Authorization': `Bearer ${authToken}`
+                      }
+                    });
+                    
+                    if (newPlaylistRes.ok) {
+                      const newPlaylistData = (await newPlaylistRes.json()).videos;
+                      
+                      // Filter out capped videos (safeguard)
+                      playlistData = newPlaylistData.filter(video => !video.isCapped);
+                      
+                      // If the playlist is empty, handle gracefully
+                      if (playlistData.length === 0) {
+                        console.error("⚠️ All advertiser videos capped or removed");
+                        // Stop looping - could show a message to user
+                        player.pause();
+                        return; // stop looping
+                      }
+                      
+                      playlist = playlistData.map(v => v.title);
+                      
+                      // Adjust index to next valid video (use modulo to wrap if needed)
+                      currentIndex = currentIndex % playlist.length;
+                      
+                      console.log(`🔄 Playlist refreshed - ${playlist.length} videos remaining`);
+                      console.log(`🔄 Adjusted index to ${currentIndex} (${playlist[currentIndex]})`);
+                      
+                      // Track video completion for popup ads
+                      if (popupAdManager && typeof popupAdManager.onVideoEnded === 'function') {
+                        popupAdManager.onVideoEnded();
+                      }
+                      
+                      // Load next video immediately
+                      loadVideoWithQuality(currentIndex);
+                      
+                      // No automatic session start - wait for user to click play to start session
+                      console.log('📺 Video loaded - waiting for user to click play to start session');
+                      return; // VERY IMPORTANT — prevents playing capped video
+                    } else {
+                      console.error('⚠️ Failed to refresh playlist, continuing with existing playlist');
+                    }
+                  }
+                } else {
+                  console.error('⚠️ Failed to fetch advertiser status, continuing with existing playlist');
+                }
+              } catch (capError) {
+                console.error('⚠️ Error checking cap (non-critical):', capError);
+                // Continue with video switch even if cap check fails
+              }
+            }
+            
+            // Move to next video in playlist (only if we didn't already handle capped video above)
             const oldIndex = currentIndex;
             currentIndex = (currentIndex + 1) % playlist.length;
             console.log(`🔄 Switching from video ${oldIndex + 1} (${playlist[oldIndex]}) to video ${currentIndex + 1} (${playlist[currentIndex]})`);

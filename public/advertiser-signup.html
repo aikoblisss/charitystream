@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advertiser Portal Signup - Charity Stream</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .logo h1 {
+      color: #2F7D31;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .logo p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    
+    .error-message {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    
+    .success-message {
+      background: #d1fae5;
+      border: 1px solid #a7f3d0;
+      color: #065f46;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    
+    .info-message {
+      background: #dbeafe;
+      border: 1px solid #bfdbfe;
+      color: #1e40af;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #374151;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #2F7D31;
+      box-shadow: 0 0 0 3px rgba(47, 125, 49, 0.1);
+    }
+    
+    .form-group input:disabled {
+      background: #f3f4f6;
+      color: #6b7280;
+      cursor: not-allowed;
+    }
+    
+    .password-requirements {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    
+    .submit-btn {
+      width: 100%;
+      background: #2F7D31;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+    
+    .submit-btn:hover:not(:disabled) {
+      background: #276629;
+    }
+    
+    .submit-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .login-link {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .login-link a {
+      color: #2F7D31;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    
+    .login-link a:hover {
+      text-decoration: underline;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+    
+    .spinner {
+      border: 3px solid #f3f4f6;
+      border-top: 3px solid #2F7D31;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 20px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <h1>Charity Stream</h1>
+      <p>Advertiser Portal Signup</p>
+    </div>
+    
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading signup information...</p>
+    </div>
+    
+    <div id="error-container" style="display: none;"></div>
+    <div id="account-exists-container" style="display: none;"></div>
+    <div id="signup-form" style="display: none;">
+      <form id="signupForm">
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" disabled required />
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" required minlength="8" />
+          <div class="password-requirements">Must be at least 8 characters long</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" name="confirmPassword" required minlength="8" />
+        </div>
+        
+        <button type="submit" class="submit-btn" id="submitBtn">Create Account</button>
+      </form>
+    </div>
+  </div>
+  
+  <script>
+    // Get token from URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    
+    let signupInfo = null;
+    
+    // Fetch signup info on page load
+    async function loadSignupInfo() {
+      if (!token) {
+        showError('Invalid signup link. No token provided.');
+        return;
+      }
+      
+      try {
+        const response = await fetch(`/api/advertiser/signup-info?token=${encodeURIComponent(token)}`);
+        const data = await response.json();
+        
+        console.log('📊 Signup info response:', data);
+        
+        if (!data.valid) {
+          showError('Invalid or expired signup link. Please contact support if you believe this is an error.');
+          return;
+        }
+        
+        if (data.accountExists) {
+          showAccountExists();
+          return;
+        }
+        
+        signupInfo = data;
+        showSignupForm(data);
+        
+      } catch (error) {
+        console.error('❌ Error loading signup info:', error);
+        showError('Failed to load signup information. Please try again later.');
+      }
+    }
+    
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      const errorContainer = document.getElementById('error-container');
+      errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+      errorContainer.style.display = 'block';
+    }
+    
+    function showAccountExists() {
+      document.getElementById('loading').style.display = 'none';
+      const container = document.getElementById('account-exists-container');
+      container.innerHTML = `
+        <div class="info-message">
+          <strong>Account Already Exists</strong><br>
+          An advertiser portal account already exists for this email address.
+        </div>
+        <div class="login-link">
+          <a href="/advertiser-login.html">Go to Login</a>
+        </div>
+      `;
+      container.style.display = 'block';
+    }
+    
+    function showSignupForm(data) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('signup-form').style.display = 'block';
+      
+      // Pre-fill email
+      document.getElementById('email').value = data.email;
+      
+      // Handle form submission
+      document.getElementById('signupForm').addEventListener('submit', handleSignup);
+    }
+    
+    async function handleSignup(e) {
+      e.preventDefault();
+      
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      // Validate passwords match
+      if (password !== confirmPassword) {
+        showFormError('Passwords do not match.');
+        return;
+      }
+      
+      if (password.length < 8) {
+        showFormError('Password must be at least 8 characters long.');
+        return;
+      }
+      
+      // Disable submit button
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating Account...';
+      
+      try {
+        const response = await fetch('/api/advertiser/signup', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            token: token,
+            password: password
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // Show success message
+          document.getElementById('signup-form').innerHTML = `
+            <div class="success-message">
+              <strong>Account Created Successfully!</strong><br>
+              Your advertiser portal account has been created.
+            </div>
+          `;
+          
+          // Redirect based on signup source
+          setTimeout(() => {
+            if (data.createdFromApproval) {
+              window.location.href = '/advertiser-dashboard.html';
+            } else {
+              window.location.href = '/advertiser-status.html';
+            }
+          }, 2000);
+          
+        } else {
+          showFormError(data.error || 'Failed to create account. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Create Account';
+        }
+        
+      } catch (error) {
+        console.error('❌ Error creating account:', error);
+        showFormError('Failed to create account. Please try again later.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create Account';
+      }
+    }
+    
+    function showFormError(message) {
+      const errorContainer = document.getElementById('error-container');
+      errorContainer.innerHTML = `<div class="error-message">${message}</div>`;
+      errorContainer.style.display = 'block';
+      
+      // Scroll to error
+      errorContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    
+    // Load signup info on page load
+    loadSignupInfo();
+  </script>
+</body>
+</html>
+

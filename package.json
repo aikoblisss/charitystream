@@ -7,7 +7,8 @@
     "start": "node backend/server.js",
     "dev": "node backend/server.js",
     "build": "npm install --prefix backend",
-    "postinstall": "npm install --prefix backend"
+    "postinstall": "npm install --prefix backend",
+    "test-reset": "node backend/scripts/test-weekly-reset.js"
   },
   "engines": {
     "node": ">=18.0.0"

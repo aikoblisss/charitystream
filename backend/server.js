@@ -29,7 +29,7 @@ const path = require('path');
 const session = require('express-session');
 const passport = require('passport');
 const multer = require('multer');
-const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { Pool } = require('pg');
 
 // Load environment variables from parent directory
@@ -145,8 +145,10 @@ let emailService = null;
 let tokenService = null;
 
 try {
+  // Clear cache to ensure fresh module load
+  delete require.cache[require.resolve('./services/emailService')];
   emailService = require('./services/emailService');
-  console.log('✅ Email service loaded');
+  console.log('✅ Email service loaded (cache cleared)');
   
   // Test email service on startup
   console.log('🚀 Initializing email service...');
@@ -373,25 +375,55 @@ const processStripeEvent = async (event) => {
             [subscription.customer, subscription.id, advertiserId]
           );
 
-          console.log('âœ… Advertiser payment marked as complete for advertiser ID:', advertiserId);
+          console.log('✅ Advertiser payment marked as complete for advertiser ID:', advertiserId);
 
           if (emailService && emailService.isEmailConfigured()) {
-            console.log('ðŸ“§ Sending advertiser confirmation email to:', advertiser.email);
+            console.log('📧 ===== WEBHOOK: PREPARING TO SEND EMAIL =====');
+            console.log('📧 [WEBHOOK] Advertiser email:', advertiser.email);
+            console.log('📧 [WEBHOOK] Company name:', advertiser.company_name);
+            console.log('📧 [WEBHOOK] Email service configured:', emailService.isEmailConfigured());
+
+            // Generate portal signup token for submission email
+            const portalSignupToken = crypto.randomUUID();
+            console.log('🔑 [PORTAL SIGNUP] Generated token for advertiser submission:', portalSignupToken.substring(0, 8) + '...');
+            
+            // Save token to database
+            const pool = getPool();
+            if (pool) {
+              try {
+                await pool.query(`
+                  UPDATE advertisers
+                  SET portal_signup_token = $1,
+                      portal_signup_token_created_at = NOW()
+                  WHERE id = $2
+                `, [portalSignupToken, advertiserId]);
+                console.log('✅ [PORTAL SIGNUP] Token saved to database for advertiser:', advertiserId);
+              } catch (tokenError) {
+                console.error('❌ [PORTAL SIGNUP] Failed to save token:', tokenError.message);
+              }
+            }
 
             const campaignSummary = {
               campaign_type: subscription.metadata?.campaignType || 'advertiser',
               weekly_budget: subscription.metadata?.weeklyBudget,
+              weekly_budget_cap: subscription.metadata?.weeklyBudget, // Template expects this field name
               cpm_rate: subscription.metadata?.cpmRate,
               click_tracking: subscription.metadata?.clickTracking === 'true',
               expedited: subscription.metadata?.expedited === 'true',
               ad_format: subscription.metadata?.adFormat || 'video'
             };
+            
+            console.log('📧 [WEBHOOK] Campaign summary prepared:', JSON.stringify(campaignSummary, null, 2));
+            console.log('📧 [WEBHOOK] About to call sendAdvertiserConfirmationEmail...');
 
             const emailResult = await emailService.sendAdvertiserConfirmationEmail(
               advertiser.email,
               advertiser.company_name,
-              campaignSummary
+              campaignSummary,
+              portalSignupToken
             );
+            
+            console.log('📧 [WEBHOOK] Email send result:', JSON.stringify(emailResult, null, 2));
 
             if (emailResult.success) {
               console.log('âœ… Advertiser confirmation email sent successfully');
@@ -2674,13 +2706,30 @@ app.post('/api/advertiser/submit', upload.single('creative'), async (req, res) =
       return res.status(500).json({ error: 'Database connection not available' });
     }
     
+    // Calculate max_weekly_impressions based on CPM + weekly budget
+    let max_weekly_impressions = null;
+    const weeklyBudgetNum = weeklyBudget ? parseFloat(weeklyBudget) : null;
+    const cpmRateNum = cpmRate ? parseFloat(cpmRate) : null;
+    
+    if (
+      typeof weeklyBudgetNum === "number" &&
+      weeklyBudgetNum > 0 &&
+      typeof cpmRateNum === "number" &&
+      cpmRateNum > 0
+    ) {
+      max_weekly_impressions = Math.floor((weeklyBudgetNum / cpmRateNum) * 1000);
+      console.log(`📊 Calculated max_weekly_impressions: ${max_weekly_impressions} (budget: ${weeklyBudgetNum}, CPM: ${cpmRateNum})`);
+    } else {
+      console.log('⚠️ max_weekly_impressions set to NULL (invalid budget or CPM rate)');
+    }
+    
     // Insert into database
     const result = await pool.query(
       `INSERT INTO advertisers (
         company_name, website_url, first_name, last_name, 
         email, title_role, ad_format, weekly_budget_cap, cpm_rate, 
-        media_r2_link, recurring_weekly, approved, completed, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, false, false, CURRENT_TIMESTAMP)
+        media_r2_link, recurring_weekly, max_weekly_impressions, approved, completed, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, false, false, CURRENT_TIMESTAMP)
       RETURNING id, email, media_r2_link, created_at`,
       [
         companyName || null,
@@ -2690,10 +2739,11 @@ app.post('/api/advertiser/submit', upload.single('creative'), async (req, res) =
         email,
         jobTitle || null,
         databaseAdFormat || null, // Use mapped value instead of adFormat
-        weeklyBudget ? parseFloat(weeklyBudget) : null,
-        cpmRate ? parseFloat(cpmRate) : null,
+        weeklyBudgetNum,
+        cpmRateNum,
         mediaUrl,
-        isRecurring === 'true' || isRecurring === true
+        isRecurring === 'true' || isRecurring === true,
+        max_weekly_impressions
       ]
     );
     
@@ -3708,6 +3758,693 @@ app.post('/api/tracking/complete-ad', authenticateToken, trackingRateLimit, asyn
   }
 });
 
+// ===== IMPRESSIONS TRACKING =====
+
+// Utility function to get start of week (Sunday 00:00)
+function startOfWeekSundayMidnight(date = new Date()) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const diff = d.getDate() - day; // Days to subtract to get to Sunday
+  const sunday = new Date(d.setDate(diff));
+  sunday.setHours(0, 0, 0, 0);
+  return sunday;
+}
+
+// ===== WEEKLY RESET SYSTEM =====
+
+// Perform weekly reset for all approved, completed, non-archived advertisers
+async function performWeeklyReset() {
+  try {
+    const pool = getPool();
+    if (!pool) {
+      console.error("❌ [WEEKLY RESET] Weekly reset failed: no database pool");
+      return { success: false, error: 'Database pool not available' };
+    }
+
+    console.log("🔄 [WEEKLY RESET] Starting advertiser weekly reset...");
+    console.log("🔄 [WEEKLY RESET] Reset time:", new Date().toISOString());
+
+    // Pre-reset check: Get current state of advertisers
+    const preCheck = await pool.query(`
+      SELECT id, current_week_impressions, capped, archived, recurring_weekly
+      FROM advertisers
+      WHERE approved = TRUE AND completed = TRUE AND archived = FALSE
+    `);
+    console.log(`📊 [WEEKLY RESET] Pre-reset: Found ${preCheck.rows.length} advertisers to reset`);
+    console.log("📊 [WEEKLY RESET] Pre-reset advertiser states:", preCheck.rows.map(ad => ({
+      id: ad.id,
+      impressions: ad.current_week_impressions,
+      capped: ad.capped,
+      recurring: ad.recurring_weekly
+    })));
+
+    // Reset only approved, completed, NOT archived advertisers
+    // Note: weekly_clicks, weekly_charge_amount, last_billing_date may not exist - query will handle gracefully
+    const result = await pool.query(`
+      UPDATE advertisers
+      SET 
+        current_week_impressions = 0,
+        capped = FALSE,
+        current_week_start = NOW(),
+        updated_at = NOW()
+      WHERE approved = TRUE 
+        AND completed = TRUE
+        AND (archived IS NULL OR archived = FALSE)
+    `);
+    
+    // Try to reset optional columns if they exist (gracefully handle if they don't)
+    try {
+      await pool.query(`
+        UPDATE advertisers
+        SET weekly_clicks = 0
+        WHERE approved = TRUE 
+          AND completed = TRUE
+          AND (archived IS NULL OR archived = FALSE)
+      `);
+      console.log("✅ [WEEKLY RESET] Reset weekly_clicks");
+    } catch (err) {
+      if (err.message.includes('column "weekly_clicks" does not exist')) {
+        console.log("⚠️ [WEEKLY RESET] weekly_clicks column does not exist - skipping");
+      } else {
+        console.error("❌ [WEEKLY RESET] Error resetting weekly_clicks:", err.message);
+      }
+    }
+    
+    try {
+      await pool.query(`
+        UPDATE advertisers
+        SET weekly_charge_amount = 0
+        WHERE approved = TRUE 
+          AND completed = TRUE
+          AND (archived IS NULL OR archived = FALSE)
+      `);
+      console.log("✅ [WEEKLY RESET] Reset weekly_charge_amount");
+    } catch (err) {
+      if (err.message.includes('column "weekly_charge_amount" does not exist')) {
+        console.log("⚠️ [WEEKLY RESET] weekly_charge_amount column does not exist - skipping");
+      } else {
+        console.error("❌ [WEEKLY RESET] Error resetting weekly_charge_amount:", err.message);
+      }
+    }
+    
+    try {
+      await pool.query(`
+        UPDATE advertisers
+        SET last_billing_date = NOW()
+        WHERE approved = TRUE 
+          AND completed = TRUE
+          AND (archived IS NULL OR archived = FALSE)
+      `);
+      console.log("✅ [WEEKLY RESET] Updated last_billing_date");
+    } catch (err) {
+      if (err.message.includes('column "last_billing_date" does not exist')) {
+        console.log("⚠️ [WEEKLY RESET] last_billing_date column does not exist - skipping");
+      } else {
+        console.error("❌ [WEEKLY RESET] Error updating last_billing_date:", err.message);
+      }
+    }
+
+    console.log(`✅ [WEEKLY RESET] Reset ${result.rowCount} advertisers`);
+
+    // Post-reset check: Verify the reset
+    const postCheck = await pool.query(`
+      SELECT id, current_week_impressions, capped, current_week_start
+      FROM advertisers
+      WHERE approved = TRUE AND completed = TRUE AND (archived IS NULL OR archived = FALSE)
+    `);
+    console.log("📊 [WEEKLY RESET] Post-reset states:", postCheck.rows.map(ad => ({
+      id: ad.id,
+      impressions: ad.current_week_impressions,
+      capped: ad.capped,
+      weekStart: ad.current_week_start
+    })));
+
+    // Clear playlist cache so new resets reflect instantly
+    if (playlistCache) {
+      playlistCache.clear();
+      console.log("🧽 [WEEKLY RESET] Cleared playlist cache");
+    }
+
+    console.log("✅ [WEEKLY RESET] Weekly reset completed successfully");
+    return { 
+      success: true, 
+      advertisersReset: result.rowCount,
+      timestamp: new Date().toISOString()
+    };
+
+  } catch (err) {
+    console.error("❌ [WEEKLY RESET] Error:", err);
+    console.error("❌ [WEEKLY RESET] Error stack:", err.stack);
+    return { success: false, error: err.message };
+  }
+}
+
+// Record impression for an advertiser video
+app.post('/api/impressions/record', async (req, res) => {
+  try {
+    const { advertiserId, videoFilename } = req.body;
+    
+    // Validation: If advertiserId OR videoFilename is NULL → return 200 OK (do nothing)
+    // This protects old videos without impression tracking
+    if (!advertiserId || !videoFilename) {
+      console.log('📊 Impression skipped - old video without tracking:', { advertiserId, videoFilename });
+      return res.status(200).json({ success: true, message: 'Skipped (old video)' });
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ Database pool not available');
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // Look up advertiser by id
+    const advertiserResult = await pool.query(
+      `SELECT id, video_filename, approved, completed, recurring_weekly, 
+              current_week_start, campaign_start_date, current_week_impressions, total_impressions
+       FROM advertisers 
+       WHERE id = $1`,
+      [advertiserId]
+    );
+    
+    if (advertiserResult.rows.length === 0) {
+      console.log('⚠️ Advertiser not found:', advertiserId);
+      return res.status(200).json({ success: true, message: 'Advertiser not found (ignored)' });
+    }
+    
+    const advertiser = advertiserResult.rows[0];
+    
+    // Validate advertiser is approved + completed
+    if (!advertiser.approved || !advertiser.completed) {
+      console.log('⚠️ Advertiser not approved/completed:', advertiserId);
+      return res.status(200).json({ success: true, message: 'Advertiser not active (ignored)' });
+    }
+    
+    // Validate advertiser.video_filename matches the provided filename (avoid tampering)
+    if (advertiser.video_filename !== videoFilename) {
+      console.log('⚠️ Video filename mismatch:', {
+        provided: videoFilename,
+        expected: advertiser.video_filename
+      });
+      return res.status(400).json({ error: 'Video filename mismatch' });
+    }
+    
+    const now = new Date();
+    const isRecurring = advertiser.recurring_weekly === true;
+    
+    // Weekly reset logic
+    let currentWeekStart = advertiser.current_week_start;
+    let currentWeekImpressions = advertiser.current_week_impressions || 0;
+    
+    // Initialize current_week_start if null
+    if (!currentWeekStart) {
+      currentWeekStart = startOfWeekSundayMidnight(now);
+    }
+    
+    // Check if we need to reset (7 days have passed)
+    const weekStartTime = new Date(currentWeekStart).getTime();
+    const nowTime = now.getTime();
+    const daysSinceWeekStart = (nowTime - weekStartTime) / (1000 * 60 * 60 * 24);
+    
+    if (daysSinceWeekStart >= 7) {
+      console.log('🔄 Resetting weekly impressions for advertiser:', advertiserId);
+      currentWeekImpressions = 0;
+      currentWeekStart = startOfWeekSundayMidnight(now);
+    }
+    
+    // For non-recurring campaigns, check if campaign has ended
+    if (!isRecurring && advertiser.campaign_start_date) {
+      const campaignStart = new Date(advertiser.campaign_start_date);
+      const campaignEnd = new Date(campaignStart);
+      campaignEnd.setDate(campaignEnd.getDate() + 7); // 7 days from start
+      
+      if (now > campaignEnd) {
+        console.log('⚠️ Campaign has ended for advertiser:', advertiserId);
+        return res.status(200).json({ success: true, message: 'Campaign ended (ignored)' });
+      }
+    }
+    
+    // Update impressions
+    const totalImpressions = (advertiser.total_impressions || 0) + 1;
+    currentWeekImpressions += 1;
+    
+    await pool.query(
+      `UPDATE advertisers SET
+        total_impressions = $1,
+        current_week_impressions = $2,
+        current_week_start = $3,
+        updated_at = NOW()
+       WHERE id = $4`,
+      [totalImpressions, currentWeekImpressions, currentWeekStart, advertiserId]
+    );
+    
+    console.log(`📊 Impression recorded for advertiser ${advertiserId}:`, {
+      total: totalImpressions,
+      currentWeek: currentWeekImpressions,
+      videoFilename: videoFilename
+    });
+    
+    res.json({ 
+      success: true,
+      totalImpressions: totalImpressions,
+      currentWeekImpressions: currentWeekImpressions
+    });
+    
+  } catch (error) {
+    console.error('❌ Error recording impression:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Check and enforce impression cap for an advertiser
+app.post('/api/advertisers/check-cap', authenticateToken, async (req, res) => {
+  try {
+    const { advertiserId, videoFilename } = req.body;
+    
+    // Validation
+    if (!advertiserId || !videoFilename) {
+      return res.status(200).json({ success: true, message: 'Missing parameters (ignored)' });
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    // Get advertiser data
+    const advertiserResult = await pool.query(`
+      SELECT id, video_filename, current_week_impressions, max_weekly_impressions,
+             capped, archived, completed, recurring_weekly
+      FROM advertisers
+      WHERE id = $1
+    `, [advertiserId]);
+    
+    if (advertiserResult.rows.length === 0) {
+      return res.status(200).json({ success: true, message: 'Advertiser not found (ignored)' });
+    }
+    
+    const ad = advertiserResult.rows[0];
+    
+    // Validate video filename matches
+    if (ad.video_filename !== videoFilename) {
+      return res.status(400).json({ error: 'Video filename mismatch' });
+    }
+    
+    // Check if impressions >= max_weekly_impressions → cap the advertiser
+    if (ad.max_weekly_impressions !== null && 
+        ad.current_week_impressions >= ad.max_weekly_impressions && 
+        !ad.capped) {
+      console.log(`🛑 Capping advertiser ${advertiserId} - impressions (${ad.current_week_impressions}) >= max (${ad.max_weekly_impressions})`);
+      
+      await pool.query(`
+        UPDATE advertisers
+        SET capped = TRUE
+        WHERE id = $1
+      `, [advertiserId]);
+      
+      // CLEAR PLAYLIST CACHE IMMEDIATELY when advertiser is capped
+      playlistCache.clear();
+      console.log("🧽 [CHECK-CAP] Cleared playlist cache because advertiser hit weekly cap");
+      
+      // Automatic archiving for non-recurring capped campaigns
+      // Non-recurring campaigns have recurring_weekly = FALSE
+      // If they're capped and completed, archive them immediately (move to R2 archived/ folder)
+      if (ad.recurring_weekly === false && ad.completed === true && !ad.archived && ad.video_filename) {
+        console.log(`📦 Archiving non-recurring capped campaign ${advertiserId} - moving video to R2 archived/`);
+        
+        try {
+          // MOVE FILE IN R2 (copy + delete)
+          const CHARITY_BUCKET = 'charity-stream-videos';
+          const sourceKey = ad.video_filename;
+          const destKey = `archived/${ad.video_filename}`;
+          
+          console.log(`📦 [R2 ARCHIVE] Copying ${sourceKey} to ${destKey}`);
+          const copyCommand = new CopyObjectCommand({
+            Bucket: CHARITY_BUCKET,
+            CopySource: `${CHARITY_BUCKET}/${sourceKey}`,
+            Key: destKey
+          });
+          await r2Client.send(copyCommand);
+          console.log(`✅ [R2 ARCHIVE] Successfully copied ${sourceKey} to ${destKey}`);
+          
+          console.log(`🗑️ [R2 ARCHIVE] Deleting original file: ${sourceKey}`);
+          const deleteCommand = new DeleteObjectCommand({
+            Bucket: CHARITY_BUCKET,
+            Key: sourceKey
+          });
+          await r2Client.send(deleteCommand);
+          console.log(`✅ [R2 ARCHIVE] Successfully deleted original file: ${sourceKey}`);
+          
+          // Update database
+          await pool.query(`
+            UPDATE advertisers
+            SET archived = TRUE,
+                archived_at = NOW(),
+                archived_reason = 'Non-recurring campaign capped'
+            WHERE id = $1
+          `, [advertiserId]);
+          
+          console.log(`✅ [R2 ARCHIVE] Database updated - advertiser ${advertiserId} archived`);
+          
+          // CLEAR PLAYLIST CACHE when non-recurring advertiser is archived
+          playlistCache.clear();
+          console.log("🧽 [CHECK-CAP] Cleared playlist cache because non-recurring advertiser was archived");
+        } catch (r2Error) {
+          console.error(`❌ [R2 ARCHIVE] Error archiving video for advertiser ${advertiserId}:`, r2Error);
+          // Still update database as archived even if R2 move fails
+          await pool.query(`
+            UPDATE advertisers
+            SET archived = TRUE,
+                archived_at = NOW(),
+                archived_reason = 'Non-recurring campaign capped (R2 archive failed)'
+            WHERE id = $1
+          `, [advertiserId]);
+        }
+      }
+      
+      // Debug logging
+      console.log("🧪 [CHECK-CAP] Advertiser status after update:", {
+        id: ad.id,
+        capped: true,
+        archived: ad.recurring_weekly === false ? true : false,
+        recurring_weekly: ad.recurring_weekly,
+        current_week_impressions: ad.current_week_impressions,
+        max_weekly_impressions: ad.max_weekly_impressions,
+        video_filename: ad.video_filename
+      });
+      
+      return res.json({
+        success: true,
+        capped: true,
+        archived: ad.max_weekly_impressions === null,
+        message: 'Advertiser capped'
+      });
+    }
+    
+    // Debug logging for non-capped status
+    console.log("🧪 [CHECK-CAP] Returned capped:", ad.capped, "archived:", ad.archived);
+    
+    res.json({
+      success: true,
+      capped: ad.capped || false,
+      archived: ad.archived || false,
+      currentImpressions: ad.current_week_impressions,
+      maxImpressions: ad.max_weekly_impressions
+    });
+    
+  } catch (error) {
+    console.error('❌ Error checking cap:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ===== WEEKLY RESET ROUTE (Vercel Cron) =====
+
+// Weekly reset endpoint for Vercel cron job (runs every Sunday at 11:59 PM)
+app.get("/api/system/weekly-reset", async (req, res) => {
+  console.log("⏰ [CRON] Weekly reset triggered");
+  console.log("⏰ [CRON] Request time:", new Date().toISOString());
+  console.log("⏰ [CRON] Request headers:", {
+    'user-agent': req.headers['user-agent'],
+    'x-vercel-cron': req.headers['x-vercel-cron']
+  });
+
+  try {
+    const result = await performWeeklyReset();
+    
+    if (result.success) {
+      res.json({ 
+        success: true, 
+        message: "Weekly reset executed",
+        advertisersReset: result.advertisersReset,
+        timestamp: result.timestamp
+      });
+    } else {
+      res.status(500).json({ 
+        success: false, 
+        error: result.error || "Weekly reset failed"
+      });
+    }
+  } catch (error) {
+    console.error("❌ [CRON] Weekly reset route error:", error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message 
+    });
+  }
+});
+
+// ===== ADVERTISER PORTAL SIGNUP ROUTES =====
+
+// Get signup info for a portal signup token
+app.get('/api/advertiser/signup-info', async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    console.log('🔍 [PORTAL SIGNUP] Signup info request for token:', token ? token.substring(0, 8) + '...' : 'MISSING');
+    
+    if (!token) {
+      console.log('❌ [PORTAL SIGNUP] No token provided');
+      return res.json({ valid: false });
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ [PORTAL SIGNUP] Database pool not available');
+      return res.status(500).json({ valid: false, error: 'Database connection not available' });
+    }
+    
+    // Look up advertiser by token
+    const advertiserResult = await pool.query(`
+      SELECT id, email, portal_signup_token, portal_signup_token_created_at,
+             approved, completed
+      FROM advertisers
+      WHERE portal_signup_token = $1
+    `, [token]);
+    
+    if (advertiserResult.rows.length === 0) {
+      console.log('❌ [PORTAL SIGNUP] Token not found in database');
+      return res.json({ valid: false });
+    }
+    
+    const advertiser = advertiserResult.rows[0];
+    
+    // Validate token age (< 30 days)
+    const tokenAge = advertiser.portal_signup_token_created_at 
+      ? new Date() - new Date(advertiser.portal_signup_token_created_at)
+      : Infinity;
+    const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+    
+    if (tokenAge > thirtyDaysInMs) {
+      console.log('❌ [PORTAL SIGNUP] Token expired (age:', Math.floor(tokenAge / (24 * 60 * 60 * 1000)), 'days)');
+      return res.json({ valid: false });
+    }
+    
+    console.log('✅ [PORTAL SIGNUP] Token valid for advertiser:', advertiser.id, 'email:', advertiser.email);
+    
+    // Check if account already exists
+    const accountResult = await pool.query(`
+      SELECT id, created_from_submission, created_from_approval
+      FROM advertiser_accounts
+      WHERE email = $1
+    `, [advertiser.email]);
+    
+    if (accountResult.rows.length > 0) {
+      console.log('⚠️ [PORTAL SIGNUP] Account already exists for email:', advertiser.email);
+      return res.json({
+        valid: true,
+        accountExists: true
+      });
+    }
+    
+    // Determine if this is from submission or approval
+    // If approved and completed, it's from approval email
+    // Otherwise, it's from submission email
+    const createdFromApproval = advertiser.approved === true && advertiser.completed === true;
+    const createdFromSubmission = !createdFromApproval;
+    
+    console.log('📊 [PORTAL SIGNUP] Signup source:', {
+      createdFromSubmission,
+      createdFromApproval,
+      approved: advertiser.approved,
+      completed: advertiser.completed
+    });
+    
+    return res.json({
+      valid: true,
+      email: advertiser.email,
+      accountExists: false,
+      createdFromSubmission: createdFromSubmission,
+      createdFromApproval: createdFromApproval
+    });
+    
+  } catch (error) {
+    console.error('❌ [PORTAL SIGNUP] Error in signup-info:', error);
+    res.status(500).json({ valid: false, error: 'Internal server error' });
+  }
+});
+
+// Create advertiser portal account
+app.post('/api/advertiser/signup', async (req, res) => {
+  try {
+    const { token, password } = req.body;
+    
+    console.log('🔐 [PORTAL SIGNUP] Signup request for token:', token ? token.substring(0, 8) + '...' : 'MISSING');
+    
+    if (!token || !password) {
+      console.log('❌ [PORTAL SIGNUP] Missing token or password');
+      return res.status(400).json({ success: false, error: 'Token and password are required' });
+    }
+    
+    if (password.length < 8) {
+      console.log('❌ [PORTAL SIGNUP] Password too short');
+      return res.status(400).json({ success: false, error: 'Password must be at least 8 characters' });
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ [PORTAL SIGNUP] Database pool not available');
+      return res.status(500).json({ success: false, error: 'Database connection not available' });
+    }
+    
+    // Look up advertiser by token
+    const advertiserResult = await pool.query(`
+      SELECT id, email, portal_signup_token, portal_signup_token_created_at,
+             approved, completed, can_view_dashboard
+      FROM advertisers
+      WHERE portal_signup_token = $1
+    `, [token]);
+    
+    if (advertiserResult.rows.length === 0) {
+      console.log('❌ [PORTAL SIGNUP] Token not found');
+      return res.status(400).json({ success: false, error: 'Invalid token' });
+    }
+    
+    const advertiser = advertiserResult.rows[0];
+    
+    // Validate token age
+    const tokenAge = advertiser.portal_signup_token_created_at 
+      ? new Date() - new Date(advertiser.portal_signup_token_created_at)
+      : Infinity;
+    const thirtyDaysInMs = 30 * 24 * 60 * 60 * 1000;
+    
+    if (tokenAge > thirtyDaysInMs) {
+      console.log('❌ [PORTAL SIGNUP] Token expired');
+      return res.status(400).json({ success: false, error: 'Token has expired' });
+    }
+    
+    // Check if account already exists
+    const existingAccount = await pool.query(`
+      SELECT id FROM advertiser_accounts WHERE email = $1
+    `, [advertiser.email]);
+    
+    if (existingAccount.rows.length > 0) {
+      console.log('❌ [PORTAL SIGNUP] Account already exists for email:', advertiser.email);
+      return res.status(400).json({ success: false, error: 'Account already exists for this email' });
+    }
+    
+    // Hash password
+    const saltRounds = 10;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+    console.log('✅ [PORTAL SIGNUP] Password hashed');
+    
+    // Determine if this is from submission or approval
+    const createdFromApproval = advertiser.approved === true && advertiser.completed === true;
+    const createdFromSubmission = !createdFromApproval;
+    
+    console.log('📊 [PORTAL SIGNUP] Creating account:', {
+      advertiserId: advertiser.id,
+      email: advertiser.email,
+      createdFromSubmission,
+      createdFromApproval
+    });
+    
+    // Create advertiser_accounts row
+    const accountResult = await pool.query(`
+      INSERT INTO advertiser_accounts (advertiser_id, email, password_hash, created_from_submission, created_from_approval)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `, [advertiser.id, advertiser.email, passwordHash, createdFromSubmission, createdFromApproval]);
+    
+    console.log('✅ [PORTAL SIGNUP] Account created with ID:', accountResult.rows[0].id);
+    
+    // If approval token, set can_view_dashboard = TRUE
+    if (createdFromApproval) {
+      await pool.query(`
+        UPDATE advertisers
+        SET can_view_dashboard = TRUE,
+            can_view_status = TRUE
+        WHERE id = $1
+      `, [advertiser.id]);
+      console.log('✅ [PORTAL SIGNUP] Dashboard access granted for approved advertiser');
+    } else {
+      // For submission, just ensure can_view_status is TRUE
+      await pool.query(`
+        UPDATE advertisers
+        SET can_view_status = TRUE
+        WHERE id = $1
+      `, [advertiser.id]);
+      console.log('✅ [PORTAL SIGNUP] Status view access granted for submission');
+    }
+    
+    // Clear token (optional but recommended)
+    await pool.query(`
+      UPDATE advertisers
+      SET portal_signup_token = NULL,
+          portal_signup_token_created_at = NULL
+      WHERE id = $1
+    `, [advertiser.id]);
+    console.log('✅ [PORTAL SIGNUP] Token cleared from database');
+    
+    return res.json({
+      success: true,
+      createdFromSubmission: createdFromSubmission,
+      createdFromApproval: createdFromApproval
+    });
+    
+  } catch (error) {
+    console.error('❌ [PORTAL SIGNUP] Error in signup:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
+  }
+});
+
+// Get advertiser status (capped, impressions, etc.)
+app.get('/api/advertisers/:id/status', authenticateToken, async (req, res) => {
+  try {
+    const advertiserId = parseInt(req.params.id);
+    
+    if (!advertiserId || isNaN(advertiserId)) {
+      return res.status(400).json({ error: 'Invalid advertiser ID' });
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      return res.status(500).json({ error: 'Database connection not available' });
+    }
+    
+    const result = await pool.query(`
+      SELECT capped, current_week_impressions, max_weekly_impressions
+      FROM advertisers
+      WHERE id = $1
+    `, [advertiserId]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Advertiser not found' });
+    }
+    
+    const ad = result.rows[0];
+    
+    res.json({
+      capped: ad.capped || false,
+      current_week_impressions: ad.current_week_impressions || 0,
+      max_weekly_impressions: ad.max_weekly_impressions
+    });
+    
+  } catch (error) {
+    console.error('❌ Error fetching advertiser status:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // ===== LEADERBOARD ROUTES =====
 
 // Server-side caching for leaderboard data
@@ -4092,9 +4829,12 @@ app.get('/api/videos/playlist', authenticateToken, trackingRateLimit, async (req
     const response = await r2Client.send(listCommand);
     const allFiles = response.Contents || [];
     
-    // Filter for video_X.mp4 pattern and sort numerically
+    // Filter for video_X.mp4 pattern (exclude archived/ folder) and sort numerically
     const videoFiles = allFiles
-      .filter(file => /^video_\d+\.mp4$/.test(file.Key))
+      .filter(file => 
+        /^video_\d+\.mp4$/.test(file.Key) &&
+        !file.Key.startsWith('archived/')
+      )
       .map(file => {
         const match = file.Key.match(/^video_(\d+)\.mp4$/);
         return {
@@ -4105,13 +4845,173 @@ app.get('/api/videos/playlist', authenticateToken, trackingRateLimit, async (req
       })
       .sort((a, b) => a.number - b.number);
     
-    // Build playlist
-    const playlist = videoFiles.map(video => ({
+    // Debug: Log if any archived files were found and skipped
+    const archivedFiles = allFiles.filter(file => file.Key.startsWith('archived/'));
+    if (archivedFiles.length > 0) {
+      console.log(`📦 [PLAYLIST] Skipped ${archivedFiles.length} archived video(s):`, archivedFiles.map(f => f.Key));
+    }
+    
+    // Get advertiser mappings for videos with video_filename
+    const pool = getPool();
+    let advertiserMap = new Map();
+    let advertiserDataById = new Map();
+    // Track filenames that should be blocked (capped or archived advertisers)
+    const blockedFilenames = new Set();
+    
+    if (pool) {
+      try {
+        // Query for all advertisers (including archived) to build blockedFilenames
+        const advertiserResult = await pool.query(`
+          SELECT id, video_filename, approved, completed,
+                 current_week_impressions, max_weekly_impressions, capped,
+                 archived, archived_at, archived_reason, recurring_weekly
+          FROM advertisers
+          WHERE video_filename IS NOT NULL
+            AND approved = true
+            AND completed = true
+        `);
+        
+        // Process each advertiser: check caps and archive if needed
+        for (const ad of advertiserResult.rows) {
+          // Debug logging for each advertiser
+          console.log(`🧪 [PLAYLIST] Advertiser ${ad.id} status:`, {
+            capped: ad.capped,
+            archived: ad.archived,
+            video_filename: ad.video_filename,
+            current_week_impressions: ad.current_week_impressions,
+            max_weekly_impressions: ad.max_weekly_impressions
+          });
+          
+          // Check if impressions >= max_weekly_impressions (cap the advertiser)
+          if (ad.max_weekly_impressions !== null && 
+              ad.current_week_impressions >= ad.max_weekly_impressions && 
+              !ad.capped) {
+            console.log(`🛑 Capping advertiser ${ad.id} - impressions (${ad.current_week_impressions}) >= max (${ad.max_weekly_impressions})`);
+            
+            await pool.query(`
+              UPDATE advertisers
+              SET capped = TRUE
+              WHERE id = $1
+            `, [ad.id]);
+            
+            ad.capped = true;
+            // CLEAR PLAYLIST CACHE WHEN AN AD IS CAPPED (clear all entries)
+            playlistCache.clear();
+            console.log("🧽 [PLAYLIST ENDPOINT] Cache cleared due to advertiser being capped inside playlist endpoint");
+          }
+          
+          // Automatic archiving for non-recurring capped campaigns
+          // Non-recurring campaigns have recurring_weekly = FALSE
+          if (ad.capped === true && 
+              ad.recurring_weekly === false && 
+              ad.archived !== true &&
+              ad.video_filename) {
+            console.log(`📦 Archiving non-recurring capped campaign ${ad.id} - moving video to R2 archived/`);
+            
+            try {
+              // MOVE FILE IN R2 (copy + delete)
+              const CHARITY_BUCKET = 'charity-stream-videos';
+              const sourceKey = ad.video_filename;
+              const destKey = `archived/${ad.video_filename}`;
+              
+              console.log(`📦 [R2 ARCHIVE] Copying ${sourceKey} to ${destKey}`);
+              const copyCommand = new CopyObjectCommand({
+                Bucket: CHARITY_BUCKET,
+                CopySource: `${CHARITY_BUCKET}/${sourceKey}`,
+                Key: destKey
+              });
+              await r2Client.send(copyCommand);
+              console.log(`✅ [R2 ARCHIVE] Successfully copied ${sourceKey} to ${destKey}`);
+              
+              console.log(`🗑️ [R2 ARCHIVE] Deleting original file: ${sourceKey}`);
+              const deleteCommand = new DeleteObjectCommand({
+                Bucket: CHARITY_BUCKET,
+                Key: sourceKey
+              });
+              await r2Client.send(deleteCommand);
+              console.log(`✅ [R2 ARCHIVE] Successfully deleted original file: ${sourceKey}`);
+              
+              // Update database
+              await pool.query(`
+                UPDATE advertisers
+                SET archived = TRUE,
+                    archived_at = NOW(),
+                    archived_reason = 'Non-recurring campaign capped'
+                WHERE id = $1
+              `, [ad.id]);
+              
+              ad.archived = true;
+              console.log(`✅ [R2 ARCHIVE] Database updated - advertiser ${ad.id} archived`);
+              
+              // CLEAR PLAYLIST CACHE WHEN A NON-RECURRING AD IS ARCHIVED (clear all entries)
+              playlistCache.clear();
+              console.log("🧽 [PLAYLIST ENDPOINT] Cache cleared due to non-recurring advertiser being archived");
+            } catch (r2Error) {
+              console.error(`❌ [R2 ARCHIVE] Error archiving video for advertiser ${ad.id}:`, r2Error);
+              // Still update database as archived even if R2 move fails
+              await pool.query(`
+                UPDATE advertisers
+                SET archived = TRUE,
+                    archived_at = NOW(),
+                    archived_reason = 'Non-recurring campaign capped (R2 archive failed)'
+                WHERE id = $1
+              `, [ad.id]);
+              ad.archived = true;
+            }
+          }
+          
+          // NEW: mark any capped or archived advertiser's filename as blocked
+          if (ad.capped === true || ad.archived === true) {
+            if (ad.video_filename) {
+              blockedFilenames.add(ad.video_filename);
+              console.log(`🚫 [PLAYLIST] Blocking capped/archived file: ${ad.video_filename} (advertiser ${ad.id})`);
+            }
+            // Do NOT add to advertiserMap
+            continue;
+          }
+          
+          // Only add to maps if not capped and not archived
+          advertiserMap.set(ad.video_filename, ad.id);
+          advertiserDataById.set(ad.id, ad);
+        }
+        
+        // Debug logging: show which advertisers are in the map
+        console.log("🧪 [PLAYLIST] Final active advertiserMap keys:", [...advertiserMap.keys()]);
+        
+        console.log(`📊 Found ${advertiserMap.size} active advertisers with video_filename (${advertiserResult.rows.length - advertiserMap.size} capped/archived excluded)`);
+      } catch (adError) {
+        console.error('⚠️ Error fetching advertiser mappings (non-critical):', adError.message);
+        // Continue without advertiser data - old videos will work fine
+      }
+    }
+    
+    // Build playlist with advertiser info (exclude capped/archived videos)
+    const rawPlaylist = videoFiles.map(video => {
+      // NEW: if this filename is blocked (capped or archived advertiser), skip it completely
+      if (blockedFilenames.has(video.filename)) {
+        console.log(`⏭️ [PLAYLIST] Skipping blocked video file: ${video.filename}`);
+        return null;
+      }
+      
+      const advertiserId = advertiserMap.get(video.filename) || null;
+      const videoFilename = advertiserId ? video.filename : null;
+      
+      return {
       videoId: video.number,
       title: video.filename.replace('.mp4', ''),
       videoUrl: `${R2_BUCKET_URL}/${video.filename}`,
-      duration: 60
-    }));
+        duration: 60,
+        advertiserId: advertiserId,
+        videoFilename: videoFilename,
+        isCapped: false // Backend already filtered, but include for frontend defensive check
+      };
+    });
+    
+    // Filter out null entries (capped videos)
+    const playlist = rawPlaylist.filter(v => v !== null);
+    
+    // Debug logging: show which videos are included in final playlist
+    console.log("🧪 [PLAYLIST] Final videos included:", playlist.map(v => v.title));
     
     const playlistData = {
       videos: playlist
@@ -4140,15 +5040,15 @@ app.get('/api/videos/playlist', authenticateToken, trackingRateLimit, async (req
     // Fallback to static playlist if R2 listing fails
     const R2_BUCKET_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
     const fallbackPlaylist = [
-      { videoId: 1, title: 'video_1', videoUrl: `${R2_BUCKET_URL}/video_1.mp4`, duration: 60 },
-      { videoId: 2, title: 'video_2', videoUrl: `${R2_BUCKET_URL}/video_2.mp4`, duration: 60 },
-      { videoId: 3, title: 'video_3', videoUrl: `${R2_BUCKET_URL}/video_3.mp4`, duration: 60 },
-      { videoId: 4, title: 'video_4', videoUrl: `${R2_BUCKET_URL}/video_4.mp4`, duration: 60 },
-      { videoId: 5, title: 'video_5', videoUrl: `${R2_BUCKET_URL}/video_5.mp4`, duration: 60 },
-      { videoId: 6, title: 'video_6', videoUrl: `${R2_BUCKET_URL}/video_6.mp4`, duration: 60 }
+      { videoId: 1, title: 'video_1', videoUrl: `${R2_BUCKET_URL}/video_1.mp4`, duration: 60, advertiserId: null, videoFilename: null },
+      { videoId: 2, title: 'video_2', videoUrl: `${R2_BUCKET_URL}/video_2.mp4`, duration: 60, advertiserId: null, videoFilename: null },
+      { videoId: 3, title: 'video_3', videoUrl: `${R2_BUCKET_URL}/video_3.mp4`, duration: 60, advertiserId: null, videoFilename: null },
+      { videoId: 4, title: 'video_4', videoUrl: `${R2_BUCKET_URL}/video_4.mp4`, duration: 60, advertiserId: null, videoFilename: null },
+      { videoId: 5, title: 'video_5', videoUrl: `${R2_BUCKET_URL}/video_5.mp4`, duration: 60, advertiserId: null, videoFilename: null },
+      { videoId: 6, title: 'video_6', videoUrl: `${R2_BUCKET_URL}/video_6.mp4`, duration: 60, advertiserId: null, videoFilename: null }
     ];
     
-    console.log('⚠️ Using fallback playlist (5 videos)');
+    console.log('⚠️ Using fallback playlist (6 videos)');
     res.json({ videos: fallbackPlaylist });
   }
 });
@@ -4496,13 +5396,30 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
       }
     }
     
+    // Calculate max_weekly_impressions based on CPM + weekly budget
+    let max_weekly_impressions = null;
+    const weeklyBudgetNum = weeklyBudget ? parseFloat(weeklyBudget) : null;
+    const cpmRateNum = cpmRate ? parseFloat(cpmRate) : null;
+    
+    if (
+      typeof weeklyBudgetNum === "number" &&
+      weeklyBudgetNum > 0 &&
+      typeof cpmRateNum === "number" &&
+      cpmRateNum > 0
+    ) {
+      max_weekly_impressions = Math.floor((weeklyBudgetNum / cpmRateNum) * 1000);
+      console.log(`📊 Calculated max_weekly_impressions: ${max_weekly_impressions} (budget: ${weeklyBudgetNum}, CPM: ${cpmRateNum})`);
+    } else {
+      console.log('⚠️ max_weekly_impressions set to NULL (invalid budget or CPM rate)');
+    }
+    
     const advertiserResult = await pool.query(
       `INSERT INTO advertisers (
         company_name, website_url, first_name, last_name, 
         email, title_role, ad_format, weekly_budget_cap, cpm_rate, 
         recurring_weekly, expedited, click_tracking, destination_url,
-        media_r2_link, payment_completed, application_status, approved, completed, created_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, false, 'payment_pending', false, false, CURRENT_TIMESTAMP)
+        media_r2_link, max_weekly_impressions, payment_completed, application_status, approved, completed, created_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, false, 'payment_pending', false, false, CURRENT_TIMESTAMP)
       RETURNING id, email, company_name`,
       [
         companyName || null,
@@ -4512,13 +5429,14 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
         email,
         jobTitle || null,
         databaseAdFormat || null,
-        weeklyBudget ? parseFloat(weeklyBudget) : null,
-        cpmRate ? parseFloat(cpmRate) : null,
+        weeklyBudgetNum,
+        cpmRateNum,
         isRecurring === 'true' || isRecurring === true,
         expeditedApproval === 'true' || expeditedApproval === true,
         clickTracking === 'true' || clickTracking === true,
         destinationUrl || null,
-        mediaUrl // Store R2 URL immediately
+        mediaUrl, // Store R2 URL immediately
+        max_weekly_impressions
       ]
     );
     
@@ -4605,7 +5523,7 @@ app.post('/api/advertiser/create-checkout-session', upload.single('creative'), a
       customer: customer.id,
       payment_method_types: ['card'],
       mode: 'subscription', // MUST be subscription for usage-based billing
-      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser.html?payment_success=true`,
       cancel_url: `${process.env.FRONTEND_URL || 'http://localhost:3001'}/advertiser.html`,
       metadata: {
         advertiserId: String(advertiser.id),
@@ -5068,10 +5986,31 @@ app.post('/trigger-advertiser-webhook', async (req, res) => {
       console.log('📧 Sending advertiser confirmation email to:', advertiser.email);
       console.log('📧 Campaign summary data:', JSON.stringify(campaignSummary, null, 2));
       
+      // Generate portal signup token for submission email
+      const portalSignupToken = crypto.randomUUID();
+      console.log('🔑 [PORTAL SIGNUP] Generated token for advertiser submission (manual):', portalSignupToken.substring(0, 8) + '...');
+      
+      // Save token to database
+      const pool = getPool();
+      if (pool) {
+        try {
+          await pool.query(`
+            UPDATE advertisers
+            SET portal_signup_token = $1,
+                portal_signup_token_created_at = NOW()
+            WHERE id = $2
+          `, [portalSignupToken, advertiser.id]);
+          console.log('✅ [PORTAL SIGNUP] Token saved to database for advertiser:', advertiser.id);
+        } catch (tokenError) {
+          console.error('❌ [PORTAL SIGNUP] Failed to save token:', tokenError.message);
+        }
+      }
+      
       const emailResult = await emailService.sendAdvertiserConfirmationEmail(
         advertiser.email,
         advertiser.company_name,
-        campaignSummary
+        campaignSummary,
+        portalSignupToken
       );
       
       if (emailResult.success) {
@@ -5165,10 +6104,15 @@ app.post('/test-advertiser-email', async (req, res) => {
     console.log('📧 Company Name:', companyName);
     console.log('📧 Campaign Summary:', campaignSummary);
     
+    // For test emails, generate a test token (won't be saved to DB)
+    const testToken = crypto.randomUUID();
+    console.log('🔑 [PORTAL SIGNUP] Generated test token:', testToken.substring(0, 8) + '...');
+    
     const result = await emailService.sendAdvertiserConfirmationEmail(
       email, 
       companyName, 
-      campaignSummary
+      campaignSummary,
+      testToken
     );
     
     console.log('📧 Email send result:', result);
@@ -5429,6 +6373,9 @@ app.get('*', (req, res, next) => {
 
 // Export the Express app for serverless environments (e.g., Vercel)
 module.exports = app;
+
+// Export weekly reset function for Vercel cron and test scripts
+module.exports.performWeeklyReset = performWeeklyReset;
 
 // Optional local development server
 if (process.env.NODE_ENV !== 'production' && require.main === module) {
