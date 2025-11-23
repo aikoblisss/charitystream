@@ -15,7 +15,7 @@
   "crons": [
     {
       "path": "/api/system/weekly-reset",
-      "schedule": "59 23 * * SUN"
+      "schedule": "59 23 * * 0"
     }
   ]
 }

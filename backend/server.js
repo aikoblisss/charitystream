@@ -4168,6 +4168,21 @@ app.get("/api/system/weekly-reset", async (req, res) => {
     'x-vercel-cron': req.headers['x-vercel-cron']
   });
 
+  // Verify this is a legitimate Vercel cron request (security check)
+  // In production, Vercel will send this header. For local testing, we allow it without the header.
+  const isVercelCron = req.headers['x-vercel-cron'] === '1';
+  const isLocalDev = process.env.NODE_ENV !== 'production';
+  
+  if (!isVercelCron && !isLocalDev) {
+    console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
+    return res.status(401).json({ 
+      success: false, 
+      error: "Unauthorized - missing Vercel cron header" 
+    });
+  }
+
+  console.log("✅ [CRON] Request verified as Vercel cron job");
+
   try {
     const result = await performWeeklyReset();
     
