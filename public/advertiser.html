@@ -1591,13 +1591,26 @@ async function proceedToCheckout() {
       body: fileFormData
     });
     
+    console.log('📤 Upload response status:', uploadResponse.status);
+    console.log('📤 Upload response headers:', {
+      'content-type': uploadResponse.headers.get('content-type'),
+      'content-length': uploadResponse.headers.get('content-length')
+    });
+    
+    // Read response body ONCE - check status first, then read accordingly
+    let uploadData;
     if (!uploadResponse.ok) {
+      // Read error response as text first (since it might not be JSON)
+      const errorText = await uploadResponse.text();
+      console.error('❌ Upload failed - response text:', errorText);
+      
       let errorMessage = 'File upload failed';
       try {
-        const errorData = await uploadResponse.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (e) {
-        const errorText = await uploadResponse.text();
+        // Try to parse as JSON if possible
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.error || errorMessage;
+      } catch (parseError) {
+        // If not JSON, use the text directly
         errorMessage = errorText || errorMessage;
       }
       
@@ -1605,20 +1618,43 @@ async function proceedToCheckout() {
         errorMessage = 'File is too large. Please use a smaller file (max 50MB).';
       }
       
-      console.error('❌ File upload failed:', uploadResponse.status, errorMessage);
-      throw new Error(errorMessage);
+      console.error('❌ File upload failed:', {
+        status: uploadResponse.status,
+        statusText: uploadResponse.statusText,
+        error: errorMessage
+      });
+      
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert(`Upload failed: ${errorMessage}`);
+      return;
     }
     
-    const uploadData = await uploadResponse.json();
-    console.log('✅ File uploaded successfully:', uploadData);
+    // Success - read JSON response
+    try {
+      uploadData = await uploadResponse.json();
+      console.log('✅ File uploaded successfully:', uploadData);
+    } catch (jsonError) {
+      console.error('❌ Failed to parse upload response as JSON:', jsonError);
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('Upload succeeded but received invalid response. Please try again.');
+      return;
+    }
     
     if (!uploadData.success || !uploadData.fileUrl) {
-      throw new Error('File upload did not return a valid URL');
+      console.error('❌ Upload response missing required fields:', uploadData);
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('File upload did not return a valid URL. Please try again.');
+      return;
     }
     
     // STEP 2: Create checkout session with file URL (not the file itself)
     checkoutButton.textContent = 'Creating checkout session...';
-    console.log('📤 Step 2: Creating checkout session with file URL...');
+    console.log('🚀 Step 2: Proceeding to checkout...');
+    console.log('📤 Upload success - file URL:', uploadData.fileUrl);
+    console.log('📤 Upload success - file name:', uploadData.fileName);
     
     const checkoutData = {
       ...formData,
@@ -1626,6 +1662,16 @@ async function proceedToCheckout() {
       fileName: uploadData.fileName
     };
     
+    console.log('📋 Checkout data prepared:', {
+      companyName: checkoutData.companyName,
+      email: checkoutData.email,
+      fileUrl: checkoutData.fileUrl,
+      fileName: checkoutData.fileName,
+      weeklyBudget: checkoutData.weeklyBudget,
+      cpmRate: checkoutData.cpmRate
+    });
+    
+    console.log('📤 Sending checkout request to /api/advertiser/create-checkout-session...');
     const checkoutResponse = await fetch('/api/advertiser/create-checkout-session', {
       method: 'POST',
       headers: {
@@ -1634,13 +1680,25 @@ async function proceedToCheckout() {
       body: JSON.stringify(checkoutData)
     });
     
+    console.log('📤 Checkout response status:', checkoutResponse.status);
+    console.log('📤 Checkout response headers:', {
+      'content-type': checkoutResponse.headers.get('content-type')
+    });
+    
+    // Read response body ONCE - check status first, then read accordingly
+    let checkoutResult;
     if (!checkoutResponse.ok) {
+      // Read error response as text first (since it might not be JSON)
+      const errorText = await checkoutResponse.text();
+      console.error('❌ Checkout failed - response text:', errorText);
+      
       let errorMessage = 'Checkout session creation failed';
       try {
-        const errorData = await checkoutResponse.json();
-        errorMessage = errorData.message || errorData.error || errorMessage;
-      } catch (e) {
-        const errorText = await checkoutResponse.text();
+        // Try to parse as JSON if possible
+        const errorJson = JSON.parse(errorText);
+        errorMessage = errorJson.message || errorJson.error || errorMessage;
+      } catch (parseError) {
+        // If not JSON, use the text directly
         errorMessage = errorText || errorMessage;
       }
       
@@ -1648,20 +1706,51 @@ async function proceedToCheckout() {
         errorMessage = 'Request too large. This should not happen - please contact support.';
       }
       
-      console.error('❌ Checkout session creation failed:', checkoutResponse.status, errorMessage);
-      throw new Error(errorMessage);
+      console.error('❌ Checkout session creation failed:', {
+        status: checkoutResponse.status,
+        statusText: checkoutResponse.statusText,
+        error: errorMessage
+      });
+      
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert(`Checkout failed: ${errorMessage}`);
+      return;
     }
     
-    const checkoutResult = await checkoutResponse.json();
-    console.log('✅ Checkout session created:', checkoutResult);
-    
-    if (checkoutResult.checkoutUrl) {
-      // Redirect to Stripe Checkout
-      console.log('🛒 Redirecting to Stripe Checkout...');
-      window.location.href = checkoutResult.checkoutUrl;
-    } else {
-      throw new Error('No checkout URL received');
+    // Success - read JSON response
+    try {
+      checkoutResult = await checkoutResponse.json();
+      console.log('✅ Checkout session created successfully:', {
+        sessionId: checkoutResult.sessionId,
+        checkoutUrl: checkoutResult.checkoutUrl ? 'Present' : 'Missing',
+        advertiserId: checkoutResult.advertiserId
+      });
+    } catch (jsonError) {
+      console.error('❌ Failed to parse checkout response as JSON:', jsonError);
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('Checkout succeeded but received invalid response. Please try again.');
+      return;
     }
+    
+    // Validate checkout result
+    if (!checkoutResult.sessionId || !checkoutResult.checkoutUrl) {
+      console.error('❌ Checkout result missing required fields:', checkoutResult);
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('Checkout session creation did not return a valid session. Please try again.');
+      return;
+    }
+    
+    // Redirect to Stripe checkout
+    console.log('✅ All steps completed successfully!');
+    console.log('✅ Checkout session created:', {
+      sessionId: checkoutResult.sessionId,
+      advertiserId: checkoutResult.advertiserId
+    });
+    console.log('🛒 Redirecting to Stripe Checkout...');
+    window.location.href = checkoutResult.checkoutUrl;
     
   } catch (error) {
     console.error('❌ Error in proceedToCheckout:', error);

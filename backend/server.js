@@ -814,6 +814,7 @@ app.use((req, res, next) => {
 });
 
 // Body parser for all other routes (webhook routes use express.raw at route-level)
+// Increased limits to 50MB to support advertiser file uploads
 app.use((req, res, next) => {
   if (
     req.path === '/api/webhook' ||
@@ -823,8 +824,11 @@ app.use((req, res, next) => {
   ) {
     return next();
   }
-  return bodyParser.json()(req, res, next);
+  return bodyParser.json({ limit: '50mb' })(req, res, next);
 });
+
+// URL-encoded body parser with 50MB limit
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // TEMPORARY: Video proxy to bypass CORS issues while diagnosing R2
 app.get('/proxy-video/:videoName', async (req, res) => {
@@ -5386,13 +5390,33 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 app.post('/api/advertiser/upload-file', upload.single('creative'), async (req, res) => {
   try {
     console.log('📤 ===== FILE UPLOAD ENDPOINT =====');
+    console.log('📤 Request headers:', {
+      'content-type': req.headers['content-type'],
+      'content-length': req.headers['content-length']
+    });
     
     if (!req.file) {
+      console.error('❌ No file provided in request');
       return res.status(400).json({ error: 'No file provided' });
     }
     
-    console.log('📁 File received:', req.file.originalname);
-    console.log('📁 File size:', req.file.size, 'bytes');
+    const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2);
+    console.log('📁 File received:', {
+      originalname: req.file.originalname,
+      size: `${req.file.size} bytes (${fileSizeMB} MB)`,
+      mimetype: req.file.mimetype,
+      encoding: req.file.encoding
+    });
+    
+    // Validate file size (50MB limit)
+    const maxSizeBytes = 50 * 1024 * 1024;
+    if (req.file.size > maxSizeBytes) {
+      console.error(`❌ File too large: ${req.file.size} bytes (max: ${maxSizeBytes} bytes)`);
+      return res.status(413).json({
+        error: 'File too large',
+        message: `File size (${fileSizeMB} MB) exceeds maximum allowed size of 50 MB`
+      });
+    }
     
     // Generate final filename
     const timestamp = Date.now();
@@ -5400,34 +5424,84 @@ app.post('/api/advertiser/upload-file', upload.single('creative'), async (req, r
     const finalFileName = `${timestamp}-${sanitizedFileName}`;
     
     console.log(`📤 Uploading file to R2: ${finalFileName}`);
-    
-    // Upload to R2
-    const uploadCommand = new PutObjectCommand({
-      Bucket: 'advertiser-media',
-      Key: finalFileName,
-      Body: req.file.buffer,
-      ContentType: req.file.mimetype,
+    console.log(`📤 R2 upload details:`, {
+      bucket: 'advertiser-media',
+      key: finalFileName,
+      contentType: req.file.mimetype,
+      contentLength: req.file.size
     });
     
-    await r2Client.send(uploadCommand);
-    
-    // Generate public URL
-    const mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${finalFileName}`;
-    
-    console.log('✅ File uploaded to R2 successfully:', mediaUrl);
-    
-    // Return the file URL and filename for use in checkout
-    res.json({
-      success: true,
-      fileUrl: mediaUrl,
-      fileName: finalFileName
-    });
+    try {
+      // Upload to R2
+      const uploadCommand = new PutObjectCommand({
+        Bucket: 'advertiser-media',
+        Key: finalFileName,
+        Body: req.file.buffer,
+        ContentType: req.file.mimetype,
+        ContentLength: req.file.size
+      });
+      
+      const uploadStartTime = Date.now();
+      await r2Client.send(uploadCommand);
+      const uploadDuration = Date.now() - uploadStartTime;
+      
+      console.log(`✅ R2 upload completed in ${uploadDuration}ms`);
+      
+      // Generate public URL
+      const mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${finalFileName}`;
+      
+      console.log('✅ File uploaded to R2 successfully:', {
+        url: mediaUrl,
+        fileName: finalFileName,
+        size: `${fileSizeMB} MB`,
+        duration: `${uploadDuration}ms`
+      });
+      
+      // Return the file URL and filename for use in checkout
+      res.json({
+        success: true,
+        fileUrl: mediaUrl,
+        fileName: finalFileName,
+        fileSize: req.file.size,
+        fileSizeMB: parseFloat(fileSizeMB)
+      });
+      
+    } catch (r2Error) {
+      console.error('❌ R2 upload error:', {
+        message: r2Error.message,
+        code: r2Error.code,
+        name: r2Error.name,
+        stack: r2Error.stack
+      });
+      
+      // Check for specific Cloudflare R2 errors
+      if (r2Error.message && r2Error.message.includes('EntityTooLarge')) {
+        return res.status(413).json({
+          error: 'File too large',
+          message: 'File exceeds R2 storage limits'
+        });
+      }
+      
+      throw r2Error; // Re-throw to be caught by outer catch
+    }
     
   } catch (error) {
-    console.error('❌ File upload error:', error);
-    res.status(500).json({
+    console.error('❌ File upload error:', {
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      stack: error.stack
+    });
+    
+    // Determine appropriate status code
+    let statusCode = 500;
+    if (error.message && error.message.includes('too large')) {
+      statusCode = 413;
+    }
+    
+    res.status(statusCode).json({
       error: 'File upload failed',
-      message: error.message
+      message: error.message || 'An unexpected error occurred during file upload'
     });
   }
 });
@@ -5642,13 +5716,13 @@ app.post('/api/advertiser/create-checkout-session', async (req, res) => {
     
     // Session metadata (also include all fields for consistency)
     const sessionMetadata = {
-      advertiserId: String(advertiser.id),
-      companyName: companyName,
-      campaignType: 'advertiser',
-      hasFile: !!req.file ? 'true' : 'false',
-      isRecurring: isRecurring === 'true' || isRecurring === true ? 'true' : 'false',
+        advertiserId: String(advertiser.id),
+        companyName: companyName,
+        campaignType: 'advertiser',
+        hasFile: !!req.file ? 'true' : 'false',
+        isRecurring: isRecurring === 'true' || isRecurring === true ? 'true' : 'false',
       // REQUIRED fields for email summary
-      weeklyBudget: weeklyBudget || '',
+        weeklyBudget: weeklyBudget || '',
       cpmRate: cpmRate || '',
       clickTracking: clickTracking === 'true' || clickTracking === true ? 'true' : 'false',
       expedited: expeditedApproval === 'true' || expeditedApproval === true ? 'true' : 'false',
