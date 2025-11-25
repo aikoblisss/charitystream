@@ -30,6 +30,7 @@ const session = require('express-session');
 const passport = require('passport');
 const multer = require('multer');
 const { S3Client, PutObjectCommand, CopyObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
 const { Pool } = require('pg');
 
 // Load environment variables from parent directory
@@ -5385,125 +5386,112 @@ app.get('/api/admin/users/:userId', authenticateToken, (req, res) => {
 
 // ===== ADVERTISER CHECKOUT ROUTES =====
 
-// Create advertiser checkout session
-// Separate endpoint to upload file first (avoids Vercel 4.5MB limit)
-app.post('/api/advertiser/upload-file', upload.single('creative'), async (req, res) => {
+// ===== PRESIGNED URL ENDPOINT FOR DIRECT R2 UPLOADS =====
+// This bypasses Vercel's 4.5MB request body limit by allowing direct browser-to-R2 uploads
+app.post('/api/r2/presign-upload', authenticateToken, async (req, res) => {
   try {
-    console.log('📤 ===== FILE UPLOAD ENDPOINT =====');
-    console.log('📤 Request headers:', {
-      'content-type': req.headers['content-type'],
-      'content-length': req.headers['content-length']
-    });
+    console.log('🔐 ===== PRESIGNED URL GENERATION =====');
     
-    if (!req.file) {
-      console.error('❌ No file provided in request');
-      return res.status(400).json({ error: 'No file provided' });
+    const { fileName, contentType, fileSize } = req.body;
+    
+    if (!fileName || !contentType) {
+      console.error('❌ Missing required fields:', { fileName, contentType });
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        message: 'fileName and contentType are required' 
+      });
     }
-    
-    const fileSizeMB = (req.file.size / (1024 * 1024)).toFixed(2);
-    console.log('📁 File received:', {
-      originalname: req.file.originalname,
-      size: `${req.file.size} bytes (${fileSizeMB} MB)`,
-      mimetype: req.file.mimetype,
-      encoding: req.file.encoding
-    });
     
     // Validate file size (50MB limit)
     const maxSizeBytes = 50 * 1024 * 1024;
-    if (req.file.size > maxSizeBytes) {
-      console.error(`❌ File too large: ${req.file.size} bytes (max: ${maxSizeBytes} bytes)`);
+    if (fileSize && fileSize > maxSizeBytes) {
+      console.error(`❌ File too large: ${fileSize} bytes (max: ${maxSizeBytes} bytes)`);
       return res.status(413).json({
         error: 'File too large',
-        message: `File size (${fileSizeMB} MB) exceeds maximum allowed size of 50 MB`
+        message: `File size exceeds maximum allowed size of 50 MB`
       });
     }
     
-    // Generate final filename
-    const timestamp = Date.now();
-    const sanitizedFileName = req.file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const finalFileName = `${timestamp}-${sanitizedFileName}`;
+    // Validate content type
+    const allowedMimes = ['video/mp4', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedMimes.includes(contentType)) {
+      console.error(`❌ Invalid content type: ${contentType}`);
+      return res.status(400).json({
+        error: 'Invalid file type',
+        message: 'Only MP4 videos and PNG/JPG images are allowed'
+      });
+    }
     
-    console.log(`📤 Uploading file to R2: ${finalFileName}`);
-    console.log(`📤 R2 upload details:`, {
-      bucket: 'advertiser-media',
-      key: finalFileName,
-      contentType: req.file.mimetype,
-      contentLength: req.file.size
+    // Generate unique key with UUID + original extension
+    const crypto = require('crypto');
+    const uuid = crypto.randomUUID();
+    const fileExtension = fileName.split('.').pop() || 'mp4';
+    const sanitizedFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const timestamp = Date.now();
+    const key = `${timestamp}-${uuid}.${fileExtension}`;
+    
+    console.log('📝 Generated R2 key:', {
+      originalFileName: fileName,
+      sanitizedFileName: sanitizedFileName,
+      key: key,
+      contentType: contentType,
+      fileSize: fileSize ? `${(fileSize / (1024 * 1024)).toFixed(2)} MB` : 'unknown'
     });
     
-    try {
-      // Upload to R2
-      const uploadCommand = new PutObjectCommand({
-        Bucket: 'advertiser-media',
-        Key: finalFileName,
-        Body: req.file.buffer,
-        ContentType: req.file.mimetype,
-        ContentLength: req.file.size
-      });
-      
-      const uploadStartTime = Date.now();
-      await r2Client.send(uploadCommand);
-      const uploadDuration = Date.now() - uploadStartTime;
-      
-      console.log(`✅ R2 upload completed in ${uploadDuration}ms`);
-      
-      // Generate public URL
-      const mediaUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${finalFileName}`;
-      
-      console.log('✅ File uploaded to R2 successfully:', {
-        url: mediaUrl,
-        fileName: finalFileName,
-        size: `${fileSizeMB} MB`,
-        duration: `${uploadDuration}ms`
-      });
-      
-      // Return the file URL and filename for use in checkout
-      res.json({
-        success: true,
-        fileUrl: mediaUrl,
-        fileName: finalFileName,
-        fileSize: req.file.size,
-        fileSizeMB: parseFloat(fileSizeMB)
-      });
-      
-    } catch (r2Error) {
-      console.error('❌ R2 upload error:', {
-        message: r2Error.message,
-        code: r2Error.code,
-        name: r2Error.name,
-        stack: r2Error.stack
-      });
-      
-      // Check for specific Cloudflare R2 errors
-      if (r2Error.message && r2Error.message.includes('EntityTooLarge')) {
-        return res.status(413).json({
-          error: 'File too large',
-          message: 'File exceeds R2 storage limits'
-        });
-      }
-      
-      throw r2Error; // Re-throw to be caught by outer catch
-    }
+    // Create PutObjectCommand for presigning
+    const putCommand = new PutObjectCommand({
+      Bucket: 'advertiser-media',
+      Key: key,
+      ContentType: contentType,
+      ...(fileSize && { ContentLength: fileSize })
+    });
+    
+    // Generate presigned URL (expires in 10 minutes)
+    const expiresIn = 600; // 10 minutes in seconds
+    const uploadUrl = await getSignedUrl(r2Client, putCommand, { expiresIn });
+    
+    // Generate public URL (for after upload completes)
+    const publicUrl = `https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/${key}`;
+    
+    console.log('✅ Presigned URL generated:', {
+      key: key,
+      expiresIn: `${expiresIn} seconds`,
+      uploadUrl: uploadUrl.substring(0, 100) + '...',
+      publicUrl: publicUrl
+    });
+    
+    res.json({
+      success: true,
+      uploadUrl: uploadUrl,
+      publicUrl: publicUrl,
+      key: key,
+      expiresIn: expiresIn
+    });
     
   } catch (error) {
-    console.error('❌ File upload error:', {
+    console.error('❌ Presigned URL generation error:', {
       message: error.message,
       code: error.code,
       name: error.name,
       stack: error.stack
     });
-    
-    // Determine appropriate status code
-    let statusCode = 500;
-    if (error.message && error.message.includes('too large')) {
-      statusCode = 413;
-    }
-    
-    res.status(statusCode).json({
-      error: 'File upload failed',
-      message: error.message || 'An unexpected error occurred during file upload'
+    res.status(500).json({
+      error: 'Failed to generate presigned URL',
+      message: error.message || 'An unexpected error occurred'
     });
   }
+});
+
+// ===== OLD UPLOAD ENDPOINT (DISABLED - USE PRESIGNED URLS INSTEAD) =====
+// This endpoint is kept for backward compatibility but should not be used
+// Direct browser-to-R2 uploads via presigned URLs bypass Vercel's 4.5MB limit
+app.post('/api/advertiser/upload-file', upload.single('creative'), async (req, res) => {
+  console.warn('⚠️ DEPRECATED: /api/advertiser/upload-file called. Use presigned URLs instead.');
+  return res.status(410).json({
+    error: 'This endpoint is deprecated',
+    message: 'Please use /api/r2/presign-upload to get a presigned URL for direct R2 uploads',
+    deprecated: true
+  });
 });
 
 app.post('/api/advertiser/create-checkout-session', async (req, res) => {
@@ -5536,8 +5524,21 @@ app.post('/api/advertiser/create-checkout-session', async (req, res) => {
       cpmRate,
       expeditedApproval,
       clickTracking,
-      destinationUrl
+      destinationUrl,
+      fileUrl: fileUrl ? `${fileUrl.substring(0, 50)}...` : 'MISSING',
+      fileName: fileName || 'MISSING'
     });
+    
+    // Validate file URL is provided (from presigned upload)
+    if (!fileUrl) {
+      console.error('❌ No fileUrl provided - file must be uploaded via presigned URL first');
+      return res.status(400).json({
+        error: 'Missing file URL',
+        message: 'File must be uploaded via presigned URL before creating checkout session'
+      });
+    }
+    
+    console.log('✅ File URL validated:', fileUrl);
     
     // Validate required fields
     if (!email || !companyName || !firstName || !lastName) {

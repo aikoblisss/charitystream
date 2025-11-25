@@ -1581,78 +1581,153 @@ async function proceedToCheckout() {
     checkoutButton.textContent = 'Uploading file...';
     checkoutButton.disabled = true;
     
-    // STEP 1: Upload file first (avoids Vercel 4.5MB limit)
-    console.log('📤 Step 1: Uploading file to R2...');
-    const fileFormData = new FormData();
-    fileFormData.append('creative', fileInput.files[0]);
+    // STEP 1: Get presigned URL for direct R2 upload (bypasses Vercel 4.5MB limit)
+    console.log('📤 Step 1: Getting presigned URL for direct R2 upload...');
+    const file = fileInput.files[0];
+    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
     
-    const uploadResponse = await fetch('/api/advertiser/upload-file', {
+    console.log('📁 File details:', {
+      name: file.name,
+      size: `${file.size} bytes (${fileSizeMB} MB)`,
+      type: file.type
+    });
+    
+    // Get auth token for presign request
+    const authToken = localStorage.getItem('authToken');
+    if (!authToken) {
+      console.error('❌ No auth token found');
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('Please log in to upload files.');
+      return;
+    }
+    
+    // Request presigned URL
+    let presignData;
+    try {
+      const presignResponse = await fetch('/api/r2/presign-upload', {
       method: 'POST',
-      body: fileFormData
-    });
-    
-    console.log('📤 Upload response status:', uploadResponse.status);
-    console.log('📤 Upload response headers:', {
-      'content-type': uploadResponse.headers.get('content-type'),
-      'content-length': uploadResponse.headers.get('content-length')
-    });
-    
-    // Read response body ONCE - check status first, then read accordingly
-    let uploadData;
-    if (!uploadResponse.ok) {
-      // Read error response as text first (since it might not be JSON)
-      const errorText = await uploadResponse.text();
-      console.error('❌ Upload failed - response text:', errorText);
-      
-      let errorMessage = 'File upload failed';
-      try {
-        // Try to parse as JSON if possible
-        const errorJson = JSON.parse(errorText);
-        errorMessage = errorJson.message || errorJson.error || errorMessage;
-      } catch (parseError) {
-        // If not JSON, use the text directly
-        errorMessage = errorText || errorMessage;
-      }
-      
-      if (uploadResponse.status === 413) {
-        errorMessage = 'File is too large. Please use a smaller file (max 50MB).';
-      }
-      
-      console.error('❌ File upload failed:', {
-        status: uploadResponse.status,
-        statusText: uploadResponse.statusText,
-        error: errorMessage
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type,
+          fileSize: file.size
+        })
       });
       
+      console.log('📤 Presign response status:', presignResponse.status);
+      
+      if (!presignResponse.ok) {
+        const errorText = await presignResponse.text();
+        console.error('❌ Presign failed - response text:', errorText);
+        
+        let errorMessage = 'Failed to get upload URL';
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || errorMessage;
+        } catch (parseError) {
+          errorMessage = errorText || errorMessage;
+        }
+        
+        if (presignResponse.status === 413) {
+          errorMessage = 'File is too large. Please use a smaller file (max 50MB).';
+        }
+        
+        console.error('❌ Presign request failed:', {
+          status: presignResponse.status,
+          statusText: presignResponse.statusText,
+          error: errorMessage
+        });
+        
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
-      alert(`Upload failed: ${errorMessage}`);
+        alert(`Upload preparation failed: ${errorMessage}`);
+        return;
+      }
+      
+      presignData = await presignResponse.json();
+      console.log('✅ Presigned URL received:', {
+        key: presignData.key,
+        expiresIn: `${presignData.expiresIn} seconds`,
+        uploadUrl: presignData.uploadUrl.substring(0, 100) + '...',
+        publicUrl: presignData.publicUrl
+      });
+      
+    } catch (presignError) {
+      console.error('❌ Presign request error:', presignError);
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('Failed to prepare upload. Please try again.');
       return;
     }
     
-    // Success - read JSON response
+    if (!presignData.success || !presignData.uploadUrl || !presignData.publicUrl) {
+      console.error('❌ Presign response missing required fields:', presignData);
+      checkoutButton.textContent = originalText;
+      checkoutButton.disabled = false;
+      alert('Upload preparation did not return valid URLs. Please try again.');
+      return;
+    }
+    
+    // STEP 2: Upload file directly to R2 using presigned URL
+    checkoutButton.textContent = 'Uploading file to R2...';
+    console.log('📤 Step 2: Uploading file directly to R2...');
+    console.log('📤 Upload URL:', presignData.uploadUrl.substring(0, 100) + '...');
+    
     try {
-      uploadData = await uploadResponse.json();
-      console.log('✅ File uploaded successfully:', uploadData);
-    } catch (jsonError) {
-      console.error('❌ Failed to parse upload response as JSON:', jsonError);
+      const uploadStartTime = Date.now();
+      const uploadResponse = await fetch(presignData.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type
+        },
+        body: file
+      });
+      
+      const uploadDuration = Date.now() - uploadStartTime;
+      console.log(`📤 Direct R2 upload completed in ${uploadDuration}ms`);
+      console.log('📤 Upload response status:', uploadResponse.status);
+      
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('❌ Direct R2 upload failed:', {
+          status: uploadResponse.status,
+          statusText: uploadResponse.statusText,
+          error: errorText
+        });
+        
+        checkoutButton.textContent = originalText;
+        checkoutButton.disabled = false;
+        alert(`File upload failed (status ${uploadResponse.status}). Please try again.`);
+        return;
+      }
+      
+      console.log('✅ File uploaded directly to R2 successfully!');
+      console.log('✅ Public URL:', presignData.publicUrl);
+      
+    } catch (uploadError) {
+      console.error('❌ Direct R2 upload error:', uploadError);
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
-      alert('Upload succeeded but received invalid response. Please try again.');
+      alert('File upload failed. Please check your connection and try again.');
       return;
     }
     
-    if (!uploadData.success || !uploadData.fileUrl) {
-      console.error('❌ Upload response missing required fields:', uploadData);
-      checkoutButton.textContent = originalText;
-      checkoutButton.disabled = false;
-      alert('File upload did not return a valid URL. Please try again.');
-      return;
-    }
+    // Prepare upload data for checkout (using public URL from presign)
+    const uploadData = {
+      success: true,
+      fileUrl: presignData.publicUrl,
+      fileName: presignData.key,
+      fileSize: file.size,
+      fileSizeMB: parseFloat(fileSizeMB)
+    };
     
-    // STEP 2: Create checkout session with file URL (not the file itself)
+    // STEP 3: Create checkout session with file URL (not the file itself)
     checkoutButton.textContent = 'Creating checkout session...';
-    console.log('🚀 Step 2: Proceeding to checkout...');
+    console.log('🚀 Step 3: Proceeding to checkout...');
     console.log('📤 Upload success - file URL:', uploadData.fileUrl);
     console.log('📤 Upload success - file name:', uploadData.fileName);
     
