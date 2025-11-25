@@ -756,25 +756,21 @@ app.use(helmet({
         "'self'", 
         "data:", 
         "blob:",
-        "https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev", // Charity stream videos R2 bucket (CORRECT)
-        "https://pub-83596556bc864db7aa93479e13f45deb.r2.dev",  // Advertiser media R2 bucket
-        "https://advertiser-media.e94c5ecbf3e438d402b3fe2ad136c0fc.r2.cloudflarestorage.com", // Allow direct uploads to R2 storage endpoint
-        "https://*.r2.cloudflarestorage.com" // Allow any R2 storage endpoint for flexibility
+        "https://*.r2.dev", // Allow all R2 public buckets (for video/media playback)
+        "https://*.r2.cloudflarestorage.com" // Allow all R2 storage endpoints (for direct uploads)
       ],
       imgSrc: [
         "'self'",
         "data:",
         "blob:",
-        "https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev", // Charity stream videos R2 bucket
-        "https://pub-83596556bc864db7aa93479e13f45deb.r2.dev", // Advertiser media R2 bucket (for thumbnails)
-        "https://advertiser-media.e94c5ecbf3e438d402b3fe2ad136c0fc.r2.cloudflarestorage.com", // Allow direct uploads to R2 storage endpoint
-        "https://*.r2.cloudflarestorage.com" // Allow any R2 storage endpoint for flexibility
+        "https://*.r2.dev", // Allow all R2 public buckets (for image thumbnails)
+        "https://*.r2.cloudflarestorage.com" // Allow all R2 storage endpoints
       ],
       connectSrc: [
         "'self'", // Allow API calls to same origin
         "https://api.stripe.com", // Allow Stripe API calls
-        "https://advertiser-media.e94c5ecbf3e438d402b3fe2ad136c0fc.r2.cloudflarestorage.com", // Allow direct uploads to Cloudflare R2 from advertiser portal
-        "https://*.r2.cloudflarestorage.com" // Allow any R2 storage endpoint for flexibility
+        "https://*.r2.dev", // Allow all R2 public buckets (for fetch requests)
+        "https://*.r2.cloudflarestorage.com" // Allow direct uploads to Cloudflare R2 from advertiser portal (presigned PUT URLs)
       ],
       frameSrc: [
         "'self'",
