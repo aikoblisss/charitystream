@@ -4422,6 +4422,82 @@ app.post('/api/advertiser/signup', async (req, res) => {
   }
 });
 
+// ===== ADVERTISER PORTAL LOGIN =====
+app.post('/api/advertiser/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    
+    console.log('🔐 [PORTAL LOGIN] Login attempt for email:', email);
+    
+    if (!email || !password) {
+      console.log('❌ [PORTAL LOGIN] Missing email or password');
+      return res.status(400).json({ success: false, error: 'Email and password are required' });
+    }
+    
+    const pool = getPool();
+    if (!pool) {
+      console.error('❌ [PORTAL LOGIN] Database pool not available');
+      return res.status(500).json({ success: false, error: 'Database connection not available' });
+    }
+    
+    // Look up advertiser account by email
+    const accountResult = await pool.query(`
+      SELECT aa.id, aa.email, aa.password_hash, aa.advertiser_id,
+             a.company_name, a.approved, a.completed
+      FROM advertiser_accounts aa
+      INNER JOIN advertisers a ON aa.advertiser_id = a.id
+      WHERE aa.email = $1
+    `, [email.toLowerCase().trim()]);
+    
+    if (accountResult.rows.length === 0) {
+      console.log('❌ [PORTAL LOGIN] Account not found for email:', email);
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+    
+    const account = accountResult.rows[0];
+    
+    // Verify password
+    const passwordMatch = await bcrypt.compare(password, account.password_hash);
+    if (!passwordMatch) {
+      console.log('❌ [PORTAL LOGIN] Password mismatch for email:', email);
+      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+    }
+    
+    console.log('✅ [PORTAL LOGIN] Password verified for email:', email);
+    
+    // Update last login timestamp
+    await pool.query(`
+      UPDATE advertiser_accounts
+      SET last_login_at = NOW()
+      WHERE id = $1
+    `, [account.id]);
+    
+    // Generate advertiser portal JWT token
+    // Use a different token type to distinguish from regular user tokens
+    const tokenPayload = {
+      type: 'advertiser_portal',
+      advertiserAccountId: account.id,
+      advertiserId: account.advertiser_id,
+      email: account.email
+    };
+    
+    const token = generateJWTToken(tokenPayload, '30d'); // 30 day expiry for portal access
+    
+    console.log('✅ [PORTAL LOGIN] Token generated for advertiser:', account.advertiser_id);
+    
+    return res.json({
+      success: true,
+      token: token,
+      advertiserId: account.advertiser_id,
+      companyName: account.company_name
+    });
+    
+  } catch (error) {
+    console.error('❌ [PORTAL LOGIN] Error:', error);
+    res.status(500).json({ success: false, error: 'Internal server error', details: error.message });
+  }
+});
+
 // Get advertiser status (capped, impressions, etc.)
 app.get('/api/advertisers/:id/status', authenticateToken, async (req, res) => {
   try {

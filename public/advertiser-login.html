@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advertiser Portal Login - Charity Stream</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+      width: 100%;
+      padding: 40px;
+    }
+    
+    .logo {
+      text-align: center;
+      margin-bottom: 30px;
+    }
+    
+    .logo h1 {
+      color: #2F7D31;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .logo p {
+      color: #6b7280;
+      font-size: 14px;
+    }
+    
+    .error-message {
+      background: #fee2e2;
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .error-message.show {
+      display: block;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #374151;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 16px;
+      transition: border-color 0.2s;
+    }
+    
+    .form-group input:focus {
+      outline: none;
+      border-color: #2F7D31;
+      box-shadow: 0 0 0 3px rgba(47, 125, 49, 0.1);
+    }
+    
+    .submit-btn {
+      width: 100%;
+      background: #2F7D31;
+      color: white;
+      border: none;
+      padding: 14px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 10px;
+    }
+    
+    .submit-btn:hover:not(:disabled) {
+      background: #276629;
+    }
+    
+    .submit-btn:disabled {
+      background: #9ca3af;
+      cursor: not-allowed;
+    }
+    
+    .home-link {
+      text-align: center;
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .home-link a {
+      color: #2F7D31;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .home-link a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <h1>Charity Stream</h1>
+      <p>Advertiser Portal Login</p>
+    </div>
+    
+    <div id="error-message" class="error-message"></div>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" name="email" required autocomplete="email" />
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" required autocomplete="current-password" />
+      </div>
+      
+      <button type="submit" class="submit-btn" id="submitBtn">Sign In</button>
+    </form>
+    
+    <div class="home-link">
+      <a href="/">← Back to Homepage</a>
+    </div>
+  </div>
+  
+  <script>
+    const loginForm = document.getElementById('loginForm');
+    const errorMessage = document.getElementById('error-message');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.classList.add('show');
+    }
+    
+    function hideError() {
+      errorMessage.classList.remove('show');
+      errorMessage.textContent = '';
+    }
+    
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!email || !password) {
+        showError('Please enter both email and password.');
+        return;
+      }
+      
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Signing In...';
+      
+      try {
+        const response = await fetch('/api/advertiser/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            email: email,
+            password: password
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+          // Store advertiser portal token
+          localStorage.setItem('advertiserPortalToken', data.token);
+          localStorage.setItem('advertiserId', data.advertiserId);
+          
+          // Redirect to portal
+          window.location.href = '/advertiser-portal.html';
+        } else {
+          showError(data.error || 'Invalid email or password. Please try again.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
+        }
+        
+      } catch (error) {
+        console.error('❌ Login error:', error);
+        showError('Network error. Please check your connection and try again.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Sign In';
+      }
+    });
+  </script>
+</body>
+</html>
+

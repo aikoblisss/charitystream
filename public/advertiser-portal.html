@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Advertiser Portal - Charity Stream</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      padding: 40px;
+    }
+    
+    h1 {
+      color: #2F7D31;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+    
+    p {
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.6;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" class="loading">
+      <p>Loading...</p>
+    </div>
+    
+    <div id="content" style="display: none;">
+      <h1>Advertiser Portal</h1>
+      <p id="welcome-message">Welcome!</p>
+    </div>
+  </div>
+  
+  <script>
+    // Check for advertiser portal token
+    const advertiserPortalToken = localStorage.getItem('advertiserPortalToken');
+    const advertiserId = localStorage.getItem('advertiserId');
+    
+    if (!advertiserPortalToken) {
+      // No token - redirect to login
+      console.log('❌ No advertiser portal token found, redirecting to login...');
+      window.location.href = '/advertiser-login.html';
+    } else {
+      // Token exists - show portal content
+      console.log('✅ Advertiser portal token found');
+      
+      // Hide loading, show content
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      
+      // Update welcome message with company name if available
+      // For now, just show generic welcome
+      const welcomeMessage = document.getElementById('welcome-message');
+      if (advertiserId) {
+        // TODO: Fetch advertiser details from backend to show company name
+        welcomeMessage.textContent = 'Welcome!';
+      } else {
+        welcomeMessage.textContent = 'Welcome!';
+      }
+    }
+  </script>
+</body>
+</html>
+

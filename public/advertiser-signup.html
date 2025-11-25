@@ -337,13 +337,9 @@
             </div>
           `;
           
-          // Redirect based on signup source
+          // Redirect to advertiser portal after signup
           setTimeout(() => {
-            if (data.createdFromApproval) {
-              window.location.href = '/advertiser-dashboard.html';
-            } else {
-              window.location.href = '/advertiser-status.html';
-            }
+            window.location.href = '/advertiser-portal.html';
           }, 2000);
           
         } else {
