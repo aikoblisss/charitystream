@@ -664,9 +664,9 @@ async function processCampaign(campaign, sponsorAccount) {
         
         if (billingResult.rows.length > 0 && billingResult.rows[0].stripe_subscription_id) {
           const subscriptionId = billingResult.rows[0].stripe_subscription_id;
-          const nextMonday = getNextMondayMidnight();
+          const nextMonday = getNextMondayLA();
           const nextMondayUnix = Math.floor(nextMonday.getTime() / 1000);
-          
+
           console.log(`📅 [RECURRING SPONSOR] Setting billing_cycle_anchor for subscription ${subscriptionId}`);
           console.log(`📅 [RECURRING SPONSOR] Next Monday for billing alignment:`, nextMonday.toISOString());
           
