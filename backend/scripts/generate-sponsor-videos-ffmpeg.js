@@ -496,7 +496,7 @@ async function processCampaign(campaign, sponsorAccount) {
       `, [campaign.id, outputKey]);
       console.log(`✅ Campaign ${campaign.id} marked as generation_completed (recurring)`);
     } else {
-      // Non-recurring: schedule for Monday activation; do NOT set status = 'active'
+      // Non-recurring: activate immediately; playlist guards display via start_week/end_at dates
       const startMonday = getNextMondayLA();
       const startWeekStr = startMonday.toISOString().slice(0, 10);
       const endAt = new Date(startMonday);
@@ -564,9 +564,10 @@ async function processCampaign(campaign, sponsorAccount) {
                     `UPDATE sponsor_billing SET status = 'paid', stripe_payment_intent_id = $1 WHERE sponsor_campaign_id = $2`,
                     [paymentIntent.id, campaign.id]
                   );
-                  // Set start_week and end_at now that payment is confirmed
+                  // Set status=active, start_week, and end_at now that payment is confirmed.
+                  // Playlist is gated by start_week <= CURRENT_DATE so video won't show until Monday.
                   await pool.query(
-                    `UPDATE sponsor_campaigns SET start_week = $2::date, end_at = $3::date, updated_at = NOW() WHERE id = $1`,
+                    `UPDATE sponsor_campaigns SET status = 'active', start_week = $2::date, end_at = $3::date, updated_at = NOW() WHERE id = $1`,
                     [campaign.id, startWeekStr, endAtStr]
                   );
                   const donResult = await pool.query(
