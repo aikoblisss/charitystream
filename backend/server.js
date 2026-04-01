@@ -4959,12 +4959,12 @@ app.post('/api/sponsor/submit', upload.single('logo'), async (req, res) => {
       }
     };
     
-    let nextMonday = getNextMondayMidnight();
+    let nextMonday = getNextMondayLA();
     let nextMondayUnix = Math.floor(nextMonday.getTime() / 1000);
     const nowUnix = Math.floor(Date.now() / 1000);
     const fortyEightHoursSeconds = 48 * 60 * 60;
     if (nextMondayUnix - nowUnix < fortyEightHoursSeconds) {
-      nextMonday = getNextMondayMidnightAfter(nextMonday);
+      nextMonday = getNextMondayLA(new Date(nextMonday.getTime() + 24 * 60 * 60 * 1000));
       nextMondayUnix = Math.floor(nextMonday.getTime() / 1000);
       console.warn('⚠️ [TRIAL_END_SHIFTED] Trial end was <48h away — pushed to next Monday');
     }
