@@ -1475,6 +1475,23 @@ const processStripeEvent = async (event) => {
           console.log('✅ [INVOICE.PAID] Subscription ID:', subscriptionId);
           console.log('✅ [INVOICE.PAID] Payment Intent ID:', invoice.payment_intent);
           console.log('✅ [INVOICE.PAID] Invoice ID:', invoice.id);
+          // Activate the sponsor campaign now that billing has started.
+          // Also correct start_week if it is in the past (e.g. trial ended early).
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const campaignActivateResult = await pool.query(
+            `UPDATE sponsor_campaigns
+             SET status = 'active',
+                 start_week = CASE WHEN start_week < $2::date THEN $2::date ELSE start_week END,
+                 updated_at = NOW()
+             WHERE id = (
+               SELECT sponsor_campaign_id FROM sponsor_billing WHERE stripe_subscription_id = $1 LIMIT 1
+             )
+             AND status IN ('approved', 'pending_approval')`,
+            [subscriptionId, todayStr]
+          );
+          if (campaignActivateResult.rowCount > 0) {
+            console.log('✅ [INVOICE.PAID] Activated sponsor campaign (first billing started)');
+          }
         } else {
           // Improved failure visibility: Check why update failed
           const checkResult = await pool.query(
@@ -8734,13 +8751,13 @@ async function performSponsorEndCampaigns() {
   }
 }
 
-// ===== SPONSOR MONDAY ACTIVATION JOB =====
-// Activates approved sponsor campaigns and extends Stripe trials for unready ones.
+// ===== SPONSOR MONDAY JOB =====
+// Extends Stripe trials for recurring campaigns not yet ready (not approved or no video generated).
+// Activation is handled by the invoice.paid webhook when first billing fires.
 // Runs Sunday 10:00 PM PT / Monday 06:00 UTC
-// Activates ready campaigns in DB; Stripe billing happens naturally at trial_end
 
 async function performSponsorMondayActivation() {
-  console.log("🔄 [SPONSOR-MONDAY] Starting sponsor Monday activation job...");
+  console.log("🔄 [SPONSOR-MONDAY] Starting sponsor Monday job...");
   console.log("🔄 [SPONSOR-MONDAY] Job time:", new Date().toISOString());
 
   const pool = getPool();
@@ -8750,89 +8767,11 @@ async function performSponsorMondayActivation() {
   }
 
   try {
-    const todayUtc = new Date().toISOString().slice(0, 10);
-
-    // A) Activate recurring campaigns (approved + video generated + subscription)
-    const readyCampaignsResult = await pool.query(`
-      SELECT 
-        sc.id AS campaign_id,
-        sc.sponsor_account_id,
-        sb.stripe_subscription_id
-      FROM sponsor_campaigns sc
-      JOIN sponsor_billing sb ON sb.sponsor_campaign_id = sc.id
-      WHERE sc.status = 'approved'
-        AND sc.generation_completed = true
-        AND sc.is_recurring = true
-        AND sb.stripe_subscription_id IS NOT NULL
-      ORDER BY sc.id
-    `);
-
-    console.log(`📊 [SPONSOR-MONDAY] Found ${readyCampaignsResult.rows.length} recurring campaigns ready for activation`);
-
-    let activatedRecurringCount = 0;
-
-    for (const campaign of readyCampaignsResult.rows) {
-      try {
-        const subscriptionId = campaign.stripe_subscription_id;
-        console.log(`🔄 [SPONSOR-MONDAY] Processing campaign ${campaign.campaign_id}, subscription ${subscriptionId}`);
-
-        // Activate the campaign (DB-only - Stripe trial_end remains untouched for natural billing)
-        await pool.query(`
-          UPDATE sponsor_campaigns
-          SET status = 'active',
-              updated_at = NOW()
-          WHERE id = $1
-        `, [campaign.campaign_id]);
-
-        console.log(`✅ [SPONSOR-MONDAY] Activated recurring sponsor campaign ${campaign.campaign_id} (DB-only)`);
-        console.log(`📋 [SPONSOR-MONDAY] Campaign ID: ${campaign.campaign_id}, Subscription ID: ${subscriptionId}, Action: Activated recurring sponsor campaign`);
-
-        activatedRecurringCount++;
-
-      } catch (campaignError) {
-        console.error(`❌ [SPONSOR-MONDAY] Error processing campaign ${campaign.campaign_id}:`, campaignError.message);
-        // Continue with next campaign
-      }
-    }
-
-    // C) Activate non-recurring campaigns (approved + video generated + paid + start_week = today)
-    const nonRecurringReadyResult = await pool.query(`
-      SELECT sc.id AS campaign_id
-      FROM sponsor_campaigns sc
-      JOIN sponsor_billing sb ON sb.sponsor_campaign_id = sc.id
-      WHERE sc.is_recurring = false
-        AND sc.status = 'approved'
-        AND sc.generation_completed = true
-        AND sb.status = 'paid'
-        AND sc.start_week IS NOT NULL
-        AND sc.start_week::date = $1::date
-      ORDER BY sc.id
-    `, [todayUtc]);
-
-    let activatedNonRecurringCount = 0;
-    for (const row of nonRecurringReadyResult.rows) {
-      try {
-        await pool.query(`
-          UPDATE sponsor_campaigns
-          SET status = 'active',
-              updated_at = NOW()
-          WHERE id = $1
-        `, [row.campaign_id]);
-        console.log(`✅ [SPONSOR-MONDAY] Activated non-recurring sponsor campaign ${row.campaign_id} (start_week = ${todayUtc})`);
-        activatedNonRecurringCount++;
-      } catch (err) {
-        console.error(`❌ [SPONSOR-MONDAY] Error activating non-recurring campaign ${row.campaign_id}:`, err.message);
-      }
-    }
-    if (nonRecurringReadyResult.rows.length > 0) {
-      console.log(`📊 [SPONSOR-MONDAY] Activated ${activatedNonRecurringCount} non-recurring campaign(s)`);
-    }
-
-    // B) Find campaigns NOT ready (have subscription but not approved or no video)
-    // CRITICAL: Exclude campaigns that are already 'active' (activated in step A)
-    // Also exclude campaigns that are 'approved' AND generation_completed = true (handled in step A)
+    // Find recurring campaigns NOT ready (no video generated or not yet approved by admin).
+    // These need their Stripe trial extended by one week so sponsors aren't billed before their
+    // campaign is ready. Ready campaigns (approved + video generated) are activated by invoice.paid.
     const notReadyCampaignsResult = await pool.query(`
-      SELECT 
+      SELECT
         sc.id AS campaign_id,
         sc.status,
         sc.generation_completed,
@@ -8841,7 +8780,7 @@ async function performSponsorMondayActivation() {
       JOIN sponsor_billing sb ON sb.sponsor_campaign_id = sc.id
       WHERE sc.is_recurring = true
         AND sb.stripe_subscription_id IS NOT NULL
-        AND sc.status != 'active'
+        AND sc.status NOT IN ('active', 'ended', 'canceled', 'rejected', 'payment_failed')
         AND (sc.status != 'approved' OR sc.generation_completed = false)
       ORDER BY sc.id
     `);
@@ -8883,14 +8822,10 @@ async function performSponsorMondayActivation() {
       }
     }
 
-    const totalActivated = activatedRecurringCount + activatedNonRecurringCount;
-    console.log(`✅ [SPONSOR-MONDAY] Monday job completed: ${totalActivated} activated (${activatedRecurringCount} recurring, ${activatedNonRecurringCount} non-recurring), ${extendedCount} trials extended`);
+    console.log(`✅ [SPONSOR-MONDAY] Monday job completed: ${extendedCount} trial(s) extended`);
 
     return {
       success: true,
-      activatedCount: totalActivated,
-      activatedRecurringCount,
-      activatedNonRecurringCount,
       extendedCount,
       timestamp: new Date().toISOString()
     };
@@ -8932,10 +8867,9 @@ app.get("/api/system/sponsor-monday-activation", async (req, res) => {
     const result = await performSponsorMondayActivation();
     
     if (result.success) {
-      res.json({ 
-        success: true, 
-        message: "Sponsor Monday activation executed",
-        activatedCount: result.activatedCount,
+      res.json({
+        success: true,
+        message: "Sponsor Monday job executed",
         extendedCount: result.extendedCount,
         timestamp: result.timestamp
       });
@@ -9581,10 +9515,12 @@ app.get('/api/sponsor/dashboard', requireSponsorAuth, async (req, res) => {
       status = 'PAYMENT_FAILED';
     } else if (campaignStatus === 'pending_approval' && !generationCompleted && billingStatus === 'trialing') {
       status = 'PENDING_APPROVAL';
-    } else if (campaignStatus === 'approved' && generationCompleted && billingStatus === 'paid') {
-      status = 'APPROVED';
-    } else if (campaignStatus === 'active' && generationCompleted && billingStatus === 'paid') {
-      status = 'LIVE';
+    } else if ((campaignStatus === 'approved' || campaignStatus === 'pending_approval') && generationCompleted && billingStatus === 'trialing') {
+      status = 'APPROVED'; // video ready, waiting for trial to end
+    } else if ((campaignStatus === 'approved' || campaignStatus === 'active') && generationCompleted && billingStatus === 'paid') {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const startWeekStr = row.start_week ? String(row.start_week).slice(0, 10) : null;
+      status = (startWeekStr && startWeekStr > todayStr) ? 'APPROVED' : 'LIVE';
     } else if (campaignStatus === 'pending_approval') {
       status = 'PENDING_APPROVAL';
     } else {
@@ -10086,11 +10022,14 @@ app.get('/api/sponsor/campaigns', requireSponsorAuth, async (req, res) => {
       const cs = (row.campaign_status || '').toLowerCase();
       const billingStatus = (row.billing_status || '').toLowerCase();
       const genComplete = row.generation_completed === true;
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const startWeekStr = row.start_week ? String(row.start_week).slice(0, 10) : null;
+      const startWeekFuture = startWeekStr && startWeekStr > todayStr;
       if (cs === 'rejected') status = 'REJECTED';
       else if (cs === 'ended' || cs === 'canceled') status = 'ENDED';
       else if (cs === 'payment_failed') status = 'PAYMENT_FAILED';
-      else if (cs === 'approved' && genComplete && billingStatus === 'paid') status = 'APPROVED';
-      else if (cs === 'active' && genComplete && billingStatus === 'paid') status = 'LIVE';
+      else if (cs === 'approved' && genComplete && billingStatus === 'trialing') status = 'APPROVED';
+      else if ((cs === 'approved' || cs === 'active') && genComplete && billingStatus === 'paid') status = startWeekFuture ? 'APPROVED' : 'LIVE';
       else status = 'PENDING_APPROVAL';
 
       const orgName = row.organization_legal_name || 'Sponsorship';
@@ -14014,6 +13953,8 @@ app.get('/api/videos/playlist', authenticateToken, trackingRateLimit, async (req
             AND sc.generation_completed = TRUE
             AND sc.video_r2_key IS NOT NULL
             AND sb.status = 'paid'
+            AND sc.start_week <= CURRENT_DATE
+            AND (sc.end_at IS NULL OR sc.end_at > CURRENT_DATE)
           ORDER BY sc.id
         `);
         const SPONSOR_VIDEO_BASE_URL = R2_SPONSOR_GENERATED_URL;
