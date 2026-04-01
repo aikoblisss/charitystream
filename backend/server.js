@@ -16086,6 +16086,9 @@ app.get('*', (req, res, next) => {
   res.sendFile(path.join(__dirname, '../public/index.html'));
 });
 
+// Initialize database for all environments (required for Vercel serverless)
+initializeDatabase();
+
 // Export the Express app for serverless environments (e.g., Vercel)
 module.exports = app;
 
@@ -16094,12 +16097,8 @@ module.exports.performWeeklyReset = performWeeklyReset;
 module.exports.runWeeklyRecurringBilling = runWeeklyRecurringBilling;
 module.exports.runNonRecurringBilling = runNonRecurringBilling;
 
-// Optional local development server
-if (process.env.NODE_ENV !== 'production' && require.main === module) {
-  // Initialize database (non-blocking)
-  initializeDatabase();
-  
-  // Server always starts
+// Local development server
+if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT} (local development)`);
   });
