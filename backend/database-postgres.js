@@ -9,26 +9,30 @@ global.fetch = fetch;
 // PostgreSQL database for Vercel with Neon (WebSocket driver)
 const { Pool } = require('@neondatabase/serverless');
 
-// Database connection - exactly ONE pool per process
+// Initialize pool synchronously at module load so it is never null
+// when any code requires this module (critical for Vercel serverless)
 let pool = null;
 
+if (process.env.DATABASE_URL) {
+  try {
+    pool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: true
+    });
+    pool.on('connect', () => console.log('🟢 Neon WebSocket connected'));
+    pool.on('error', (err) => console.error('❌ Neon WebSocket pool error:', err));
+    console.log('🔧 Neon PostgreSQL pool initialized at module load');
+  } catch (err) {
+    console.error('❌ Failed to create Neon pool at module load:', err);
+  }
+} else {
+  console.error('❌ DATABASE_URL is not set — pool will be null');
+}
+
+// Kept for backward compatibility — pool is already initialized above
 async function initializeDatabase() {
   if (pool) return;
-
-  console.log('🔧 Initializing Neon PostgreSQL database (WebSocket)...');
-
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: true
-  });
-
-  pool.on('connect', () => {
-    console.log('🟢 Neon WebSocket connected');
-  });
-
-  pool.on('error', (err) => {
-    console.error('❌ Neon WebSocket error:', err);
-  });
+  console.error('❌ initializeDatabase called but DATABASE_URL was missing at module load');
 }
 
 async function createTables() {
