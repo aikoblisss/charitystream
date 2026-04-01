@@ -8,7 +8,19 @@
     "dev": "node backend/server.js",
     "build": "npm install --prefix backend",
     "postinstall": "npm install --prefix backend",
-    "test-reset": "node backend/scripts/test-weekly-reset.js"
+    "test-reset": "node backend/scripts/test-weekly-reset.js",
+    "process-sponsor-rejections": "node backend/scripts/process-sponsor-rejections.js",
+    "process-advertiser-rejections": "node backend/scripts/process-advertiser-rejections.js",
+    "process-sponsor-approvals": "node backend/scripts/generate-sponsor-videos-ffmpeg.js",
+    "fill-sponsor": "node scripts/fillSponsor.js",
+    "fill-advertiser": "node scripts/fillAdvertiser.js",
+    "save-auth": "node scripts/saveAuth.js",
+    "select-winner": "node backend/scripts/select-winner.js",
+    "fallback-winner-job": "node backend/scripts/fallback-winner-job.js",
+    "finalize-weekly-donations": "node backend/scripts/finalize-weekly-donations.js"
+  },
+  "devDependencies": {
+    "playwright": "^1.58.2"
   },
   "engines": {
     "node": ">=18.0.0"

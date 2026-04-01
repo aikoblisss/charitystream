@@ -83,6 +83,10 @@ jspm_packages/
 .Trashes
 ehthumbs.db
 Thumbs.db
+.Rhistory
+
+# Backup directories
+portal_backup_OLD/
 
 # IDE files
 .vscode/

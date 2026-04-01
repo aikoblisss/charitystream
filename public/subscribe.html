@@ -3,503 +3,315 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Charity Stream</title>
-    
-    <!-- Stripe.js -->
+    <title>Subscribe - Charity Stream</title>
+
     <script src="https://js.stripe.com/v3/"></script>
-    
-    <!-- Inter font -->
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
+
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
             font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            font-feature-settings: 'liga' 1, 'calt' 1, 'tnum' 1;
             background-color: #f8f9fa;
             color: #333;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-        
-        .header {
-            border-bottom: 1px solid #e5e7eb;
         }
 
+        .header { border-bottom: 1px solid #e5e7eb; background: white; }
         .header-container {
-            max-width: 1320px;
-            margin: 0 auto;
-            padding: 0 1rem;
-            height: 4rem;
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
+            max-width: 1320px; margin: 0 auto; padding: 0 1rem;
+            height: 4rem; display: flex; align-items: center; gap: 1.25rem;
         }
-
         .logo {
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: -0.025em;
-            color: inherit;
-            text-decoration: none;
-            cursor: pointer;
-            transition: color 0.2s;
+            font-size: 1.5rem; font-weight: 600; letter-spacing: -0.025em;
+            color: inherit; text-decoration: none; transition: color 0.2s;
         }
-
-        .logo:hover {
-            color: #2F7D31;
-        }
-
-        .nav {
-            margin-left: auto;
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-            font-size: 0.9375rem;
-            color: #4b5563;
-        }
-
-        .nav-hidden-mobile {
-            display: flex;
-            align-items: center;
-            gap: 1.25rem;
-        }
-
-        .welcome {
-            color: #111827;
-        }
-
-        .welcome-bold {
-            font-weight: 500;
-        }
-
-        .nav-link {
-            color: inherit;
-            text-decoration: none;
-            cursor: pointer;
-        }
-
-        .nav-link:hover {
-            color: #111827;
-        }
-
+        .logo:hover { color: #2F7D31; }
+        .nav { margin-left: auto; display: flex; align-items: center; gap: 1.25rem; font-size: 0.9375rem; color: #4b5563; }
+        .nav-link { color: inherit; text-decoration: none; }
+        .nav-link:hover { color: #111827; }
         .watch-ads-btn {
-            display: inline-flex;
-            align-items: center;
-            background-color: #2F7D31;
-            color: white;
-            padding: 0.5rem 1rem;
-            border: none;
-            border-radius: 0.5rem;
-            font-weight: 500;
-            text-decoration: none;
-            cursor: pointer;
+            display: inline-flex; align-items: center; background-color: #2F7D31;
+            color: white; padding: 0.5rem 1rem; border: none; border-radius: 0.5rem;
+            font-weight: 500; text-decoration: none; cursor: pointer;
         }
+        .watch-ads-btn:hover { background-color: #276629; }
 
-        .watch-ads-btn:hover {
-            background-color: #276629;
-        }
-        
         .hero {
-            text-align: center;
-            padding: 60px 32px 40px;
-            background-color: #f8f9fa;
+            text-align: center; padding: 60px 32px 40px; background-color: #f8f9fa;
         }
-        
-        .hero h1 {
-            font-size: 64px;
-            font-weight: 800;
-            color: #000;
-            margin-bottom: 24px;
-            line-height: 1.1;
-        }
-        
-        .hero p {
-            font-size: 20px;
-            color: #6c757d;
-            font-weight: 400;
-        }
-        
+        .hero h1 { font-size: 64px; font-weight: 800; color: #000; margin-bottom: 24px; line-height: 1.1; }
+        .hero p { font-size: 20px; color: #6c757d; }
+
         .content {
-            max-width: 1300px;
-            margin: 0 auto;
-            padding: 20px 32px 60px;
-            display: grid;
-            grid-template-columns: 1.3fr 1fr;
-            gap: 40px;
-            align-items: stretch;
-        }
-        
-        .benefits-section {
-            background-color: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .benefits-section h2 {
-            font-size: 44px;
-            font-weight: 700;
-            color: #000;
-            margin-bottom: 8px;
-            white-space: nowrap;
-        }
-        
-        .benefits-section p {
-            font-size: 20px;
-            color: #6c757d;
-            margin-bottom: 40px;
-            white-space: nowrap;
-        }
-        
-        .benefit-item {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            margin-bottom: 24px;
-        }
-        
-        .benefit-icon {
-            width: 32px;
-            height: 32px;
-            background-color: #e8f5e8;
-            border-radius: 6px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        
-        .benefit-icon svg {
-            width: 20px;
-            height: 20px;
-            fill: #2F7D31;
-        }
-        
-        .benefit-text {
-            font-size: 20px;
-            color: #333;
-            font-weight: 600;
-        }
-        
-        .payment-section {
-            background-color: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-            border: 1px solid #e9ecef;
-            display: flex;
-            flex-direction: column;
-            height: 100%;
-        }
-        
-        .payment-section h2 {
-            font-size: 44px;
-            font-weight: 700;
-            color: #000;
-            margin-bottom: 32px;
-            white-space: nowrap;
-        }
-        
-        .form-group {
-            margin-bottom: 20px;
-        }
-        
-        .form-label {
-            display: block;
-            font-size: 20px;
-            color: #6c757d;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-        
-        .form-input {
-            width: 100%;
-            padding: 12px 16px;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            font-size: 20px;
-            background-color: white;
-        }
-        
-        .form-input:focus {
-            outline: none;
-            border-color: #2F7D31;
-            box-shadow: 0 0 0 3px rgba(47, 125, 49, 0.1);
-        }
-        
-        .form-row {
-            display: flex;
-            gap: 16px;
-        }
-        
-        .form-row .form-group {
-            flex: 1;
-        }
-        
-        .subscribe-btn {
-            width: 100%;
-            background-color: #2F7D31;
-            color: white;
-            padding: 16px;
-            border: none;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 16px;
-        }
-        
-        .subscribe-btn:hover {
-            background-color: #1b5e20;
-        }
-        
-        .terms {
-            font-size: 12px;
-            color: #6c757d;
-            text-align: center;
-            margin-top: 16px;
-            line-height: 1.4;
-        }
-        
-        .security-badge {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 12px;
-            font-size: 12px;
-            color: #6c757d;
-        }
-        
-        .security-icon {
-            width: 16px;
-            height: 16px;
-            fill: #6c757d;
+            max-width: 1300px; margin: 0 auto; padding: 20px 32px 60px;
+            display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; align-items: stretch;
         }
 
-        /* Stripe Elements Styling */
-        #payment-element {
-            margin-bottom: 1.5rem;
+        .benefits-section {
+            background-color: white; padding: 40px; border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e9ecef;
+            display: flex; flex-direction: column; height: 100%;
         }
+        .benefits-section h2 { font-size: 44px; font-weight: 700; color: #000; margin-bottom: 8px; }
+        .benefits-section > p { font-size: 20px; color: #6c757d; margin-bottom: 40px; }
+        .benefit-item { display: flex; align-items: center; gap: 20px; margin-bottom: 24px; }
+        .benefit-icon {
+            width: 32px; height: 32px; background-color: #e8f5e8; border-radius: 6px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+        }
+        .benefit-icon svg { width: 20px; height: 20px; }
+        .benefit-text { font-size: 20px; color: #333; font-weight: 600; }
+        .benefit-note { font-size: 13px; color: #6c757d; font-weight: 400; margin-top: 2px; }
+
+        /* Right panel */
+        .payment-section {
+            background-color: white; padding: 40px; border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); border: 1px solid #e9ecef;
+            display: flex; flex-direction: column; height: 100%;
+        }
+
+        /* States */
+        .state { display: none; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; gap: 16px; flex: 1; }
+        .state.active { display: flex; }
+
+        /* Loading spinner */
+        .spinner {
+            width: 40px; height: 40px; border: 3px solid #e5e7eb;
+            border-top-color: #2F7D31; border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .state-title { font-size: 28px; font-weight: 700; color: #000; }
+        .state-body { font-size: 16px; color: #6c757d; line-height: 1.6; max-width: 300px; }
+
+        /* Form state */
+        .form-state { display: none; flex-direction: column; height: 100%; }
+        .form-state.active { display: flex; }
+        .form-state h2 { font-size: 28px; font-weight: 700; color: #000; margin-bottom: 8px; }
+        .form-state .price-line { font-size: 16px; color: #6c757d; margin-bottom: 28px; }
+
+        #payment-element { margin-bottom: 20px; }
 
         .payment-message {
-            margin-bottom: 1rem;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            text-align: center;
-            transition: all 0.2s;
+            padding: 10px 14px; border-radius: 8px; font-size: 14px; font-weight: 500;
+            margin-bottom: 16px; display: none;
+        }
+        .payment-message.error { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; display: block; }
+        .payment-message.success { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; display: block; }
+
+        .subscribe-btn {
+            width: 100%; background-color: #2F7D31; color: white; padding: 15px;
+            border: none; border-radius: 8px; font-size: 16px; font-weight: 600;
+            cursor: pointer; transition: background-color 0.2s;
+        }
+        .subscribe-btn:hover { background-color: #1b5e20; }
+        .subscribe-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .terms { font-size: 12px; color: #6c757d; text-align: center; margin-top: 14px; line-height: 1.5; }
+
+        .security-badge {
+            display: flex; align-items: center; justify-content: center;
+            gap: 6px; margin-top: 10px; font-size: 12px; color: #6c757d;
         }
 
-        .payment-message.error {
-            background-color: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
+        /* Success checkmark */
+        .checkmark-circle {
+            width: 64px; height: 64px; background: #f0fdf4; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
         }
+        .checkmark-circle svg { width: 32px; height: 32px; }
 
-        .payment-message.success {
-            background-color: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
+        /* Auth prompt */
+        .signin-btn {
+            background-color: #2F7D31; color: white; border: none; border-radius: 8px;
+            padding: 12px 28px; font-size: 15px; font-weight: 600; cursor: pointer;
+            text-decoration: none; display: inline-block; margin-top: 8px;
         }
+        .signin-btn:hover { background-color: #1b5e20; }
 
-        /* Stripe Elements custom styling */
-        .StripeElement {
-            background-color: white;
-            padding: 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            font-size: 1rem;
-            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .StripeElement--focus {
-            border-color: #10b981;
-            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
-        }
-
-        .StripeElement--invalid {
-            border-color: #ef4444;
-        }
-        
         .footer {
-            background-color: #2F7D31;
-            padding: 24px 32px;
-            color: white;
-            font-style: italic;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background-color: #2F7D31; padding: 24px 32px; color: white;
+            font-style: italic; display: flex; justify-content: space-between; align-items: center;
         }
-        
-        .footer-text {
-            font-size: 16px;
-            font-weight: 400;
-        }
-        
-        .social-icons {
-            display: flex;
-            gap: 16px;
-            align-items: center;
-        }
-        
+        .footer-text { font-size: 16px; }
+        .social-icons { display: flex; gap: 16px; align-items: center; }
         .social-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background-color: rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            text-decoration: none;
-            font-size: 18px;
+            width: 40px; height: 40px; border-radius: 50%; background: rgba(255,255,255,0.1);
+            display: flex; align-items: center; justify-content: center;
+            color: white; text-decoration: none; font-size: 18px;
         }
-        
-        .social-icon:hover {
-            background-color: rgba(255, 255, 255, 0.2);
-        }
-        
+        .social-icon:hover { background: rgba(255,255,255,0.2); }
+
         @media (max-width: 768px) {
-            .content {
-                grid-template-columns: 1fr;
-                gap: 40px;
-            }
-            
-            .hero h1 {
-                font-size: 48px;
-            }
-            
-            .nav-links {
-                display: none;
-            }
+            .content { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 48px; }
         }
     </style>
 </head>
 <body>
     <header class="header">
         <div class="header-container">
-            <a href="#" class="logo" id="logoBtn">Charity Stream</a>
+            <a href="/" class="logo">Charity Stream</a>
             <nav class="nav">
-                <div class="nav-hidden-mobile" id="loggedInNav" style="display: none;">
-                    <span class="welcome">Welcome, <span class="welcome-bold" id="usernameDisplay">User</span></span>
-                    <a href="/about" class="nav-link">About</a>
-                    <a href="/advertise" class="nav-link">Advertise</a>
-                    <a href="/impact" class="nav-link">Impact</a>
-                    <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-                </div>
-                <div class="nav-hidden-mobile" id="guestNav">
-                    <a href="/about" class="nav-link">About</a>
-                    <a href="/advertise" class="nav-link">Advertise</a>
-                    <a href="/impact" class="nav-link">Impact</a>
-                    <a href="#" class="watch-ads-btn" id="watchAdsBtn">Watch Ads</a>
-                </div>
+                <a href="/about" class="nav-link">About</a>
+                <a href="/advertise" class="nav-link">Advertise</a>
+                <a href="/impact" class="nav-link">Impact</a>
+                <a href="/" class="watch-ads-btn">Watch Ads</a>
             </nav>
         </div>
     </header>
 
     <section class="hero">
         <h1>Elevate Your Experience.</h1>
-        <p>Better features for a better world — just $1/month, all donated.</p>
+        <p>Better features for a better world — just $1/month, all donated to charity.</p>
     </section>
 
     <div class="content">
+        <!-- Benefits column -->
         <div class="benefits-section">
             <h2>Premium Benefits</h2>
             <p>Unlock exclusive features while supporting a great cause.</p>
-            
+
             <div class="benefit-item">
                 <div class="benefit-icon">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-                        <circle cx="9" cy="9" r="2" fill="currentColor"/>
-                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#2F7D31" stroke-width="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <path d="M9 9h6M9 12h6M9 15h4"/>
                     </svg>
                 </div>
-                <div class="benefit-text">Pop-out player (Chrome extension)</div>
+                <div>
+                    <div class="benefit-text">Pop-out player</div>
+                    <div class="benefit-note">Chrome extension coming soon — Picture-in-Picture available now</div>
+                </div>
             </div>
-            
+
             <div class="benefit-item">
                 <div class="benefit-icon">
-                    <svg viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none"/>
-                        <polyline points="12,6 12,12 16,14" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#2F7D31" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12,6 12,12 16,14"/>
                     </svg>
                 </div>
-                <div class="benefit-text">1.25x ad speed</div>
+                <div>
+                    <div class="benefit-text">1.25x ad speed</div>
+                    <div class="benefit-note">Optional toggle — watch faster when you want</div>
+                </div>
             </div>
-            
+
             <div class="benefit-item">
                 <div class="benefit-icon">
-                    <svg viewBox="0 0 24 24">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
-                        <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/>
-                        <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/>
-                        <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#2F7D31" stroke-width="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/>
+                        <line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
                     </svg>
                 </div>
-                <div class="benefit-text">Fewer interruptions</div>
+                <div>
+                    <div class="benefit-text">Fewer interruptions</div>
+                    <div class="benefit-note">Pop-up ads appear far less frequently</div>
+                </div>
             </div>
-            
+
             <div class="benefit-item">
                 <div class="benefit-icon">
-                    <svg viewBox="0 0 24 24">
-                        <polygon points="23 7 16 12 23 17 23 7" stroke="currentColor" stroke-width="2" fill="none"/>
-                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2" stroke="currentColor" stroke-width="2" fill="none"/>
+                    <svg viewBox="0 0 24 24" fill="#D4AF37">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
                     </svg>
                 </div>
-                <div class="benefit-text">HD quality (up to 1080p)</div>
+                <div>
+                    <div class="benefit-text">Golden username</div>
+                    <div class="benefit-note">Stand out on the leaderboard</div>
+                </div>
             </div>
-            
+
             <div class="benefit-item">
                 <div class="benefit-icon">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>
+                    <svg viewBox="0 0 24 24" fill="#2F7D31">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
                     </svg>
                 </div>
-                <div class="benefit-text">Supports charity</div>
+                <div>
+                    <div class="benefit-text">Your $1 goes to charity</div>
+                    <div class="benefit-note">Added directly to the weekly donation pool</div>
+                </div>
             </div>
         </div>
 
+        <!-- Right panel -->
         <div class="payment-section">
-            <h2>Payment Information</h2>
-            
-            <form id="payment-form">
-                <div id="payment-element">
-                    <!-- Stripe Elements will create form elements here -->
-                </div>
-                
-                <div id="payment-message" class="payment-message"></div>
-                
-                <button class="subscribe-btn" type="submit">
-                    Subscribe for $1/month
-                </button>
-            </form>
-            
-            <div class="terms">
-                By subscribing, you agree to our Terms of Service. Cancel anytime.
+            <!-- Loading state -->
+            <div class="state active" id="stateLoading">
+                <div class="spinner"></div>
+                <p class="state-body">Loading...</p>
             </div>
-            
-            <div class="security-badge">
-                <svg class="security-icon" viewBox="0 0 24 24">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="2" fill="none"/>
-                    <path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="2" fill="none"/>
-                </svg>
-                Secured by Stripe - Your payment info is protected
+
+            <!-- Not logged in -->
+            <div class="state" id="stateNotLoggedIn">
+                <div class="state-title">Sign in first</div>
+                <p class="state-body">You need a Charity Stream account to subscribe to Premium.</p>
+                <a href="/" class="signin-btn">Go to Sign In</a>
+            </div>
+
+            <!-- Already premium -->
+            <div class="state" id="stateAlreadyPremium">
+                <div class="checkmark-circle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#2F7D31" stroke-width="2.5">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <div class="state-title">You're Premium!</div>
+                <p class="state-body">Your subscription is active. All benefits are unlocked.</p>
+                <a href="/" class="signin-btn">Back to Watching</a>
+            </div>
+
+            <!-- Completing (redirect return) -->
+            <div class="state" id="stateCompleting">
+                <div class="spinner"></div>
+                <div class="state-title">Completing...</div>
+                <p class="state-body">Activating your subscription, please wait.</p>
+            </div>
+
+            <!-- Success -->
+            <div class="state" id="stateSuccess">
+                <div class="checkmark-circle">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="#2F7D31" stroke-width="2.5">
+                        <path d="M20 6L9 17l-5-5"/>
+                    </svg>
+                </div>
+                <div class="state-title">Welcome to Premium!</div>
+                <p class="state-body">Your subscription is active. A confirmation email is on its way.</p>
+                <a href="/" class="signin-btn">Start Watching</a>
+            </div>
+
+            <!-- Payment form -->
+            <div class="form-state" id="stateForm">
+                <h2>Subscribe for $1/month</h2>
+                <p class="price-line">Your dollar goes directly to the weekly charity donation pool.</p>
+
+                <form id="payment-form" onsubmit="handleSubmit(event)">
+                    <div id="payment-element"></div>
+                    <div id="payment-message" class="payment-message"></div>
+                    <button class="subscribe-btn" type="submit" id="submitBtn">Subscribe — $1/month</button>
+                </form>
+
+                <div class="terms">
+                    By subscribing, you agree to our Terms of Service. Cancel anytime.
+                </div>
+                <div class="security-badge">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6c757d" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    Secured by Stripe
+                </div>
             </div>
         </div>
     </div>
@@ -509,534 +321,158 @@
         <div class="social-icons">
             <a href="#" class="social-icon">𝕏</a>
             <a href="#" class="social-icon">in</a>
-            <a href="#" class="social-icon">X</a>
-            <a href="#" class="social-icon">@</a>
-            <a href="#" class="social-icon">●</a>
         </div>
     </footer>
 
     <script>
-        // Initialize Stripe Elements
-        let stripe;
-        let elements;
-        let paymentElement;
+        let stripe, elements;
 
-        async function initializeStripe() {
+        function showState(id) {
+            // Hide all states and form-states
+            document.querySelectorAll('.state, .form-state').forEach(el => {
+                el.classList.remove('active');
+            });
+            const el = document.getElementById(id);
+            if (el) el.classList.add('active');
+        }
+
+        function showError(msg) {
+            const el = document.getElementById('payment-message');
+            if (el) { el.textContent = msg; el.className = 'payment-message error'; }
+        }
+
+        function setLoading(loading) {
+            const btn = document.getElementById('submitBtn');
+            if (btn) {
+                btn.disabled = loading;
+                btn.textContent = loading ? 'Processing...' : 'Subscribe — $1/month';
+            }
+        }
+
+        async function init() {
+            // 1. Check for Stripe redirect return
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('redirect_status') === 'succeeded') {
+                return handleRedirectReturn();
+            }
+
+            // 2. Check auth
+            const authToken = localStorage.getItem('authToken');
+            if (!authToken) {
+                return showState('stateNotLoggedIn');
+            }
+
+            // 3. Check if already premium
             try {
-                console.log('🔧 Starting Stripe initialization...');
-                
-                // Check authentication first
-                const authToken = localStorage.getItem('authToken');
-                console.log('🔑 Auth token check:', authToken ? 'Found' : 'Missing');
-                
-                if (!authToken) {
-                    console.log('❌ No auth token found - redirecting to login');
-                    showMessage('Please log in to subscribe', 'error');
-                    setTimeout(() => {
-                        window.location.href = '/auth';
-                    }, 2000);
+                const userRes = await fetch('/api/auth/me', {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!userRes.ok) return showState('stateNotLoggedIn');
+                const { user } = await userRes.json();
+                if (user.isPremium) return showState('stateAlreadyPremium');
+            } catch (e) {
+                return showState('stateNotLoggedIn');
+            }
+
+            // 4. Set up payment form
+            await loadForm(authToken);
+        }
+
+        async function loadForm(authToken) {
+            try {
+                // Get Stripe publishable key
+                const configRes = await fetch('/api/stripe-publishable-key');
+                const { publishableKey } = await configRes.json();
+                if (!publishableKey) {
+                    showState('stateForm');
+                    showError('Payment configuration unavailable. Please try again later.');
+                    return;
+                }
+                stripe = Stripe(publishableKey);
+
+                // Create subscription / payment intent
+                const piRes = await fetch('/api/subscribe/create-payment-intent', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!piRes.ok) {
+                    const err = await piRes.json().catch(() => ({}));
+                    showState('stateForm');
+                    showError(err.error || 'Failed to set up payment. Please try again.');
                     return;
                 }
 
-                console.log('✅ Auth token found, proceeding with Stripe initialization...');
+                const { clientSecret, subscriptionId } = await piRes.json();
 
-                console.log('📡 Using hardcoded Stripe config...');
-                
-                // Temporary hardcoded config to bypass hanging endpoint
-                const config = {
-                    publishableKey: 'pk_test_51SB0YB0CutcpJ738BO2RWzlv8KuvSOVqIPuGddl2cGzdsefS9n6yVwcXnnLgouDUPvq68MMjshYFRQBLNXABsqqQ00mfbXFULD',
-                    priceId: 'price_1SB0j80CutcpJ738SFNDJwY5'
-                };
-                console.log('📋 Stripe config:', config);
-                
-                if (!config.publishableKey) {
-                    throw new Error('Stripe configuration not available');
-                }
+                // Store subscription ID so we can complete on redirect return
+                sessionStorage.setItem('cs_subscription_id', subscriptionId);
 
-                console.log('🔧 Initializing Stripe with key:', config.publishableKey.substring(0, 7) + '...');
-
-                // Initialize Stripe
-                stripe = Stripe(config.publishableKey);
-                console.log('✅ Stripe initialized');
-                
-                console.log('🔑 Auth token found, creating subscription...');
-
-                // Create subscription first to get clientSecret
-                const subscriptionResponse = await fetch('/api/subscribe/create-payment-intent', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${authToken}`
-                    }
-                });
-
-                console.log('📡 Subscription response status:', subscriptionResponse.status);
-                
-                if (!subscriptionResponse.ok) {
-                    const errorData = await subscriptionResponse.json();
-                    console.error('❌ Subscription creation failed:', errorData);
-                    throw new Error(errorData.error || 'Failed to create subscription');
-                }
-
-                const subscriptionData = await subscriptionResponse.json();
-                console.log('💳 Subscription data:', subscriptionData);
-                
-                if (!subscriptionData.clientSecret) {
-                    console.error('❌ No clientSecret in response:', subscriptionData);
-                    throw new Error('No clientSecret received from server');
-                }
-
-                // Store subscription ID for later use
-                window.currentSubscriptionId = subscriptionData.subscriptionId;
-
-                console.log('🔐 Client secret received, creating Elements...');
-
-                // Create Elements instance with clientSecret
-                elements = stripe.elements({
-                    clientSecret: subscriptionData.clientSecret,
-                    appearance: {
-                        theme: 'stripe',
-                        variables: {
-                            colorPrimary: '#10b981',
-                            colorBackground: '#ffffff',
-                            colorText: '#1f2937',
-                            colorDanger: '#ef4444',
-                            fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif',
-                            spacingUnit: '4px',
-                            borderRadius: '8px',
-                        }
-                    }
-                });
-
-                console.log('✅ Elements created, creating payment element...');
-
-                // Create payment element
-                paymentElement = elements.create('payment');
+                // Mount Stripe Payment Element
+                elements = stripe.elements({ clientSecret });
+                const paymentElement = elements.create('payment');
                 paymentElement.mount('#payment-element');
 
-                console.log('✅ Payment element mounted');
-
-                // Handle form submission
-                const form = document.getElementById('payment-form');
-                form.addEventListener('submit', handleSubmit);
-
-            } catch (error) {
-                console.error('❌ Error initializing Stripe:', error);
-                console.error('❌ Error stack:', error.stack);
-                showMessage(`Failed to load payment form: ${error.message}`, 'error');
-                
-                // Show a fallback message
-                const paymentElement = document.getElementById('payment-element');
-                if (paymentElement) {
-                    paymentElement.innerHTML = '<p style="color: #dc2626; padding: 20px; text-align: center;">Payment form failed to load. Please refresh the page or try again later.</p>';
-                }
+                showState('stateForm');
+            } catch (e) {
+                showState('stateForm');
+                showError('Something went wrong. Please refresh and try again.');
             }
         }
 
         async function handleSubmit(event) {
             event.preventDefault();
-            
-            console.log('🚀 ===== PAYMENT SUBMISSION STARTED =====');
-            
-            const submitButton = document.querySelector('.subscribe-btn');
-            const originalText = submitButton.textContent;
-            
-            // Check if user is authenticated
-            const authToken = localStorage.getItem('authToken');
-            console.log('🔑 Auth token check:', authToken ? 'Found' : 'Missing');
-            
-            if (!authToken) {
-                console.log('❌ No auth token found - redirecting to login');
-                alert('Please log in to subscribe');
-                window.location.href = '/auth';
-                return;
-            }
-
-            // Show loading state
-            submitButton.textContent = 'Processing...';
-            submitButton.disabled = true;
             setLoading(true);
 
-            try {
-                console.log('💳 Confirming payment with Stripe...');
-                console.log('🔐 Current subscription ID:', window.currentSubscriptionId);
-                
-                // For subscriptions, we need to confirm the setup intent, not the payment intent
-                const { error } = await stripe.confirmPayment({
-                    elements,
-                    confirmParams: {
-                        return_url: `${window.location.origin}/subscribe/success?subscriptionId=${encodeURIComponent(window.currentSubscriptionId)}`,
-                    },
-                    redirect: 'if_required'
-                });
-
-                console.log('📊 Payment confirmation result:', { error: error ? error.message : 'Success' });
-
-                if (error) {
-                    console.error('❌ Payment confirmation error:', error);
-                    
-                    // Handle specific subscription errors
-                    if (error.code === 'payment_intent_unexpected_state') {
-                        console.log('🔄 Payment intent already processed, checking subscription status...');
-                        
-                        // Check subscription status directly
-                        try {
-                            const authToken = localStorage.getItem('authToken');
-                            const response = await fetch(`/api/subscribe/status?subscriptionId=${window.currentSubscriptionId}`, {
-                                headers: {
-                                    'Authorization': `Bearer ${authToken}`
-                                }
-                            });
-
-                            if (response.ok) {
-                                const data = await response.json();
-                                console.log('📊 Subscription status check result:', data);
-                                
-                                if (data.isPremium) {
-                                    console.log('🎉 Subscription is active! Updating UI...');
-                                    showMessage('🎉 Subscription successful! You now have premium access!', 'success');
-                                    
-                                    // Update localStorage
-                                    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                                    currentUser.isPremium = true;
-                                    currentUser.subscriptionTier = 'premium';
-                                    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                                    
-                                    // Redirect to home page
-                                    setTimeout(() => {
-                                        window.location.href = '/';
-                                    }, 3000);
-                                    return; // Exit early since we handled it
-                                } else {
-                                    showMessage(`Subscription created but not active yet. Status: ${data.status}`, 'warning');
-                                }
-                            } else {
-                                showMessage('Payment processed but unable to verify subscription status. Please check your account.', 'warning');
-                            }
-                        } catch (statusError) {
-                            console.error('❌ Error checking subscription status:', statusError);
-                            showMessage('Payment may have been processed. Please check your account status.', 'warning');
-                        }
-                    } else if (error.type === 'card_error' || error.type === 'validation_error') {
-                        showMessage(error.message, 'error');
-                    } else {
-                        showMessage('An unexpected error occurred.', 'error');
-                    }
-                } else {
-                    console.log('✅ Payment confirmed successfully!');
-                    console.log('🔍 Current subscription ID for redirect:', window.currentSubscriptionId);
-                    console.log('🔍 Redirect URL will be:', `/subscribe/success?subscriptionId=${encodeURIComponent(window.currentSubscriptionId)}`);
-                    
-                    showMessage('Payment successful! Checking subscription...', 'success');
-                    
-                    // IMMEDIATE: Check subscription status right away (don't wait for redirect)
-                    console.log('🔄 IMMEDIATE: Checking subscription status...');
-                    checkSubscriptionStatusDirectly();
-                    
-                    // ALSO: Try to redirect to success page (in case user wants to see the success page)
-                    setTimeout(() => {
-                        console.log('🔄 Executing redirect now...');
-                        console.log('🔄 Redirect URL:', `/subscribe/success?subscriptionId=${encodeURIComponent(window.currentSubscriptionId)}`);
-                        window.location.href = `/subscribe/success?subscriptionId=${encodeURIComponent(window.currentSubscriptionId)}`;
-                    }, 2000);
+            const { error } = await stripe.confirmPayment({
+                elements,
+                confirmParams: {
+                    return_url: `${window.location.origin}/subscribe`
                 }
+            });
 
-            } catch (error) {
-                console.error('❌ Payment submission error:', error);
-                console.error('❌ Error details:', error.message);
-                
-                // Even if there's an error, try to check subscription status as fallback
-                console.log('🔄 Attempting fallback subscription status check...');
-                try {
-                    const authToken = localStorage.getItem('authToken');
-                    if (authToken && window.currentSubscriptionId) {
-                        const response = await fetch(`/api/subscribe/status?subscriptionId=${window.currentSubscriptionId}`, {
-                            headers: {
-                                'Authorization': `Bearer ${authToken}`
-                            }
-                        });
-
-                        if (response.ok) {
-                            const data = await response.json();
-                            console.log('📊 Fallback status check result:', data);
-                            
-                            if (data.isPremium) {
-                                console.log('🎉 Fallback: Subscription is active!');
-                                showMessage('🎉 Subscription successful! You now have premium access!', 'success');
-                                
-                                // Update localStorage
-                                const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                                currentUser.isPremium = true;
-                                currentUser.subscriptionTier = 'premium';
-                                localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                                
-                                // Redirect to home page
-                                setTimeout(() => {
-                                    window.location.href = '/';
-                                }, 3000);
-                                return;
-                            }
-                        }
-                    }
-                } catch (fallbackError) {
-                    console.error('❌ Fallback status check failed:', fallbackError);
-                }
-                
-                showMessage('Something went wrong. Please try again.', 'error');
-            } finally {
+            // Only reaches here if there's an immediate error (card declined, etc.)
+            if (error) {
+                showError(error.message);
                 setLoading(false);
-                submitButton.textContent = originalText;
-                submitButton.disabled = false;
-                console.log('🚀 ===== PAYMENT SUBMISSION COMPLETED =====');
             }
+            // Otherwise Stripe handles the redirect
         }
 
-        function showMessage(message, type) {
-            const messageContainer = document.querySelector('#payment-message');
-            messageContainer.textContent = message;
-            messageContainer.className = `payment-message ${type}`;
-            
-            setTimeout(() => {
-                messageContainer.textContent = '';
-                messageContainer.className = 'payment-message';
-            }, 5000);
-        }
+        async function handleRedirectReturn() {
+            showState('stateCompleting');
 
-        function setLoading(isLoading) {
-            const submitButton = document.querySelector('.subscribe-btn');
-            if (isLoading) {
-                submitButton.disabled = true;
-                submitButton.textContent = 'Processing...';
-            } else {
-                submitButton.disabled = false;
-                submitButton.textContent = 'Subscribe for $1/month';
-            }
-        }
-
-        // Handle Stripe checkout success/cancel
-        function handleCheckoutResult() {
-            const urlParams = new URLSearchParams(window.location.search);
-            const success = urlParams.get('success');
-            const canceled = urlParams.get('canceled');
-            
-            if (success === 'true') {
-                showMessage('Subscription successful! Welcome to Charity Stream Premium!', 'success');
-                // Redirect to main page after 3 seconds
-                setTimeout(() => {
-                    window.location.href = '/';
-                }, 3000);
-            } else if (canceled === 'true') {
-                showMessage('Subscription was canceled. You can try again anytime.', 'warning');
-            }
-        }
-
-        // Function to check subscription status directly (fallback)
-        async function checkSubscriptionStatusDirectly() {
-            console.log('🔍 ===== DIRECT SUBSCRIPTION STATUS CHECK =====');
+            const subscriptionId = sessionStorage.getItem('cs_subscription_id');
             const authToken = localStorage.getItem('authToken');
-            
-            if (!authToken || !window.currentSubscriptionId) {
-                console.log('❌ Missing auth token or subscription ID for direct check');
+
+            if (!subscriptionId || !authToken) {
+                showState('stateNotLoggedIn');
                 return;
             }
-            
+
             try {
-                console.log('📡 Making direct API call to check subscription status...');
-                const response = await fetch(`/api/subscribe/status?subscriptionId=${window.currentSubscriptionId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                    }
+                const res = await fetch(`/api/subscribe/status?subscriptionId=${encodeURIComponent(subscriptionId)}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    console.log('📊 Direct subscription status result:', data);
-                    
-                    if (data.isPremium) {
-                        console.log('🎉 Direct check: User has premium access!');
-                        showMessage('✅ Premium access confirmed! Redirecting to homepage...', 'success');
-                        
-                        // Update localStorage
-                        const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                        currentUser.isPremium = true;
-                        currentUser.subscriptionTier = 'premium';
-                        localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                        
-                        // Redirect to homepage
-                        setTimeout(() => {
-                            window.location.href = '/';
-                        }, 2000);
-                    } else {
-                        console.log('⚠️ Direct check: Subscription not active yet');
-                        showMessage('⚠️ Subscription not active yet. Please try again.', 'warning');
-                    }
+                const data = await res.json();
+
+                if (data.status === 'active' || data.status === 'trialing') {
+                    sessionStorage.removeItem('cs_subscription_id');
+                    showState('stateSuccess');
                 } else {
-                    console.error('❌ Direct check failed:', response.status);
-                    showMessage('❌ Error checking subscription status. Please try again.', 'error');
+                    showState('stateForm');
+                    showError(`Subscription not yet active (status: ${data.status}). Please wait a moment and refresh.`);
                 }
-            } catch (error) {
-                console.error('❌ Direct check error:', error);
-                showMessage('❌ Error checking subscription status. Please try again.', 'error');
+            } catch (e) {
+                showState('stateForm');
+                showError('Could not verify subscription. Please contact support.');
             }
         }
 
-        // Add function to check subscription status after redirect
-        async function checkSubscriptionStatus() {
-            console.log('🔍 ===== SUBSCRIPTION STATUS CHECK STARTED =====');
-            const urlParams = new URLSearchParams(window.location.search);
-            const subscriptionId = urlParams.get('subscriptionId');
-            
-            console.log('🔍 Current URL:', window.location.href);
-            console.log('🔍 URL params:', window.location.search);
-            console.log('🔍 Subscription ID from URL:', subscriptionId);
-            
-            if (subscriptionId) {
-                console.log('🔍 Checking subscription status for:', subscriptionId);
-                
-                const authToken = localStorage.getItem('authToken');
-                console.log('🔑 Auth token for status check:', authToken ? 'Found' : 'Missing');
-                
-                if (!authToken) {
-                    console.log('❌ No auth token for status check');
-                    return;
-                }
-
-                try {
-                    console.log('📡 Making API call to check subscription status...');
-                    const response = await fetch(`/api/subscribe/status?subscriptionId=${subscriptionId}`, {
-                        headers: {
-                            'Authorization': `Bearer ${authToken}`
-                        }
-                    });
-
-                    console.log('📡 API response status:', response.status);
-                    console.log('📡 API response ok:', response.ok);
-
-                    if (response.ok) {
-                        const data = await response.json();
-                        console.log('📊 Subscription status data:', data);
-                        
-                        if (data.isPremium) {
-                            console.log('🎉 Subscription is active! User has premium access!');
-                            showMessage('🎉 Subscription successful! You now have premium access!', 'success');
-                            
-                            // Update localStorage with premium status
-                            const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-                            currentUser.isPremium = true;
-                            currentUser.subscriptionTier = 'premium';
-                            localStorage.setItem('currentUser', JSON.stringify(currentUser));
-                            console.log('💾 Updated localStorage with premium status');
-                            
-                            // Redirect to main page after 3 seconds
-                            setTimeout(() => {
-                                console.log('🔄 Redirecting to main page...');
-                                window.location.href = '/';
-                            }, 3000);
-                        } else {
-                            console.log('⚠️ Subscription is not active yet. Status:', data.status);
-                            showMessage(`Subscription is not active yet. Status: ${data.status}. Please try again.`, 'warning');
-                        }
-                    } else {
-                        const errorData = await response.json();
-                        console.error('❌ API error response:', errorData);
-                        showMessage(`Error checking subscription: ${errorData.error || 'Unknown error'}`, 'error');
-                    }
-                } catch (error) {
-                    console.error('❌ Error checking subscription status:', error);
-                    console.error('❌ Error details:', error.message);
-                    showMessage('Error checking subscription status. Please try again.', 'error');
-                }
-            } else {
-                console.log('⚠️ No subscription ID found in URL parameters');
-            }
-            
-            console.log('🔍 ===== SUBSCRIPTION STATUS CHECK COMPLETED =====');
-        }
-
-        // Authentication handling
-        function checkAuthStatus() {
-            const token = localStorage.getItem('authToken');
-            const currentUser = localStorage.getItem('currentUser');
-            
-            if (token && currentUser) {
-                try {
-                    const user = JSON.parse(currentUser);
-                    document.getElementById('usernameDisplay').textContent = user.username || user.email.split('@')[0];
-                } catch (error) {
-                    console.error('Error parsing user data:', error);
-                    document.getElementById('usernameDisplay').textContent = 'User';
-                }
-                // Show authenticated content, hide guest nav
-                document.getElementById('loggedInNav').style.display = 'flex';
-                document.getElementById('guestNav').style.display = 'none';
-            } else {
-                document.getElementById('usernameDisplay').textContent = 'User';
-                // Show guest nav, hide authenticated content
-                document.getElementById('loggedInNav').style.display = 'none';
-                document.getElementById('guestNav').style.display = 'flex';
-            }
-        }
-
-        // Logo button functionality
-        function setupLogoButton() {
-            const logoBtn = document.getElementById('logoBtn');
-            
-            if (logoBtn) {
-                logoBtn.onclick = function(e) {
-                    e.preventDefault();
-                    window.location.href = '/';
-                };
-            }
-        }
-
-        // Watch Ads button functionality
-        function setupWatchAdsButtons() {
-            const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
-            const watchAdsBtnGuest = document.getElementById('watchAdsBtnGuest');
-            
-            if (watchAdsBtnLoggedIn) {
-                watchAdsBtnLoggedIn.onclick = function(e) {
-                    e.preventDefault();
-                    window.location.href = '/';
-                };
-            }
-            
-            if (watchAdsBtnGuest) {
-                watchAdsBtnGuest.onclick = function(e) {
-                    e.preventDefault();
-                    window.location.href = '/';
-                };
-            }
-        }
-
-        // Handle success page or initialize Stripe
-        function handleSuccessPage() {
-            console.log('🔍 Checking if this is a success page...');
-            
-            if (window.location.pathname.includes('/subscribe/success')) {
-                console.log('✅ This is a success page - checking subscription status');
-                checkSubscriptionStatus();
-            } else {
-                console.log('🔧 This is the main subscribe page - initializing Stripe');
-                initializeStripe();
-            }
-        }
-
-        // Check authentication status on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 ===== PAGE LOAD STARTED =====');
-            console.log('🔍 Current URL:', window.location.href);
-            console.log('🔍 Current pathname:', window.location.pathname);
-            console.log('🔍 DOM loaded successfully');
-            
-            checkAuthStatus();
-            setupLogoButton();
-            setupWatchAdsButtons();
-            handleCheckoutResult(); // Handle Stripe checkout results
-            handleSuccessPage(); // Handle success page or initialize Stripe
-            
-            console.log('🚀 ===== PAGE LOAD COMPLETED =====');
-        });
+        document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>

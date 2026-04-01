@@ -48,7 +48,7 @@ const dbHelpers = {
         is_active: true,
         total_minutes_watched: 0,
         current_month_minutes: 0,
-        subscription_tier: 'free',
+        is_premium: false,
         auth_provider: 'traditional'
       };
 
@@ -77,7 +77,7 @@ const dbHelpers = {
         is_active: true,
         total_minutes_watched: 0,
         current_month_minutes: 0,
-        subscription_tier: 'free',
+        is_premium: false,
         auth_provider: 'google'
       };
 

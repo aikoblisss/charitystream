@@ -83,48 +83,45 @@
 
     /* -------------------- Header -------------------- */
     .header {
-      position: sticky;
-      top: 0;
-      z-index: 40;
-      background: #fff;
       border-bottom: 1px solid var(--gray-200);
     }
-
-    .header .container {
+    .header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 16px 40px;
+      height: 4rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 1rem 1.5rem;
+      gap: 1.25rem;
     }
-
     .logo {
-      font-size: 1.5rem;
+      font-size: 28px;
       font-weight: 700;
-      color: var(--gray-900);
-      letter-spacing: -.025em;
+      color: #111;
       text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
     }
-
+    .logo:hover {
+      color: var(--brand-600);
+    }
     .nav {
       display: flex;
       align-items: center;
       gap: 1rem;
     }
-
     .nav-hidden-mobile {
       display: flex;
       align-items: center;
       gap: 1rem;
     }
-
     .welcome {
       color: var(--gray-900);
     }
-
     .welcome-bold {
       font-weight: 500;
     }
-
     .nav-link {
       color: var(--gray-700);
       text-decoration: none;
@@ -133,17 +130,13 @@
       transition: .2s;
       font-weight: 500;
     }
-
     .nav-link:hover {
       background: var(--gray-100);
       color: var(--gray-900);
     }
-
     .nav-link.active {
-      color: var(--gray-900);
-      font-weight: 600;
+      color: var(--brand-600);
     }
-
     .nav-cta {
       background: var(--brand-600);
       color: #fff;
@@ -153,10 +146,23 @@
       text-decoration: none;
       transition: .2s;
     }
-
     .nav-cta:hover {
       background: var(--brand-700);
       transform: translateY(-1px);
+    }
+    @media (max-width: 768px) {
+      .header-container {
+        padding: 16px 20px;
+      }
+      .nav {
+        gap: 16px;
+      }
+      .nav-link {
+        font-size: 14px;
+      }
+      .nav-hidden-mobile {
+        display: none;
+      }
     }
 
     /* -------------------- Hero -------------------- */
@@ -190,7 +196,7 @@
     /* -------------------- Platform Impact -------------------- */
     .platform-impact{background:var(--brand-primary);color:#fff;text-align:center;padding:2rem 0}
     .platform-title{font-size:var(--fs-5);font-weight:700;margin-bottom:2rem}
-    .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:1.5rem;max-width:1000px;margin:0 auto}
+    .stats-grid{display:grid;gap:1.5rem;max-width:700px;margin:0 auto}
     .stat-item{padding:1rem}
     .stat-number{font-size:var(--fs-6);font-weight:800;margin-bottom:.25rem;font-variant-numeric:tabular-nums}
     .stat-label{font-size:var(--fs-xs);opacity:.95;font-weight:400;white-space:nowrap}
@@ -244,12 +250,11 @@
     /* -------------------- Responsive -------------------- */
     @media (max-width:1024px){
       .how-it-works-grid{grid-template-columns:1fr;gap:1.5rem}
-      .stats-grid{grid-template-columns:repeat(3,1fr)}
       .pricing-grid{grid-template-columns:1fr;gap:1.25rem}
       .hero-title{font-size:2.75rem}
     }
     @media (max-width:768px){
-      .stats-grid{grid-template-columns:repeat(2,1fr)}
+      .stats-grid{grid-template-columns:1fr!important}
       .hero-title{font-size:2.25rem}
       .cta-buttons{flex-direction:column;align-items:center}
       .nav-hidden-mobile{display:none}
@@ -259,11 +264,12 @@
       .platform-impact{padding:1.75rem 0}
     }
   </style>
+  <link rel="stylesheet" href="/header-dropdown.css">
 </head>
 <body>
   <!-- Header -->
   <header class="header">
-    <div class="container">
+    <div class="header-container">
       <!-- LOGO (Top Left) -->
       <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       
@@ -349,32 +355,11 @@
     </div>
   </section>
 
-  <!-- Platform Impact -->
-  <section class="platform-impact">
+  <!-- Platform Impact (rendered dynamically) -->
+  <section class="platform-impact" id="platformImpactSection" style="display:none">
     <div class="container">
       <h2 class="platform-title">Platform Impact</h2>
-      <div class="stats-grid">
-        <div class="stat-item">
-          <div class="stat-number">$832.11</div>
-          <div class="stat-label">Total Raised</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">100%</div>
-          <div class="stat-label">View-Through Rate</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">241</div>
-          <div class="stat-label">Active Users</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">27</div>
-          <div class="stat-label">Company Advertisers</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-number">19</div>
-          <div class="stat-label">Charities Supported</div>
-        </div>
-      </div>
+      <div class="stats-grid" id="platformStatsGrid" style="justify-content:center"></div>
     </div>
   </section>
 
@@ -557,10 +542,43 @@
       }
     });
 
+    // Load platform impact stats dynamically
+    async function loadPlatformStats() {
+      try {
+        const res = await fetch('/api/advertiser/public-stats');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const stats = [
+          { value: data.donatedToDate, label: 'Total Raised', format: 'currency' },
+          { value: data.advertiserCount, label: 'Company Advertisers', format: 'number' },
+          { value: data.charitiesSupported, label: 'Charities Supported', format: 'number' }
+        ].filter(s => s.value > 0);
+
+        if (stats.length < 2) return; // hide section if fewer than 2 nonzero stats
+
+        const grid = document.getElementById('platformStatsGrid');
+        grid.innerHTML = stats.map(s => {
+          const display = s.format === 'currency'
+            ? '$' + s.value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : s.value.toLocaleString('en-US');
+          return `<div class="stat-item"><div class="stat-number">${display}</div><div class="stat-label">${s.label}</div></div>`;
+        }).join('');
+
+        // Adjust grid columns to match number of stats
+        grid.style.gridTemplateColumns = `repeat(${stats.length}, 1fr)`;
+        document.getElementById('platformImpactSection').style.display = '';
+      } catch (e) {
+        // silently fail — section stays hidden
+      }
+    }
+
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
       setInitialUIState();
+      loadPlatformStats();
     });
   </script>
+  <script src="/header-dropdown.js"></script>
 </body>
 </html>

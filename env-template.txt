@@ -7,3 +7,14 @@ DATABASE_URL=postgresql://username:password@host:port/database
 
 # Example format:
 # DATABASE_URL=postgresql://user:password@ep-cool-name-123456.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+# Site Base URL - Used for generating email links (advertiser signup, etc.)
+# Local development: http://localhost:3001
+# Production: https://stream.charity
+SITE_BASE_URL=http://localhost:3001
+
+# R2 public URLs (custom domains in production; fallbacks in code use *.r2.dev for local dev)
+R2_VIDEOS_URL=https://videos.stream.charity
+R2_ADVERTISER_MEDIA_URL=https://uploads.stream.charity
+R2_SPONSOR_GENERATED_URL=https://sponsor-generated.stream.charity
+R2_PUBLIC_ASSETS_URL=https://public.stream.charity

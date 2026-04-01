@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>
+  (function() {
+    if (localStorage.getItem('authToken')) {
+      document.documentElement.classList.add('is-authed');
+    }
+  })();
+</script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Charity Stream - Watch Ads for Good Causes</title>
@@ -15,10 +22,13 @@
   
   <style>
     .donate-btn {
+      display: inline-flex;
+      align-items: center;
+      align-self: stretch;
       background: linear-gradient(135deg, #ff6b6b, #ee5a24);
       color: white;
       border: none;
-      padding: 12px 20px;
+      padding: 0 20px;
       border-radius: 8px;
       font-weight: 600;
       cursor: pointer;
@@ -155,6 +165,11 @@
       opacity: 1;
     }
 
+    /* Prevent flash of guest state for authenticated users */
+    html.is-authed #guestNav { display: none !important; }
+    html.is-authed #landerHero { display: none !important; }
+    html.is-authed #landerMain { display: none !important; }
+
     /* Header */
     .header {
       border-bottom: 1px solid var(--gray-200);
@@ -219,8 +234,7 @@
     }
 
     .nav-link.active {
-      color: var(--gray-900);
-      font-weight: 600;
+      color: var(--brand-600);
     }
 
     .nav-cta {
@@ -254,11 +268,117 @@
     .charity-text {
       font-size: 0.9375rem;
       color: var(--gray-800);
+      transition: opacity 350ms ease;
     }
 
     .charity-highlight {
       font-weight: 600;
       color: var(--brand-600);
+    }
+
+    /* Sponsors of the Week bar */
+    #sponsorsOfWeekBar {
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+    }
+
+    #charityHeader {
+      width: 100vw;
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%);
+      box-sizing: border-box;
+    }
+
+    .sponsors-of-week-bar {
+      background-color: var(--fora-bg);
+      padding: 0.5rem 0;
+      overflow: hidden;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      width: 100%;
+    }
+
+    .sponsors-row {
+      display: flex;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .sponsors-track {
+      display: inline-flex;
+      white-space: nowrap;
+      animation: sponsorScroll 25s linear infinite;
+      will-change: transform;
+    }
+
+    .sponsors-content {
+      display: inline-block;
+      white-space: nowrap;
+    }
+
+    @keyframes sponsorScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(var(--scroll-amount)); }
+    }
+
+    .sponsor-gold {
+      color: #D4AF37;
+      font-weight: 600;
+    }
+
+    .sponsor-diamond {
+      color: #0EA5E9;
+      font-weight: 600;
+    }
+
+    .accumulation-banner {
+      background-color: #E9FFE9;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      border: 1px solid var(--gray-200);
+      border-radius: 0.75rem;
+      box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.1);
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .accumulation-row {
+      display: flex;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .accumulation-track {
+      display: inline-flex;
+      white-space: nowrap;
+      animation: accumulationScroll 25s linear infinite;
+      will-change: transform;
+      padding: 0.75rem 0;
+    }
+
+    @keyframes accumulationScroll {
+      from { transform: translateX(0); }
+      to   { transform: translateX(var(--accumulation-scroll-amount)); }
+    }
+
+    .accumulation-text {
+      font-size: 0.9375rem;
+      color: var(--gray-700);
+      font-weight: 600;
+      padding: 0 2rem;
+    }
+
+    .accumulation-amount {
+      font-size: 0.9375rem;
+      color: #2F7D31;
+      font-weight: 700;
+      padding: 0 2rem 0 0;
     }
 
     .user-menu {
@@ -485,7 +605,10 @@
     }
     
     .video-js .vjs-picture-in-picture-control {
-      display: none !important;
+      display: none;
+    }
+    .video-js.vjs-premium .vjs-picture-in-picture-control {
+      display: inline-flex !important;
     }
     
     .video-js .vjs-fullscreen-control {
@@ -601,26 +724,6 @@
       background-color: var(--brand-700);
     }
 
-    .popout-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background-color: #10b981;
-      color: white;
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 0.5rem;
-      font-size: 0.875rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      margin-left: 0.75rem;
-    }
-
-    .popout-btn:hover {
-      background-color: #059669;
-    }
-
     .play-button {
       position: absolute;
       top: 50%;
@@ -707,7 +810,7 @@
       height: 100%;
       background-color: var(--brand-600);
       border-radius: 0.25rem;
-      width: 70.4%; /* $352 of $500 */
+      width: 0%;
       transition: width 0.3s ease;
     }
 
@@ -819,6 +922,44 @@
       color: var(--brand-700);
     }
 
+    /* Premium user styles */
+    .username.premium-username {
+      color: #D4AF37 !important;
+      font-weight: 600;
+    }
+    .premium-badge {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      color: #D4AF37;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .premium-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0;
+    }
+    .premium-card-header .card-title {
+      margin-bottom: 0;
+    }
+    .speed-btn {
+      background-color: #374151;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 0 20px;
+      font-weight: 600;
+      cursor: pointer;
+      align-self: stretch;
+      display: inline-flex;
+      align-items: center;
+      transition: background-color 0.2s;
+    }
+    .speed-btn:hover { background-color: #1f2937; }
+    .speed-btn.active { background-color: #2F7D31; }
     .loading {
       display: none;
       margin-top: 10px;
@@ -837,10 +978,6 @@
     }
 
     @media (max-width: 768px) {
-      .header .container {
-        padding: 0 1rem;
-      }
-      
       .hero-container, .main {
         padding-left: 1rem;
         padding-right: 1rem;
@@ -1161,7 +1298,7 @@
     }
 
     @media (max-width: 768px) {
-      .header-container, .charity-header-container, .hero-container, .main {
+      .charity-header-container, .hero-container, .main {
         padding-left: 1rem;
         padding-right: 1rem;
       }
@@ -1181,7 +1318,7 @@
         font-variant-numeric: tabular-nums; 
       }
       
-      .header-container, .charity-header-container, .hero-container, .main {
+      .charity-header-container, .hero-container, .main {
         padding-left: 1.5rem;
         padding-right: 1.5rem;
       }
@@ -1193,7 +1330,7 @@
     }
 
     @media (min-width: 1024px) {
-      .header-container, .charity-header-container, .hero-container, .main {
+      .charity-header-container, .hero-container, .main {
         padding-left: 2rem;
         padding-right: 2rem;
       }
@@ -1219,8 +1356,6 @@
     /* Pop-up Ad Styles */
     .popup-ad {
       position: fixed;
-      width: 384px;
-      height: 384px;
       background-color: #ffffff;
       border: 3px solid #2F7D31;
       border-radius: 12px;
@@ -1235,6 +1370,31 @@
       -webkit-user-select: none;
       -moz-user-select: none;
       -ms-user-select: none;
+    }
+    
+    /* Default size (1:1 square) */
+    .popup-ad {
+      width: 420px;
+      height: 420px;
+    }
+    
+    /* Portrait (4:5) */
+    .popup-ad.aspect-portrait {
+      width: 420px;
+      height: 525px;
+    }
+    
+    /* Landscape (16:9) */
+    .popup-ad.aspect-landscape {
+      width: 560px;
+      height: 315px;
+    }
+    
+    /* Popup ad image styling */
+    .popup-ad-image {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
     }
 
     .popup-ad.show {
@@ -1277,6 +1437,16 @@
       .popup-ad {
         width: 320px;
         height: 320px;
+      }
+      
+      .popup-ad.aspect-portrait {
+        width: 320px;
+        height: 400px;
+      }
+      
+      .popup-ad.aspect-landscape {
+        width: 426px;
+        height: 240px;
       }
 
       .popup-content {
@@ -1501,6 +1671,7 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/header-dropdown.css">
 </head>
 <body>
   <!-- Tutorial System - Now handled by separate tutorial.html page -->
@@ -1550,19 +1721,29 @@
 
   <!-- FORA Charity Header (shown when authenticated) -->
   <section class="frame-scaler frame-snap" id="framed-viewport">
+    <section class="charity-header" id="charityHeader" style="display: none;">
+      <div class="charity-header-container">
+        <div class="charity-text"><span class="skeleton skeleton-number" style="width:280px;height:1em;display:inline-block;border-radius:4px;vertical-align:middle;"></span></div>
+      </div>
+    </section>
+
     <div class="frame-inner">
-      <section class="charity-header" id="charityHeader" style="display: none;">
-        <div class="charity-header-container">
-          <div class="charity-text">Your Donations This Week Support: <span class="charity-highlight">FORA — Empowering Refugee Families Through Education</span></div>
-        </div>
-      </section>
-      
       <!-- Hero / Total Raised (shown when authenticated) -->
       <section class="hero" id="heroSection" style="display: none;">
         <div class="hero-container">
           <h1 class="hero-title">Total Raised for Charity</h1>
-          <div class="hero-amount">$832.11</div>
+          <div class="hero-amount">—</div>
           <p class="hero-subtitle">Stream ads, fuel impact, compete for good.</p>
+        </div>
+      </section>
+
+      <section id="sponsorsOfWeekBar" class="sponsors-of-week-bar" style="display:none;">
+        <div class="sponsors-row">
+          <div class="sponsors-track">
+            <span class="sponsors-content"></span>
+            <span class="sponsors-content"></span>
+            <span class="sponsors-content"></span>
+          </div>
         </div>
       </section>
 
@@ -1584,9 +1765,7 @@
             <video
               id="my-video"
               class="video-js vjs-default-skin"
-              controls
               preload="auto"
-              data-setup="{}"
             >
               <source src="videos/video_1.mp4" type="video/mp4" />
               <p class="vjs-no-js">
@@ -1606,10 +1785,15 @@
           </div>
         </div>
         <div class="video-controls">
-          <div class="quality-text">Quality: <span class="quality-number" id="currentQualityDisplay">HD</span></div>
+          <div class="quality-text" id="viewerCountDisplay" style="display:none">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="vertical-align:middle;margin-right:5px" aria-hidden="true">
+              <ellipse cx="12" cy="12" rx="10" ry="6" stroke="currentColor" stroke-width="2"/>
+              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            </svg><span id="viewerCountNumber">0</span> watching
+          </div>
           <div class="action-buttons-container" style="display: flex; align-items: center; gap: 10px;">
             <button id="donateButton" class="action-button donate-btn">💝 Donate to Charity</button>
-            <button id="upgradeButton" class="action-button upgrade-btn" onclick="window.location.href='/subscribe'">Upgrade to get pop-out player</button>
+            <button id="upgradeButton" class="action-button upgrade-btn" onclick="window.location.href='/subscribe'">Upgrade to Premium — $1/mo</button>
           </div>
         </div>
       </section>
@@ -1690,17 +1874,24 @@
       </aside>
     </div>
     
+    <section class="accumulation-banner" id="accumulationBanner" style="display:none;">
+      <div class="accumulation-row">
+        <div class="accumulation-track">
+          <span class="accumulation-content"></span>
+          <span class="accumulation-content"></span>
+          <span class="accumulation-content"></span>
+        </div>
+      </div>
+    </section>
     <!-- Weekly Partner Progress Section -->
     <section class="progress-section">
       <div class="progress-content">
         <div class="progress-header">
-          <div class="partner-text">Weekly Partner: Refugee FORA</div>
-          <div class="progress-amount">
-            <span class="amount-raised">$352</span> <span class="amount-text">raised of</span> <span class="amount-goal">$500</span> <span class="amount-text">goal</span>
-          </div>
+          <div class="partner-text"><span class="skeleton skeleton-text medium" style="width:9rem;display:inline-block;"></span></div>
+          <div class="progress-amount"><span class="skeleton skeleton-text" style="width:11rem;display:inline-block;"></span></div>
         </div>
         <div class="progress-bar-container">
-          <div class="progress-bar-fill"></div>
+          <div class="progress-bar-fill skeleton" style="width:100%;border-radius:0.25rem;"></div>
         </div>
       </div>
     </section>
@@ -1830,9 +2021,71 @@
       }
     };
     
+    // ── Live viewer count ────────────────────────────────────
+    (function () {
+      // Session ID: unique per tab, not persisted across tabs (sessionStorage)
+      const VIEWER_SESSION_KEY = 'cs_viewer_session';
+      let viewerSessionId = sessionStorage.getItem(VIEWER_SESSION_KEY);
+      if (!viewerSessionId) {
+        viewerSessionId = typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : Math.random().toString(36).slice(2) + Date.now();
+        sessionStorage.setItem(VIEWER_SESSION_KEY, viewerSessionId);
+      }
+
+      const countEl  = document.getElementById('viewerCountNumber');
+      const wrapEl   = document.getElementById('viewerCountDisplay');
+      const INTERVAL = 20000; // 20s heartbeat + poll
+
+      function updateCount(n) {
+        if (!countEl || !wrapEl) return;
+        countEl.textContent = n;
+        wrapEl.style.display = n > 0 ? '' : 'none';
+      }
+
+      function heartbeat() {
+        fetch('/api/viewers/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId: viewerSessionId })
+        })
+          .then(function (r) { return r.json(); })
+          .then(function (d) { updateCount(d.viewers || 0); })
+          .catch(function () {});
+      }
+
+      // Initial heartbeat on load, then on interval
+      heartbeat();
+      setInterval(heartbeat, INTERVAL);
+
+      // Remove from count immediately when tab is closed/navigated away
+      window.addEventListener('pagehide', function () {
+        const blob = new Blob(
+          [JSON.stringify({ sessionId: viewerSessionId })],
+          { type: 'application/json' }
+        );
+        navigator.sendBeacon('/api/viewers/leave', blob);
+      });
+    })();
+
+    // Anonymous viewer identity for sponsor unique viewer tracking (Level 2). Persists across refreshes/tabs.
+    function getOrCreateViewerId() {
+      const key = 'charity_stream_viewer_id';
+      let id = localStorage.getItem(key);
+      if (!id || typeof id !== 'string') {
+        id = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : '';
+        if (id) localStorage.setItem(key, id);
+      }
+      return id || null;
+    }
+
     // Authentication and user management
     let currentUser = null;
     let authToken = localStorage.getItem('authToken') || null;
+    let currentWeeklyPartnerName = null;
+    let currentGuaranteedTotal = null;
+    /** Numeric guaranteed amount from /api/charity/guaranteed-total; null until loaded */
+    let currentGuaranteedAmount = null;
     let currentSessionId = null;
     let player = null;
     let isPlayerInitialized = false;
@@ -1899,6 +2152,8 @@
         if (heroSection) heroSection.style.display = 'none';
         if (landerMain) landerMain.style.display = 'flex';
         if (mainContent) mainContent.style.display = 'none';
+        var barEl = document.getElementById('sponsorsOfWeekBar');
+        if (barEl) barEl.style.display = 'none';
         
         return;
       }
@@ -1932,6 +2187,10 @@
       if (landerMain) landerMain.style.display = 'none';
       if (loginOverlay) loginOverlay.style.display = 'none';
       if (currentUserRow) currentUserRow.style.display = 'flex';
+      
+      loadSponsorsOfTheWeekBar();
+      updateCharityBarText();
+      startDiamondImpactRotation();
       
       if (currentUser) {
         const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
@@ -1993,6 +2252,9 @@
       const watchAdsBtnLoggedIn = document.getElementById('watchAdsBtnLoggedIn');
       if (watchAdsBtnLoggedIn) {
         watchAdsBtnLoggedIn.onclick = function(e) {
+          if (window.location.pathname === '/' || window.location.pathname === '/index.html') {
+            return;
+          }
           e.preventDefault();
           // User is logged in, go to main page
           window.location.href = '/';
@@ -2071,6 +2333,11 @@
       if (!authToken) {
         console.log('❌ No auth token found in window.onload, lander content should be showing');
         
+        // Load weekly progress (public data, no auth required)
+        loadWeeklyProgress();
+        loadLifetimeTotal();
+        loadAccumulationBanner();
+        
         // Ensure pop-up ads are deactivated for unauthenticated users
         if (popupAdManager) {
           popupAdManager.deactivate();
@@ -2084,7 +2351,10 @@
       
       // Initialize video player immediately (don't wait for loadUserInfo)
       initializeVideoPlayer();
-      
+
+      // Check premium status after player is initialized so enablePremiumUI can attach to the control bar
+      checkPremiumStatus();
+
       // Don't automatically load user info - only load when user interacts
       console.log('🎬 Video player initialization complete - API calls will happen on user interaction');
     };
@@ -2094,6 +2364,10 @@
       document.getElementById('guestNav').style.display = 'none';
       document.getElementById('loginOverlay').style.display = 'none';
       document.getElementById('currentUserRow').style.display = 'flex';
+      const charityHeader = document.getElementById('charityHeader');
+      if (charityHeader) charityHeader.style.display = 'block';
+      updateCharityBarText();
+      startDiamondImpactRotation();
       
       // Load user data when authenticated UI is shown
       document.getElementById('usernameDisplay').textContent = 'Loading...';
@@ -2238,6 +2512,9 @@
           // Load user impact and leaderboard data
           loadUserImpact();
           loadLeaderboard();
+          loadWeeklyProgress();
+          loadLifetimeTotal();
+          loadAccumulationBanner();
         } else if (response.status === 403) {
           // Auth error already handled by authAwareFetch
           console.log('🔐 Auth error in loadUserInfo, redirecting...');
@@ -2785,6 +3062,7 @@
           // Force immediate refresh without cache or debounce
           await loadUserImpact(true, true); // Force refresh + skip debounce
           loadLeaderboard();
+          loadWeeklyProgress();
         } else {
           console.error('❌ Complete-ad API returned error:', response.status);
           const errorText = await response.text();
@@ -2925,6 +3203,372 @@
       console.log('✅ Impact UI update completed');
     }
 
+    // Load Sponsors of the Week bar (Gold + Diamond); show bar and refit frame only when we have sponsors
+    function escapeHtml(text) {
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    function buildSponsorMessage(sponsors) {
+      var names = sponsors.map(function(s) {
+        var name = escapeHtml(s.company_name || 'Sponsor');
+        var cls = s.tier === 'diamond' ? 'sponsor-diamond' : 'sponsor-gold';
+        return '<span class="' + cls + '">' + name + '</span>';
+      }).join(', ');
+      return 'Thank you to our notable sponsors of the week:\u00a0' + names;
+    }
+
+    async function loadSponsorsOfTheWeekBar() {
+      var barEl = document.getElementById('sponsorsOfWeekBar');
+      var rowEl = barEl && barEl.querySelector('.sponsors-row');
+      if (!barEl || !rowEl) return;
+      try {
+        var response = await fetch('/api/sponsors/of-the-week');
+        if (!response.ok) return;
+        var sponsors = await response.json();
+        if (!sponsors || sponsors.length === 0) return;
+
+        var contentHTML = buildSponsorMessage(sponsors);
+        var track = rowEl.querySelector('.sponsors-track');
+        var contents = rowEl.querySelectorAll('.sponsors-content');
+
+        // Populate both spans
+        contents.forEach(function(el) {
+          el.innerHTML = contentHTML;
+          el.style.paddingRight = '0px';
+        });
+
+        // Keep track hidden during setup
+        track.style.visibility = 'hidden';
+        track.style.animation = 'none';
+        track.style.transform = 'translateX(0)';
+        barEl.style.display = 'flex';
+
+        // Measure true text width using an off-screen ruler outside all transforms
+        var ruler = document.createElement('div');
+        ruler.style.cssText = [
+          'position:fixed',
+          'top:-9999px',
+          'left:-9999px',
+          'visibility:hidden',
+          'white-space:nowrap',
+          'font-size:0.95rem',
+          'display:inline-block',
+          'padding:0'
+        ].join(';');
+        ruler.innerHTML = contentHTML;
+        document.body.appendChild(ruler);
+
+        requestAnimationFrame(function() {
+          requestAnimationFrame(function() {
+            // Get the current scale factor from .frame-inner's transform matrix
+            var frameInner = document.querySelector('.frame-inner');
+            var matrix = getComputedStyle(frameInner).transform;
+            var scale = 1;
+            if (matrix && matrix !== 'none') {
+              var match = matrix.match(/matrix\(([^,]+)/);
+              if (match) scale = parseFloat(match[1]);
+            }
+
+            // Measure true screen pixels from ruler (outside all transforms)
+            var trueSpanWidth = ruler.getBoundingClientRect().width;
+            document.body.removeChild(ruler);
+
+            // Convert to scaled DOM pixels (what we must write into .frame-inner)
+            var domSpanWidth = trueSpanWidth / scale;
+            var domBarWidth = window.innerWidth / scale;
+
+            // Tile width ≈ 55% of bar width so two copies are always simultaneously
+            // visible and there is never a fully blank gap in the banner.
+            var targetTile = Math.round(domBarWidth * 0.55);
+            var padding = Math.max(80, targetTile - domSpanWidth);
+
+            contents.forEach(function(el) {
+              el.style.paddingRight = padding + 'px';
+            });
+
+            // Measure the actual rendered tile width from the DOM after padding is applied.
+            // getBoundingClientRect() returns true screen pixels; round up to a whole pixel
+            // so the animation loop lands on the same pixel it started on — no jump.
+            var tileScreenPx = Math.ceil(contents[0].getBoundingClientRect().width);
+            var scrollAmount = tileScreenPx / scale;
+
+            track.style.setProperty('--scroll-amount', '-' + scrollAmount + 'px');
+
+            // Start animation once
+            track.style.visibility = 'visible';
+            track.style.animation = 'sponsorScroll 25s linear infinite';
+          });
+        });
+
+      } catch (e) {
+        console.warn('Sponsors of the week bar load failed (non-critical):', e);
+      }
+    }
+
+    // Diamond Impact rotation on charity bar: alternate charity message with diamond sponsors every 12s
+    var diamondImpactRotationInterval = null;
+    var cachedDiamondSponsors = null;
+
+    function buildDiamondImpactGroups(diamondList) {
+      var n = diamondList.length;
+      if (n === 0) return [];
+      var size = Math.min(4, n);
+      var groups = [];
+      for (var i = 0; i < n; i++) {
+        var group = [];
+        for (var j = 0; j < size; j++) {
+          group.push(diamondList[(i + j) % n]);
+        }
+        groups.push(group);
+      }
+      return groups;
+    }
+
+    function buildDiamondBarHtml(group) {
+      var names = group.map(function(s) {
+        return escapeHtml(s.company_name || 'Sponsor');
+      }).join(' • ');
+      return '💎 This Week\'s Diamond Impact Partners:\u00a0' + names;
+    }
+
+    function setCharityBarContent(html, onDone) {
+      var el = document.querySelector('#charityHeader .charity-text');
+      if (!el) {
+        if (onDone) onDone();
+        return;
+      }
+      el.style.opacity = '0';
+      setTimeout(function() {
+        el.innerHTML = html;
+        el.style.opacity = '1';
+        if (onDone) onDone();
+      }, 350);
+    }
+
+    function startDiamondImpactRotation() {
+      var charityEl = document.querySelector('#charityHeader .charity-text');
+      if (!charityEl) return;
+
+      if (diamondImpactRotationInterval) {
+        clearInterval(diamondImpactRotationInterval);
+        diamondImpactRotationInterval = null;
+      }
+
+      (function run() {
+        if (cachedDiamondSponsors !== null) {
+          startRotation(cachedDiamondSponsors);
+          return;
+        }
+        fetch('/api/sponsors/of-the-week')
+          .then(function(res) { return res.ok ? res.json() : []; })
+          .then(function(list) {
+            cachedDiamondSponsors = (list || []).filter(function(s) {
+              return (s.tier || '').toLowerCase() === 'diamond';
+            });
+            startRotation(cachedDiamondSponsors);
+          })
+          .catch(function() {
+            cachedDiamondSponsors = [];
+          });
+      })();
+
+      function startRotation(diamondList) {
+        if (diamondList.length === 0) return;
+
+        var groups = buildDiamondImpactGroups(diamondList);
+        var step = 0;
+
+        function tick() {
+          // Pattern: diamond group 0, charity, diamond group 1, charity, ...
+          var isCharity = (step % 2) === 1;
+          // Build charity content dynamically so it always reflects current state,
+          // not a snapshot captured before API calls resolved.
+          var nextContent = isCharity
+            ? buildCharityBarHtml()
+            : buildDiamondBarHtml(groups[Math.floor(step / 2) % groups.length]);
+          setCharityBarContent(nextContent);
+          step++;
+        }
+
+        diamondImpactRotationInterval = setInterval(tick, 12000);
+      }
+    }
+
+    function buildCharityBarHtml() {
+      var signupLink = '<a href="/charity" class="charity-highlight" style="font-weight:600;color:var(--brand-600);">Charities sign up now</a>';
+      if (currentWeeklyPartnerName) {
+        return 'Donations This Week Support: <span class="charity-highlight">' + escapeHtml(currentWeeklyPartnerName) + '</span>';
+      } else if (currentGuaranteedAmount != null && currentGuaranteedAmount > 0) {
+        return 'Charity Stream Launch! · ' + signupLink + ' and get a guaranteed · <span class="charity-highlight">$' + currentGuaranteedTotal + '</span>';
+      } else {
+        return 'Charity Stream Launch! · ' + signupLink;
+      }
+    }
+
+    function updateCharityBarText() {
+      const charityTextEl = document.querySelector('#charityHeader .charity-text');
+      if (!charityTextEl) return;
+
+      // Don't update until we have the guaranteed total if no partner
+      if (!currentWeeklyPartnerName && currentGuaranteedTotal === null) return;
+
+      charityTextEl.innerHTML = buildCharityBarHtml();
+      charityTextEl.classList.add('data-loaded');
+    }
+
+    // Load weekly donation progress
+    async function loadWeeklyProgress() {
+      try {
+        const response = await fetch('/api/weekly-progress');
+        
+        if (!response.ok) {
+          console.error('❌ Failed to load weekly progress:', response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        const weeklyGoal = data.weeklyGoal || 0;
+        const weeklyDonated = data.weeklyDonated || 0;
+        const weeklyPartnerName = data.weeklyPartnerName || null;
+        currentWeeklyPartnerName = weeklyPartnerName;
+        updateCharityBarText();
+        
+        // Update partner name — replace shimmer span with real text
+        const partnerTextElement = document.querySelector('.partner-text');
+        if (partnerTextElement) {
+          partnerTextElement.innerHTML = '';
+          partnerTextElement.textContent = weeklyPartnerName ? `Weekly Partner: ${weeklyPartnerName}` : 'Weekly Partner';
+        }
+
+        // Update progress amounts — replace shimmer span with real markup
+        const progressAmountEl = document.querySelector('.progress-amount');
+        if (progressAmountEl) {
+          const raised = weeklyDonated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          const goal   = weeklyGoal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+          progressAmountEl.innerHTML = `<span class="amount-raised">$${raised}</span> <span class="amount-text">raised of</span> <span class="amount-goal">$${goal}</span> <span class="amount-text">goal</span>`;
+        }
+
+        // Update progress bar — remove shimmer, set real width
+        const progressBarFill = document.querySelector('.progress-bar-fill');
+        if (progressBarFill) {
+          progressBarFill.classList.remove('skeleton');
+          progressBarFill.style.width = weeklyGoal > 0
+            ? `${(Math.min(weeklyDonated / weeklyGoal, 1) * 100).toFixed(1)}%`
+            : '0%';
+        }
+        
+        console.log(`✅ Weekly progress loaded: $${weeklyDonated.toFixed(2)} / $${weeklyGoal.toFixed(2)} (${weeklyPartnerName || 'No partner'})`);
+      } catch (error) {
+        console.error('❌ Error loading weekly progress:', error);
+      }
+    }
+
+    async function loadLifetimeTotal() {
+      try {
+        const response = await fetch('/api/charity/lifetime-total');
+        if (!response.ok) return;
+        const data = await response.json();
+        const lifetimeTotal = Number(data.lifetimeTotal || 0);
+        const formatted = '$' + lifetimeTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const heroAmountEl = document.querySelector('.hero-amount');
+        if (heroAmountEl) heroAmountEl.textContent = formatted;
+      } catch (err) {
+        console.error('❌ Error loading lifetime total:', err);
+      }
+    }
+
+    async function loadAccumulationBanner() {
+      var bannerEl = document.getElementById('accumulationBanner');
+      var progressSection = document.querySelector('.progress-section');
+      if (!bannerEl || !progressSection) return;
+      try {
+        var response = await fetch('/api/charity/guaranteed-total');
+        if (!response.ok) return;
+        var data = await response.json();
+        var accumulationMode = data.accumulationMode === true;
+        var hasWinner = false;
+        try {
+          var winnerResponse = await fetch('/api/charity/winner-exists');
+          if (winnerResponse.ok) {
+            var winnerData = await winnerResponse.json();
+            hasWinner = winnerData.hasWinner === true;
+          }
+        } catch (e) {
+          // non-critical, default to not blocking the banner
+        }
+
+        var showBanner = accumulationMode && !hasWinner;
+        var guaranteedTotal = parseFloat(data.guaranteedTotal) || 0;
+        currentGuaranteedAmount = Number(data.guaranteedTotal) || 0;
+        currentGuaranteedTotal = currentGuaranteedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        updateCharityBarText();
+
+        if (showBanner) {
+          progressSection.style.display = 'none';
+          bannerEl.style.display = 'flex';
+
+          var contentHTML;
+          if (guaranteedTotal > 0) {
+            var formattedAmount = guaranteedTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            contentHTML = '<span class="accumulation-text">Charity Stream Launch! · <a href="/charity" style="color:var(--gray-700);font-weight:600;font-size:0.9375rem;text-decoration:underline">Charities sign up now</a> and get a guaranteed · </span><span class="accumulation-amount">$' + formattedAmount + '</span>';
+          } else {
+            contentHTML = '<span class="accumulation-text">Charity Stream Launch! · <a href="/charity" style="color:var(--gray-700);font-weight:600;font-size:0.9375rem;text-decoration:underline">Charities sign up now</a></span>';
+          }
+          var rowEl = bannerEl.querySelector('.accumulation-row');
+          var track = rowEl && rowEl.querySelector('.accumulation-track');
+          var contents = rowEl && track && track.querySelectorAll('.accumulation-content');
+          if (!contents || contents.length === 0) return;
+
+          contents.forEach(function(el) {
+            el.innerHTML = contentHTML;
+            el.style.paddingRight = '0px';
+          });
+
+          track.style.visibility = 'hidden';
+          track.style.animation = 'none';
+          track.style.transform = 'translateX(0)';
+
+          // Measure text width and banner width to compute tile size.
+          // With 3 copies, we need tileWidth >= bannerWidth/2 so 3 tiles always
+          // cover (bannerWidth + tileWidth) — guaranteeing no blank gap is ever visible.
+          var ruler = document.createElement('div');
+          ruler.style.cssText = 'position:fixed;top:-9999px;left:-9999px;visibility:hidden;white-space:nowrap;font-size:0.9375rem;display:inline-block;padding:0';
+          ruler.innerHTML = contentHTML;
+          document.body.appendChild(ruler);
+
+          requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+              var textWidth = ruler.getBoundingClientRect().width;
+              document.body.removeChild(ruler);
+
+              var bannerWidth = bannerEl.getBoundingClientRect().width;
+              // Each tile must be at least bannerWidth wide so the next copy starts
+              // exactly at (or beyond) the right edge — never pre-visible on screen.
+              var separatorWidth = Math.max(80, bannerWidth - textWidth);
+              var tileWidth = textWidth + separatorWidth;
+
+              contents.forEach(function(el) {
+                el.style.paddingRight = separatorWidth + 'px';
+              });
+
+              track.style.setProperty('--accumulation-scroll-amount', '-' + tileWidth + 'px');
+              track.style.visibility = 'visible';
+              track.style.animation = 'accumulationScroll 25s linear infinite';
+            });
+          });
+        } else {
+          bannerEl.style.display = 'none';
+          progressSection.style.display = '';
+        }
+      } catch (e) {
+        console.warn('Accumulation banner load failed (non-critical):', e);
+        bannerEl.style.display = 'none';
+        progressSection.style.display = '';
+      }
+    }
+
     // Load leaderboard data
     async function loadLeaderboard() {
       if (!authToken) return;
@@ -2951,10 +3595,11 @@
             leaderboard.forEach((user, index) => {
               const item = document.createElement('li');
               item.className = 'leaderboard-item';
+              const usernameClass = user.isPremium ? 'username premium-username' : 'username';
               item.innerHTML = `
                 <div class="leaderboard-left">
                   <span class="rank">#${user.rank}</span>
-                  <span class="username">${user.username}</span>
+                  <span class="${usernameClass}">${user.username}</span>
                 </div>
                 <span class="minutes">${user.minutesWatched} mins</span>
               `;
@@ -3080,6 +3725,7 @@
     // ========== ADVERTISER INFO SYSTEM ==========
     
     let currentAdvertiserInfo = null;
+    let currentSponsorInfo = null;
 
     // Cache advertiser info to avoid repeated lookups
     const advertiserInfoCache = new Map();
@@ -3105,6 +3751,7 @@
         const cached = advertiserInfoCache.get(videoFilename);
         currentAdvertiserInfo = cached.hasAdvertiser ? cached.advertiser : null;
         if (cached.hasAdvertiser) {
+          // CRITICAL: Re-attach icon even from cache (video container may have been reset)
           showInfoButton();
         } else {
           hideInfoButton();
@@ -3155,7 +3802,9 @@
           currentAdvertiserInfo = data.advertiser;
           console.log(`📢 Advertiser found: ${data.advertiser.company_name}`);
           console.log('🔗 Destination URL:', currentAdvertiserInfo.destination_url);
-          console.log('👁️ Should show icon?', !!currentAdvertiserInfo?.destination_url);
+          console.log('🔗 Click tracking:', currentAdvertiserInfo.click_tracking);
+          console.log('👁️ Should show icon?', currentAdvertiserInfo.click_tracking === true && !!currentAdvertiserInfo.destination_url);
+          // CRITICAL: Re-attach icon after API data is loaded (video container is stable by now)
           showInfoButton();
         } else {
           currentAdvertiserInfo = null;
@@ -3175,11 +3824,18 @@
       
       console.log('🔄 showInfoButton called with:', currentAdvertiserInfo);
       if (!currentAdvertiserInfo) return;
+      
+      // CRITICAL: Only show icon if click_tracking is TRUE AND destination_url exists
+      // Do NOT infer click tracking from URL presence - use the boolean only
+      const clickTracking = currentAdvertiserInfo.click_tracking === true;
       const dest = currentAdvertiserInfo.destination_url;
+      
+      console.log('🔗 Click tracking enabled:', clickTracking);
       console.log('🔗 destination_url present:', dest);
-      if (!dest) {
-        console.log('🚫 destination_url missing - hiding icon');
-        return; // do not show icon without destination_url
+      
+      if (!clickTracking || !dest) {
+        console.log('🚫 Click tracking disabled or destination_url missing - hiding icon');
+        return; // do not show icon without click_tracking enabled and destination_url
       }
       
       const infoButton = document.createElement('button');
@@ -3216,28 +3872,145 @@
         infoButton.style.transform = 'scale(1)';
       });
       
-      infoButton.addEventListener('click', () => {
+      infoButton.addEventListener('click', async () => {
         const destUrl = currentAdvertiserInfo?.destination_url;
-        if (destUrl) {
+        const campaignId = currentAdvertiserInfo?.id;
+        const clickTracking = currentAdvertiserInfo?.click_tracking === true;
+        
+        if (destUrl && clickTracking && campaignId) {
           console.log(`🔗 Opening advertiser destination: ${destUrl}`);
+          
+          // Open destination URL in new tab
           window.open(destUrl, '_blank', 'noopener,noreferrer');
+          
+          // Track click via API
+          try {
+            const token = typeof authToken !== 'undefined' && authToken ? authToken : getAuthToken();
+            if (token) {
+              await fetch('/api/track-click', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                  campaign_id: campaignId
+                })
+              });
+              console.log(`✅ Click tracked for campaign ${campaignId}`);
+            }
+          } catch (error) {
+            console.error('❌ Error tracking click:', error);
+            // Don't block the redirect if tracking fails
+          }
         } else {
-          console.log('⚠️ No destination_url available; not opening link');
+          console.log('⚠️ Click tracking not enabled or missing data; not opening link');
         }
       });
       
-      // Add button to video player container
-      const videoContainer = document.getElementById('video-container') || document.querySelector('.video-js');
+      // CRITICAL: Attach to stable parent container (video-container div, not .video-js which may be replaced)
+      // Use video-container which is the stable parent, not the Video.js element which may be recreated
+      const videoContainer = document.getElementById('video-container');
       if (videoContainer) {
         videoContainer.style.position = 'relative';
+        // Check if icon already exists to prevent duplicates
+        const existingIcon = videoContainer.querySelector('#advertiser-info-btn');
+        if (existingIcon) {
+          existingIcon.remove();
+        }
         videoContainer.appendChild(infoButton);
+        console.log('✅ Icon attached to stable video-container');
+      } else {
+        // Fallback to .video-js if video-container not found
+        const videoJsElement = document.querySelector('.video-js');
+        if (videoJsElement) {
+          videoJsElement.style.position = 'relative';
+          const existingIcon = videoJsElement.querySelector('#advertiser-info-btn');
+          if (existingIcon) {
+            existingIcon.remove();
+          }
+          videoJsElement.appendChild(infoButton);
+          console.log('✅ Icon attached to .video-js (fallback)');
+        } else {
+          console.warn('⚠️ Could not find video container to attach icon');
+        }
       }
     }
 
     function hideInfoButton() {
-      const existingBtn = document.getElementById('advertiser-info-btn');
-      if (existingBtn) {
-        existingBtn.remove();
+      const advertiserBtn = document.getElementById('advertiser-info-btn');
+      if (advertiserBtn) advertiserBtn.remove();
+      const sponsorBtn = document.getElementById('sponsor-info-btn');
+      if (sponsorBtn) sponsorBtn.remove();
+    }
+
+    // Sponsor CTA: always show for sponsor videos (sponsorCampaignId + sponsorWebsite). Do NOT use advertiser click logic.
+    function showSponsorInfoButton() {
+      hideInfoButton();
+      if (!currentSponsorInfo || !currentSponsorInfo.sponsorWebsite) return;
+      const infoButton = document.createElement('button');
+      infoButton.id = 'sponsor-info-btn';
+      infoButton.innerHTML = 'ℹ️';
+      infoButton.title = 'Learn about this sponsor';
+      infoButton.style.cssText = `
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+      `;
+      infoButton.addEventListener('mouseenter', () => {
+        infoButton.style.background = 'rgba(0,0,0,0.9)';
+        infoButton.style.transform = 'scale(1.1)';
+      });
+      infoButton.addEventListener('mouseleave', () => {
+        infoButton.style.background = 'rgba(0,0,0,0.7)';
+        infoButton.style.transform = 'scale(1)';
+      });
+      infoButton.addEventListener('click', async () => {
+        const url = currentSponsorInfo?.sponsorWebsite;
+        const campaignId = currentSponsorInfo?.sponsorCampaignId;
+        if (url) {
+          window.open(url, '_blank', 'noopener,noreferrer');
+          try {
+            const token = typeof authToken !== 'undefined' && authToken ? authToken : getAuthToken();
+            if (token && campaignId) {
+              await fetch('/api/sponsor-clicks/record', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ sponsorCampaignId: campaignId })
+              });
+              console.log('✅ Sponsor click tracked for campaign', campaignId);
+            }
+          } catch (error) {
+            console.error('❌ Error tracking sponsor click:', error);
+          }
+        }
+      });
+      const videoContainer = document.getElementById('video-container');
+      if (videoContainer) {
+        videoContainer.style.position = 'relative';
+        videoContainer.appendChild(infoButton);
+      } else {
+        const videoJsElement = document.querySelector('.video-js');
+        if (videoJsElement) {
+          videoJsElement.style.position = 'relative';
+          videoJsElement.appendChild(infoButton);
+        }
       }
     }
 
@@ -3259,7 +4032,7 @@
             'Content-Type': 'application/json',
             ...(token ? { 'Authorization': `Bearer ${token}` } : {})
           },
-          body: JSON.stringify({ amount: 300 }) // $3.00 default
+          body: JSON.stringify({ amount: 500 })
         });
         if (!response.ok) {
           console.error('❌ Donation create session failed:', response.status, response.statusText);
@@ -3345,6 +4118,10 @@
         let isInitialLoad = true;
         let isPlaying = false;
         let hasSentImpression = false; // Track if impression sent for current video
+        let autoplayState = false; // Track autoplay state: false = not attempted, true = succeeded, 'failed' = failed (retry allowed)
+        
+        const FALLBACK_VIDEO_URL = 'https://public.stream.charity/charity_stream.mp4';
+        const FALLBACK_VIDEO_TITLE = 'charity_stream';
         
         // Fetch playlist from backend dynamically
         async function initializePlaylist() {
@@ -3363,6 +4140,8 @@
             // Defensive filter: Remove capped videos (backend already filters, but this is extra safety)
             playlistData = playlistData.filter(video => !video.isCapped);
             
+            // Replace videoUrls so periodic refresh fully replaces state (no stale URLs)
+            videoUrls = {};
             // Extract video names and URLs from backend response
             playlist = playlistData.map(video => {
               const videoName = video.title; // e.g., "video_1"
@@ -3383,7 +4162,7 @@
             playlistData = playlist.map((name, index) => ({
               videoId: index + 1,
               title: name,
-              videoUrl: `https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev/${name}.mp4`,
+              videoUrl: `https://videos.stream.charity/${name}.mp4`,
               duration: 60,
               advertiserId: null,
               videoFilename: null
@@ -3391,7 +4170,7 @@
             
             // Initialize fallback URLs for hardcoded playlist
             playlist.forEach(videoName => {
-              videoUrls[videoName] = `https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev/${videoName}.mp4`;
+              videoUrls[videoName] = `https://videos.stream.charity/${videoName}.mp4`;
             });
             
             console.log('⚠️ Using fallback playlist:', playlist);
@@ -3401,7 +4180,7 @@
 
         function getVideoUrl(videoName) {
           // Use direct R2 URLs for better performance and reliability
-          const R2_BASE_URL = 'https://pub-5077a490479046dbac97642d6ea9aa70.r2.dev';
+          const R2_BASE_URL = 'https://videos.stream.charity';
           const directUrl = `${R2_BASE_URL}/${videoName}.mp4`;
           
           console.log(`🎬 Using direct R2 URL for video: ${videoName}`);
@@ -3411,6 +4190,15 @@
         }
 
         function getCurrentVideoSource() {
+          // Use playlistData if available (has full videoUrl), otherwise fall back to playlist name
+          const currentVideo = playlistData[currentIndex];
+          if (currentVideo && currentVideo.videoUrl) {
+            return {
+              src: currentVideo.videoUrl,
+              type: "video/mp4"
+            };
+          }
+          // Fallback to old method
           const videoName = playlist[currentIndex];
           return {
             src: getVideoUrl(videoName),
@@ -3419,7 +4207,7 @@
         }
 
         function updateQualityDisplay() {
-          document.getElementById('currentQualityDisplay').textContent = "HD";
+          // Quality display replaced by viewer count
         }
 
         function loadVideoWithQuality(index) {
@@ -3440,45 +4228,213 @@
           console.log(`🎬 Loading video ${index + 1} (${playlist[index]}): ${source.src}`);
           console.log(`🎬 Full video path: videos/${playlist[index]}.mp4`);
           
-          // Load the video
-          player.src(source);
-          updateQualityDisplay();
+          // Reset autoplay state for this video load
+          autoplayState = false;
           
-          // Fetch advertiser info for this video
-          const videoFilename = `${playlist[index]}.mp4`;
-          onVideoChanged(videoFilename);
+          // Check if user has started playback (for transition autoplay)
+          const hasUserStartedPlayback = localStorage.getItem('charityStream_userStartedPlayback') === 'true';
+          const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
+          const isTransition = hasUserStartedPlayback && !isInitialLoad;
+          console.log('[TRANSITION DEBUG]', {
+            hasUserStartedPlayback,
+            isInitialLoad,
+            isTransition
+          });
           
-          player.one('loadeddata', () => {
-            console.log('✅ Video loaded successfully');
+          // Define autoplay function with retry capability
+          const attemptAutoplay = (isRetry = false) => {
+            // Block autoplay if tutorial is active
+            if (window.isTutorialActive) {
+              console.log('⏸ Video auto-play blocked until tutorial dismissed');
+              return;
+            }
             
-            // Auto-play when video loads (both initial and subsequent videos)
-            setTimeout(() => {
-              if (window.isTutorialActive) {
-                console.log('⏸ Video auto-play blocked until tutorial dismissed');
-              } else {
-                // Check if this is a new user who hasn't manually started playback yet
-                const isNewUser = localStorage.getItem('charityStream_newUser') === 'true';
-                const hasUserStartedPlayback = localStorage.getItem('charityStream_userStartedPlayback') === 'true';
-                
-                if (isNewUser && !hasUserStartedPlayback) {
-                  console.log('⏸ New user - video stays paused until user clicks play');
-                } else {
-                  console.log('🎬 Attempting to auto-play video...');
-                  player.play().catch(error => {
-                    console.log('Auto-play prevented:', error);
-                  });
-                }
-              }
-            }, 100);
+            // Block autoplay for new users who haven't started playback
+            if (isNewUser && !hasUserStartedPlayback) {
+              console.log('⏸ New user - video stays paused until user clicks play');
+              return;
+            }
+            
+            // If autoplay already succeeded, don't retry
+            if (autoplayState === true) {
+              return;
+            }
+            
+            // Only attempt if video is paused
+            if (!player.paused()) {
+              console.log('🎬 Video already playing, skipping autoplay');
+              autoplayState = true; // Mark as succeeded since it's already playing
+              return;
+            }
+            
+            // Attempt to play
+            console.log('[AUTOPLAY DEBUG] Attempting autoplay...');
+            console.log(isRetry ? '🔄 Retrying auto-play...' : '🎬 Attempting to auto-play video...');
+            player.play()
+              .then(() => {
+                // Success - mark as succeeded and lock in persisted state
+                autoplayState = true;
+                localStorage.setItem('charityStream_userStartedPlayback', 'true');
+                localStorage.setItem('charityStream_newUser', 'false');
+                console.log('[AUTOPLAY DEBUG] Autoplay SUCCESS');
+                console.log('✅ Auto-play succeeded');
+              })
+              .catch(error => {
+                // Failed - mark as failed but allow retry
+                autoplayState = 'failed';
+                console.log('[AUTOPLAY DEBUG] Autoplay FAILED', error);
+                console.log('⚠️ Auto-play prevented:', error.message || error);
+              });
+          };
+          
+          // Attach canplay handler for retry mechanism (informational, not primary)
+          const canPlayHandler = () => {
+            // Only handle if this is for the current video (prevent stale handlers)
+            if (currentIndex !== index) {
+              return;
+            }
+            console.log('✅ Video can play');
+            
+            // If autoplay failed previously, retry now that video is ready
+            if (autoplayState === 'failed') {
+              attemptAutoplay(true);
+            } else if (autoplayState === false && isTransition) {
+              // If we haven't attempted yet and this is a transition, try now
+              attemptAutoplay();
+            }
             
             // Mark initial load as complete
             if (isInitialLoad) {
               isInitialLoad = false;
             }
-          });
+          };
           
-          // Don't start session automatically - only start when user actually plays video
-          console.log('🎬 Video player initialized - session will start when user plays video');
+          // Remove all existing canplay handlers to prevent accumulation, then attach new one
+          player.off('canplay');
+          player.on('canplay', canPlayHandler);
+          
+          // Backup retry mechanism: loadeddata event (fires earlier than canplay)
+          const loadedDataHandler = () => {
+            if (currentIndex !== index) {
+              return;
+            }
+            // If autoplay failed and video has loaded data, retry
+            if (autoplayState === 'failed' && isTransition) {
+              console.log('🔄 Video loaded data - retrying autoplay');
+              attemptAutoplay(true);
+            }
+          };
+          player.off('loadeddata');
+          player.on('loadeddata', loadedDataHandler);
+          
+          // CRITICAL: Attach icon AFTER video is stable (in canplay handler)
+          // This ensures the icon is attached after Video.js has finished DOM manipulation
+          const attachIconHandler = () => {
+            // Only handle if this is for the current video (prevent stale handlers)
+            if (currentIndex !== index) {
+              return;
+            }
+            
+            const currentVideo = playlistData[index];
+            // ADVERTISER: show icon only if click_tracking and destination_url
+            if (currentVideo && currentVideo.advertiserId) {
+              currentAdvertiserInfo = {
+                id: currentVideo.advertiserId,
+                click_tracking: currentVideo.clickTracking === true,
+                destination_url: currentVideo.destinationUrl,
+                ad_format: currentVideo.adFormat,
+                company_name: null
+              };
+              currentSponsorInfo = null;
+              if (currentVideo.clickTracking === true && currentVideo.destinationUrl) {
+                showInfoButton();
+              } else {
+                hideInfoButton();
+              }
+            } else if (currentVideo && currentVideo.sponsorCampaignId && currentVideo.sponsorWebsite) {
+              // SPONSOR: always show CTA when sponsor has website
+              currentSponsorInfo = {
+                sponsorCampaignId: currentVideo.sponsorCampaignId,
+                sponsorWebsite: currentVideo.sponsorWebsite
+              };
+              currentAdvertiserInfo = null;
+              showSponsorInfoButton();
+            } else {
+              currentAdvertiserInfo = null;
+              currentSponsorInfo = null;
+              hideInfoButton();
+            }
+          };
+          
+          // Attach icon when video can play (stable DOM)
+          player.off('canplay', attachIconHandler);
+          player.on('canplay', attachIconHandler);
+          
+          // Also attach on playing event as backup (in case canplay fires before icon logic)
+          const attachIconOnPlaying = () => {
+            if (currentIndex !== index) {
+              return;
+            }
+            const currentVideo = playlistData[index];
+            if (currentVideo && currentVideo.advertiserId) {
+              currentAdvertiserInfo = {
+                id: currentVideo.advertiserId,
+                click_tracking: currentVideo.clickTracking === true,
+                destination_url: currentVideo.destinationUrl,
+                ad_format: currentVideo.adFormat,
+                company_name: null
+              };
+              currentSponsorInfo = null;
+              if (currentVideo.clickTracking === true && currentVideo.destinationUrl) {
+                showInfoButton();
+              } else {
+                hideInfoButton();
+              }
+            } else if (currentVideo && currentVideo.sponsorCampaignId && currentVideo.sponsorWebsite) {
+              currentSponsorInfo = {
+                sponsorCampaignId: currentVideo.sponsorCampaignId,
+                sponsorWebsite: currentVideo.sponsorWebsite
+              };
+              currentAdvertiserInfo = null;
+              showSponsorInfoButton();
+            } else {
+              currentAdvertiserInfo = null;
+              currentSponsorInfo = null;
+              hideInfoButton();
+            }
+          };
+          player.off('playing', attachIconOnPlaying);
+          player.on('playing', attachIconOnPlaying);
+          
+          // Load the video (after handlers are attached)
+          player.src(source);
+          // Re-apply premium speed preference across video changes
+          if (window._premiumSpeed && window._premiumSpeed !== 1) {
+            player.ready(function() { player.playbackRate(window._premiumSpeed); });
+          }
+          updateQualityDisplay();
+          
+          // Fetch advertiser info for this video (async - will update icon when complete)
+          // Use videoFilename from playlistData if available, otherwise construct from playlist name
+          const currentVideo = playlistData[index];
+          const videoFilename = currentVideo?.videoFilename || (currentVideo?.title ? `${currentVideo.title}.mp4` : `${playlist[index]}.mp4`);
+          onVideoChanged(videoFilename);
+          
+          // DETERMINISTIC AUTOPLAY: Explicitly attempt autoplay for transitions
+          // Don't wait for canplay - call play() immediately after src() for transitions
+          if (isTransition) {
+            // For video transitions, attempt autoplay immediately
+            // Use a small delay to ensure src() has been processed by Video.js
+            setTimeout(() => {
+              if (currentIndex === index) { // Ensure we're still on the same video
+                attemptAutoplay();
+              }
+            }, 50);
+            console.log('🎬 Video loaded - transition autoplay will attempt immediately');
+          } else {
+            // For initial load, wait for canplay (user hasn't started playback yet)
+            console.log('🎬 Video loaded - autoplay will trigger via canplay when user starts playback');
+          }
         }
         
         // Function to send impression event
@@ -3489,7 +4445,7 @@
             return;
           }
           
-          // Get current video's advertiser info from playlist
+          // Get current video info from playlist
           if (currentIndex >= playlistData.length) {
             console.log('⚠️ Current index out of bounds for playlist data');
             return;
@@ -3497,9 +4453,38 @@
           
           const currentVideo = playlistData[currentIndex];
           const advertiserId = currentVideo?.advertiserId;
+          const sponsorCampaignId = currentVideo?.sponsorCampaignId;
           const videoFilename = currentVideo?.videoFilename;
           
-          // Guard: Old videos with NULL advertiserId → skip safely
+          // SPONSOR: Level 2 unique viewer — send with anonymous viewerId from localStorage
+          if (sponsorCampaignId && !advertiserId && videoFilename) {
+            hasSentImpression = true;
+            const viewerId = getOrCreateViewerId();
+            if (!viewerId) {
+              console.warn('📊 Sponsor impression: no viewerId (localStorage/crypto unavailable), impression will record without unique viewer');
+            }
+            console.log('📊 Sending sponsor impression with viewerId:', { sponsorCampaignId, videoFilename, viewerId: viewerId ? 'present' : 'missing' });
+            fetch('/api/sponsor-impressions/record', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sponsorCampaignId, videoFilename, viewerId: viewerId || undefined })
+            })
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                console.log('✅ Sponsor impression recorded:', data);
+              } else {
+                console.log('⚠️ Sponsor impression returned:', data);
+              }
+            })
+            .catch(error => {
+              console.error('❌ Error recording sponsor impression:', error);
+              hasSentImpression = false;
+            });
+            return;
+          }
+          
+          // ADVERTISER: unchanged behavior
           if (!advertiserId || !videoFilename) {
             console.log('📊 Skipping impression - old video without tracking:', {
               advertiserId,
@@ -3509,20 +4494,11 @@
             return;
           }
           
-          // Mark as sent immediately to prevent double-triggering
           hasSentImpression = true;
-          
-          console.log('📊 Sending impression event:', {
-            advertiserId,
-            videoFilename
-          });
-          
-          // Send impression to backend
+          console.log('📊 Sending impression event:', { advertiserId, videoFilename });
           fetch('/api/impressions/record', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               advertiserId: advertiserId,
               videoFilename: videoFilename
@@ -3538,7 +4514,6 @@
           })
           .catch(error => {
             console.error('❌ Error recording impression:', error);
-            // Reset flag on error so it can be retried
             hasSentImpression = false;
           });
         }
@@ -3600,9 +4575,13 @@
           // Send impression event when video starts playing
           sendImpressionEvent();
           
-          // Only check for conflicts when starting a NEW session
+          // Start or continue session - check if this is first play or video transition
+          const hasUserStartedPlayback = localStorage.getItem('charityStream_userStartedPlayback') === 'true';
+          const isTransitionAutoplay = hasUserStartedPlayback && !isInitialLoad;
+          
           if (!currentSessionId) {
-            console.log('🔄 No active session - trying to start one');
+            // No active session - start new one (first play or after video transition)
+            console.log('🔄 Starting session for video:', playlist[currentIndex]);
             
             // Try to start session
             startWatchSession(playlist[currentIndex], "standard").then(sessionId => {
@@ -3617,9 +4596,16 @@
                 }
                 
                 // Not an auth error - likely desktop app active or rate limited
-                console.log('❌ Cannot start session - pausing video (likely desktop app or rate limit)');
-                player.pause();
-                showConflictToast();
+                // NEVER pause during transition autoplay - only pause on first user play
+                if (!hasUserStartedPlayback || isTransitionAutoplay) {
+                  // Transition autoplay or user hasn't started - allow playback to continue
+                  console.log('⚠️ Session start failed during video transition, but continuing playback');
+                } else {
+                  // First user play (not transition) - pause only if session start fails
+                  console.log('❌ Cannot start session - pausing video (likely desktop app or rate limit)');
+                  player.pause();
+                  showConflictToast();
+                }
                 return;
               }
               
@@ -3628,7 +4614,7 @@
               sessionStartTime = Date.now();
               currentVideoStartTime = Date.now();
               pausedCount = 0;
-              console.log('✅ Session started:', sessionId);
+              console.log('✅ Session started:', sessionId, hasUserStartedPlayback ? '(video transition)' : '(first play)');
               
               // Start ad tracking
               if (!currentAdTrackingId) {
@@ -3659,16 +4645,24 @@
                 // Auth error already handled by trackedFetch
               } else {
                 console.error('❌ Error starting watch session:', error);
-                player.pause();
-                showConflictToast();
+                // NEVER pause during transition autoplay - only pause on first user play
+                if (!hasUserStartedPlayback || isTransitionAutoplay) {
+                  // Transition autoplay or user hasn't started - allow playback to continue
+                  console.log('⚠️ Session start error during video transition, but continuing playback');
+                } else {
+                  // First user play (not transition) - pause only if session start fails
+                  player.pause();
+                  showConflictToast();
+                }
               }
             });
           } else {
-            // Session already exists, just update timing
+            // Session already exists - this is a video transition, update timing for new video
             if (!sessionStartTime) {
               sessionStartTime = Date.now();
             }
             currentVideoStartTime = Date.now();
+            console.log('🔄 Video transition - session continues, timing updated for new video');
           }
           
           // Hide the big play button when playing - try multiple times to ensure it works
@@ -3691,12 +4685,20 @@
           setTimeout(hidePlayButton, 500);
         }
 
+        function loadFallbackVideo() {
+          console.log('ℹ️ No videos available, loading fallback charity video');
+          playlist = [FALLBACK_VIDEO_TITLE];
+          playlistData = [{ title: FALLBACK_VIDEO_TITLE, videoUrl: FALLBACK_VIDEO_URL }];
+          videoUrls[FALLBACK_VIDEO_TITLE] = FALLBACK_VIDEO_URL;
+          currentIndex = 0;
+          loadVideoWithQuality(0);
+        }
+
+        // Consolidated pause handler - single handler for all pause events
         player.on('pause', () => {
           isPlaying = false;
           pausedCount++;
           console.log('⏸️ Video paused, pause count:', pausedCount);
-          
-          // No monitoring to stop
           
           // Accumulate actual playback time if ad was playing
           if (isAdPlaying && adStartTime) {
@@ -3726,7 +4728,7 @@
           setTimeout(showPlayButton, 100);
         });
 
-        // Show play button when clicking anywhere on the video while playing
+        // Consolidated click handler - single handler for all click events
         player.on('click', () => {
           if (isPlaying) {
             const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
@@ -3806,10 +4808,12 @@
             console.log('❌ No ad tracking ID available - skipping completion');
           }
           
-          // Complete current session if exists
+          // Complete current video's session tracking if exists
+          // NOTE: We complete per-video tracking, but session continues across videos
+          // The next video will automatically start a new session when it autoplays
           if (!isQualitySwitching && currentSessionId && currentVideoStartTime) {
             const durationSeconds = Math.floor((Date.now() - currentVideoStartTime) / 1000);
-            console.log('📺 Completing session:', {
+            console.log('📺 Completing video session tracking:', {
               sessionId: currentSessionId,
               durationSeconds: durationSeconds,
               pausedCount: pausedCount,
@@ -3822,9 +4826,11 @@
               console.error('❌ completeWatchSession function not available!');
             }
             
+            // Reset per-video timing
             currentVideoStartTime = null;
-            sessionStartTime = null;
             pausedCount = 0;
+            // Reset session ID - next video will start new session automatically when autoplay triggers
+            // This allows backend to track per-video sessions while frontend treats playback as continuous
             currentSessionId = null;
           } else {
             console.log('📺 Skipping session completion:', {
@@ -3887,8 +4893,7 @@
                       // If the playlist is empty, handle gracefully
                       if (playlistData.length === 0) {
                         console.error("⚠️ All advertiser videos capped or removed");
-                        // Stop looping - could show a message to user
-                        player.pause();
+                        loadFallbackVideo();
                         return; // stop looping
                       }
                       
@@ -3908,8 +4913,8 @@
                       // Load next video immediately
                       loadVideoWithQuality(currentIndex);
                       
-                      // No automatic session start - wait for user to click play to start session
-                      console.log('📺 Video loaded - waiting for user to click play to start session');
+                      // Video will autoplay if user has already started playback
+                      console.log('📺 Video loaded - will autoplay if user has started playback');
                       return; // VERY IMPORTANT — prevents playing capped video
                     } else {
                       console.error('⚠️ Failed to refresh playlist, continuing with existing playlist');
@@ -3938,8 +4943,8 @@
             // Load the next video using the same method as initial load
             loadVideoWithQuality(currentIndex);
             
-            // No automatic session start - wait for user to click play to start session
-            console.log('📺 Video loaded - waiting for user to click play to start session');
+            // Video will autoplay if user has already started playback
+            console.log('📺 Video loaded - will autoplay if user has started playback');
           } else {
             console.log('⚠️ Quality switching in progress, skipping video switch');
           }
@@ -3949,10 +4954,6 @@
           if (!isQualitySwitching) {
             loadingIndicator.style.display = "block";
           }
-        });
-
-        player.on("playing", () => {
-          loadingIndicator.style.display = "none";
         });
 
         player.on("error", function() {
@@ -4030,7 +5031,24 @@
         });
 
         player.on("playing", () => {
+          console.log('[PLAYING EVENT] Video actually started playing');
+          localStorage.setItem('charityStream_userStartedPlayback', 'true');
+          localStorage.setItem('charityStream_newUser', 'false');
           loadingIndicator.style.display = "none";
+          
+          // Mark autoplay as succeeded if video is playing
+          // This handles the case where play() succeeded but we didn't catch the promise resolution
+          if (autoplayState === 'failed' || autoplayState === false) {
+            autoplayState = true;
+            console.log('✅ Video playing - autoplay confirmed successful');
+          }
+          
+          // CRITICAL: Re-attach icon when video starts playing (backup to canplay handler)
+          if (currentSponsorInfo && currentSponsorInfo.sponsorWebsite) {
+            setTimeout(() => showSponsorInfoButton(), 50);
+          } else if (currentAdvertiserInfo && currentAdvertiserInfo.click_tracking === true && currentAdvertiserInfo.destination_url) {
+            setTimeout(() => showInfoButton(), 50);
+          }
         });
 
         player.on("error", function() {
@@ -4046,36 +5064,12 @@
             clearTimeout(playEventDebounce);
           }
           playEventDebounce = setTimeout(handlePlayEvent, 500);
-        });
-
-        player.on('pause', () => {
-          isPlaying = false;
-          console.log('⏸️ Video paused');
           
-          // No monitoring to stop
-          
-          // Show the big play button when paused
-          const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
-          if (bigPlayButton) {
-            console.log('🎯 Showing play button on pause');
-            bigPlayButton.style.display = 'flex';
-            bigPlayButton.style.visibility = 'visible';
-            bigPlayButton.style.opacity = '1';
-            bigPlayButton.style.pointerEvents = 'auto';
-          }
-        });
-
-        // Show play button when clicking anywhere on the video while playing
-        player.on('click', () => {
-          if (isPlaying) {
-            const bigPlayButton = player.el().querySelector('.vjs-big-play-button');
-            if (bigPlayButton) {
-              console.log('🎯 Showing play button on click');
-              bigPlayButton.style.display = 'flex';
-              bigPlayButton.style.visibility = 'visible';
-              bigPlayButton.style.opacity = '1';
-              bigPlayButton.style.pointerEvents = 'auto';
-            }
+          // CRITICAL: Re-attach icon when video starts playing (ensures icon persists after autoplay)
+          if (currentSponsorInfo && currentSponsorInfo.sponsorWebsite) {
+            setTimeout(() => showSponsorInfoButton(), 100);
+          } else if (currentAdvertiserInfo && currentAdvertiserInfo.click_tracking === true && currentAdvertiserInfo.destination_url) {
+            setTimeout(() => showInfoButton(), 100);
           }
         });
 
@@ -4087,10 +5081,32 @@
         initializePlaylist().then(() => {
           if (playlist.length > 0) {
             console.log('✅ Playlist loaded, starting first video');
-        loadVideoWithQuality(0);
+            loadVideoWithQuality(0);
           } else {
-            console.error('❌ Playlist is empty, cannot load video');
+            loadFallbackVideo();
           }
+          // Periodic playlist refresh (e.g. ended/paused sponsor campaigns removed) — no playback reset, no tracking changes
+          const PLAYLIST_REFRESH_MS = 3 * 60 * 1000;
+          setInterval(async () => {
+            try {
+              const currentTitle = playlist[currentIndex];
+              await initializePlaylist();
+              const newLen = playlist.length;
+              if (newLen === 0) {
+                loadFallbackVideo();
+                return;
+              }
+              const newIndex = playlist.indexOf(currentTitle);
+              if (newIndex >= 0) {
+                currentIndex = newIndex;
+              } else {
+                currentIndex = 0;
+                loadVideoWithQuality(0);
+              }
+            } catch (e) {
+              console.warn('⚠️ Periodic playlist refresh failed (non-fatal):', e);
+            }
+          }, PLAYLIST_REFRESH_MS);
         }).catch(error => {
           console.error('❌ Failed to initialize playlist:', error);
         });
@@ -4127,6 +5143,7 @@
         scaler.style.height = (H * s) + 'px';
       }
 
+      window.refitFrame = fit;
       window.addEventListener('load', fit, { once: true });
       window.addEventListener('resize', fit);
       // In case fonts/assets shift layout slightly after load
@@ -4139,12 +5156,33 @@
         this.videoPlayer = null;
         this.isActive = false; // Track if pop-ups should be active
         this.videoCount = 0; // Track number of videos played
-        this.popupInterval = 2; // Show popup every 2-3 videos
+        this.popupInterval = 9; // Show popup every 9-10 videos (20-21 for premium)
+        this.isPremiumUser = false; // Set by enablePremiumUI when user is premium
         this.currentPopup = null; // Only one popup at a time
         this.shouldShowPopupAfterTransition = false; // Flag to show popup after video transition
-        this.pauseCheckInterval = null; // Interval to check if video stays paused
+        this.pauseCheckInterval = null; // SINGLETON: interval that enforces pause while popup visible
+        this.pauseInitialTimeout = null; // Timeout for initial pause (100ms)
+        this.pauseDelayedTimeout = null; // Timeout for delayed pause (1500ms)
+        this.imageAds = []; // Array of approved image ads
+        this.currentImageIndex = 0; // Rotate through images
         
         this.init();
+      }
+
+      // Clear ALL pause-enforcement timers. Idempotent and defensive.
+      clearPauseEnforcementTimers() {
+        if (this.pauseCheckInterval != null) {
+          clearInterval(this.pauseCheckInterval);
+          this.pauseCheckInterval = null;
+        }
+        if (this.pauseInitialTimeout != null) {
+          clearTimeout(this.pauseInitialTimeout);
+          this.pauseInitialTimeout = null;
+        }
+        if (this.pauseDelayedTimeout != null) {
+          clearTimeout(this.pauseDelayedTimeout);
+          this.pauseDelayedTimeout = null;
+        }
       }
 
       init() {
@@ -4155,6 +5193,84 @@
 
         // Don't start scheduling pop-ups immediately - wait for authentication check
         console.log('📢 Pop-up ad manager initialized (waiting for authentication)');
+        
+        // Load image ads (will only fetch if authenticated)
+        this.loadImageAds();
+      }
+      
+      // Load approved image ads from API
+      async loadImageAds() {
+        try {
+          const token = typeof authToken !== 'undefined' && authToken ? authToken : getAuthToken();
+          if (!token) {
+            console.log('📢 No auth token available, skipping image ads load');
+            this.imageAds = [];
+            return;
+          }
+          
+          const response = await fetch('/api/images/popup-ads', {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (!response.ok) {
+            console.error('📢 Failed to load image ads:', response.status, response.statusText);
+            this.imageAds = [];
+            return;
+          }
+          
+          const data = await response.json();
+          this.imageAds = data.images || [];
+          console.log(`📢 Loaded ${this.imageAds.length} image ads for popup display`);
+        } catch (error) {
+          console.error('📢 Error loading image ads:', error);
+          this.imageAds = [];
+        }
+      }
+      
+      // Track impression when popup is displayed
+      async trackImpression(advertiserId, imageFilename) {
+        if (!advertiserId || !imageFilename) {
+          console.log('📢 Skipping impression tracking - missing advertiserId or filename');
+          return;
+        }
+        
+        try {
+          const token = typeof authToken !== 'undefined' && authToken ? authToken : getAuthToken();
+          if (!token) {
+            console.log('📢 No auth token available, skipping impression tracking');
+            return;
+          }
+          
+          const response = await fetch('/api/impressions/record', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+              advertiserId: advertiserId,
+              videoFilename: imageFilename // Reuse same parameter name (works for images too)
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            console.log(`📢 Impression tracked for advertiser ${advertiserId}, image: ${imageFilename}`);
+            
+            // CRITICAL: If this impression caused the campaign to become capped, refresh ad list immediately
+            if (data.capped === true) {
+              console.log(`🛑 Campaign ${advertiserId} became capped - refreshing popup ad list`);
+              await this.loadImageAds();
+            }
+          } else {
+            const errorText = await response.text();
+            console.error('📢 Failed to track impression:', response.status, errorText);
+          }
+        } catch (error) {
+          console.error('📢 Error tracking impression:', error);
+        }
       }
 
       // Method to activate pop-ups (called only for authenticated users)
@@ -4163,6 +5279,9 @@
         
         this.isActive = true;
         console.log('📢 Pop-up ads activated for authenticated user');
+        
+        // Reload image ads when activated (in case new ads were approved)
+        this.loadImageAds();
       }
 
       // Method to deactivate pop-ups (called when user logs out)
@@ -4179,24 +5298,30 @@
       }
 
       // Method to track video completion and show popup every 2-3 videos
-      onVideoEnded() {
+      async onVideoEnded() {
         console.log('📢 onVideoEnded called, isActive:', this.isActive);
         if (!this.isActive) {
           console.log('📢 Popup ads not active, skipping video count');
           return;
         }
         
+        // CRITICAL: Refresh image ads when video ends to ensure we have fresh state
+        // This ensures capped/paused/archived ads are removed from rotation immediately
+        await this.loadImageAds();
+        
         this.videoCount++;
         console.log(`📢 Video count: ${this.videoCount}, popup interval: ${this.popupInterval}`);
         
-        // Show popup every 2-3 videos (random interval)
+        // Show popup every 9-10 videos for standard users, 20-21 for premium
         if (this.videoCount >= this.popupInterval) {
           console.log('📢 Time to show popup! Scheduling popup for after video transition...');
           // Don't show popup immediately - wait for next video to load and start playing
           this.shouldShowPopupAfterTransition = true;
-          // Reset count and set next interval (2-3 videos)
+          // Reset count and set next interval
           this.videoCount = 0;
-          this.popupInterval = Math.floor(Math.random() * 2) + 2; // 2 or 3
+          this.popupInterval = this.isPremiumUser
+            ? Math.floor(Math.random() * 2) + 20  // 20 or 21 for premium
+            : Math.floor(Math.random() * 2) + 9;  // 9 or 10 for standard
           console.log(`📢 Next popup will show after ${this.popupInterval} videos`);
         } else {
           console.log(`📢 Need ${this.popupInterval - this.videoCount} more videos before popup`);
@@ -4206,19 +5331,34 @@
       // Method to check if popup should be shown after video starts playing
       onVideoStartedPlaying() {
         if (this.shouldShowPopupAfterTransition) {
+          console.log('[POPUP DEBUG] Popup scheduled after transition');
           console.log('📢 Video started playing, showing scheduled popup...');
           this.shouldShowPopupAfterTransition = false;
-          // Wait a moment for video to be fully playing, then show popup
+          // Wait longer for video to be fully playing and stable after transition
+          // This prevents popup from interrupting transition autoplay
+          // showPopup() will refresh ads before showing, ensuring fresh state
           setTimeout(() => {
             this.showPopup();
-          }, 2000); // Wait 2 seconds for video to be playing smoothly
+          }, 3000); // Increased to 3 seconds to ensure transition autoplay is stable
         }
       }
 
-      showPopup() {
+      async showPopup() {
         // Only show one popup at a time
         if (this.currentPopup) {
           console.log('📢 Popup already active, skipping');
+          return;
+        }
+
+        // SINGLETON: Clear any existing pause-enforcement timers before creating new ones
+        this.clearPauseEnforcementTimers();
+
+        // CRITICAL: Refresh image ads before showing popup to ensure we have current state
+        // This ensures capped/paused/archived ads are not shown
+        await this.loadImageAds();
+
+        // Re-check currentPopup after async load (user might have closed popup)
+        if (this.currentPopup) {
           return;
         }
 
@@ -4236,44 +5376,55 @@
 
         console.log('📢 Video player found:', !!videoPlayer, 'Ready state:', videoPlayer.readyState ? videoPlayer.readyState() : 'N/A');
 
-        // Create new popup
+        // Create new popup (will use freshly loaded imageAds)
+        // Note: createPopup() handles aspect ratio detection and will show popup when ready
         const popup = this.createPopup();
         this.currentPopup = popup;
         
-        console.log('📢 Showing pop-up ad');
+        console.log('📢 Creating pop-up ad');
         
-        // Position pop-up randomly but ensure it's fully visible
-        this.positionPopup(popup.element);
-        
-        // Show pop-up
-        popup.element.classList.add('show');
-        
-        // Pause video immediately when popup appears
-        setTimeout(() => {
+        // Pause video when popup appears - store timeout so it can be cleared on close
+        this.pauseInitialTimeout = setTimeout(() => {
+          this.pauseInitialTimeout = null;
+          if (!this.currentPopup) return; // Popup closed, do nothing
           if (videoPlayer && !videoPlayer.paused()) {
-            console.log('📢 Attempting to pause video for popup...');
-            try {
-              videoPlayer.pause();
-            } catch (error) {
-              console.log('Video pause prevented:', error);
+            const currentTime = videoPlayer.currentTime ? videoPlayer.currentTime() : 0;
+            if (currentTime >= 1.0 || videoPlayer.readyState() >= 3) {
+              console.log('📢 Attempting to pause video for popup...');
+              try {
+                videoPlayer.pause();
+                console.log('📢 Video paused due to popup');
+              } catch (error) {
+                console.log('Video pause prevented:', error);
+              }
+            } else {
+              console.log('📢 Video just started (transition), delaying popup pause...');
+              this.pauseDelayedTimeout = setTimeout(() => {
+                this.pauseDelayedTimeout = null;
+                if (!this.currentPopup) return; // Popup closed, do nothing
+                if (videoPlayer && !videoPlayer.paused()) {
+                  videoPlayer.pause().catch(error => {
+                    console.log('Video pause prevented:', error);
+                  });
+                  console.log('📢 Video paused due to popup (delayed)');
+                }
+              }, 1500);
             }
-            console.log('📢 Video paused due to popup');
           } else if (videoPlayer && videoPlayer.paused()) {
             console.log('📢 Video already paused when popup appeared');
-          } else {
-            console.log('📢 No video player available for popup pause');
           }
-        }, 100); // Increased delay to ensure video player is ready
+        }, 100);
         
-        // Also set up a periodic check to ensure video stays paused while popup is active
+        // SINGLETON: One pause-enforcement interval; cleared above before creation
         this.pauseCheckInterval = setInterval(() => {
-          if (this.currentPopup && videoPlayer && !videoPlayer.paused()) {
+          if (!this.currentPopup) return; // Popup gone - do not pause
+          if (videoPlayer && !videoPlayer.paused()) {
             console.log('📢 Video started playing while popup active, pausing again...');
             videoPlayer.pause().catch(error => {
               console.log('Video pause prevented:', error);
             });
           }
-        }, 500); // Check every 500ms
+        }, 500);
       }
 
       createPopup() {
@@ -4292,25 +5443,188 @@
         // Create content
         const content = document.createElement('div');
         content.className = 'popup-content';
-        content.textContent = 'pop up';
         
+        // Get next image ad (rotate through available ads)
+        let imageAd = null;
+        if (this.imageAds.length > 0) {
+          imageAd = this.imageAds[this.currentImageIndex % this.imageAds.length];
+          this.currentImageIndex++;
+          
+          const img = document.createElement('img');
+          img.className = 'popup-ad-image';
+          img.style.display = 'block';
+          img.alt = 'Advertisement';
+          
+          // Determine aspect ratio and apply appropriate container size
+          // Load image to get dimensions, then apply aspect ratio class
+          const tempImg = new Image();
+          tempImg.onload = () => {
+            const width = tempImg.naturalWidth;
+            const height = tempImg.naturalHeight;
+            const ratio = width / height;
+            
+            // Determine aspect ratio category with ±5% tolerance
+            if (ratio >= 0.95 && ratio <= 1.05) {
+              // 1:1 Square (default, no class needed)
+              popupElement.className = 'popup-ad';
+            } else if (ratio >= 0.75 && ratio <= 0.85) {
+              // 4:5 Portrait
+              popupElement.className = 'popup-ad aspect-portrait';
+            } else if (ratio >= 1.70 && ratio <= 1.80) {
+              // 16:9 Landscape
+              popupElement.className = 'popup-ad aspect-landscape';
+            } else {
+              // Fallback to square if ratio doesn't match (shouldn't happen if validation worked)
+              console.warn('⚠️ Popup ad image has unexpected aspect ratio:', ratio, 'Defaulting to square');
+              popupElement.className = 'popup-ad';
+            }
+            
+            // Set image source after determining aspect ratio
+            img.src = imageAd.imageUrl;
+            
+            // Wait for actual image to load before showing popup
+            img.onload = () => {
+              // Position and show popup after aspect ratio is determined and image is loaded
+              this.positionPopup(popupElement);
+              popupElement.classList.add('show');
+              console.log('📢 Showing pop-up ad with aspect ratio:', popupElement.className);
+            };
+          };
+          tempImg.onerror = () => {
+            console.error('❌ Failed to load image for aspect ratio detection');
+            // Default to square on error
+            popupElement.className = 'popup-ad';
+            img.src = imageAd.imageUrl;
+            // Wait for image to load before showing
+            img.onload = () => {
+              this.positionPopup(popupElement);
+              popupElement.classList.add('show');
+            };
+          };
+          tempImg.src = imageAd.imageUrl;
+          
+          // CRITICAL: Only enable click tracking if clickTracking is TRUE (use boolean, not URL presence)
+          if (imageAd.clickTracking === true && imageAd.destinationUrl) {
+            // Make entire popup clickable (not just the image)
+            popupElement.style.cursor = 'pointer';
+            img.style.cursor = 'pointer';
+            
+            const handleClick = async (e) => {
+              // Don't trigger if clicking the close button
+              if (e.target === closeBtn || closeBtn.contains(e.target)) {
+                return;
+              }
+              
+              console.log(`🔗 Clicking popup ad for campaign ${imageAd.advertiserId}`);
+              
+              // Open destination URL in new tab
+              window.open(imageAd.destinationUrl, '_blank', 'noopener,noreferrer');
+              
+              // Track click via API
+              try {
+                const token = typeof authToken !== 'undefined' && authToken ? authToken : getAuthToken();
+                if (token) {
+                  await fetch('/api/track-click', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                      campaign_id: imageAd.advertiserId
+                    })
+                  });
+                  console.log(`✅ Click tracked for campaign ${imageAd.advertiserId}`);
+                }
+              } catch (error) {
+                console.error('❌ Error tracking click:', error);
+                // Don't block the redirect if tracking fails
+              }
+            };
+            
+            // Attach click handler to entire popup (not just image)
+            popupElement.addEventListener('click', handleClick);
+          } else {
+            // If click tracking is disabled, no click handler
+            console.log('📢 Click tracking disabled for this popup ad');
+          }
+          
+          // Append image to content (before aspect ratio detection)
+          content.appendChild(img);
+          
+          // Append content and close button to popup element
+          popupElement.appendChild(closeBtn);
+          popupElement.appendChild(content);
+          
+          // Add popup to DOM (hidden initially, will be shown after aspect ratio detection)
+          document.body.appendChild(popupElement);
+          
+          // Track impression when popup is created
+          this.trackImpression(imageAd.advertiserId, imageAd.imageFilename);
+        } else {
+          // CRITICAL: If no ads available, disable ALL click tracking behavior
+          // This is a fallback CTA, not an advertiser campaign
+          console.log('📢 No image ads available, showing advertiser CTA (click tracking disabled)');
+          
+          const ctaButton = document.createElement('button');
+          ctaButton.textContent = 'Click here to advertise with us';
+          ctaButton.style.cssText = `
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            background-color: #2F7D31;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+          `;
+          ctaButton.addEventListener('mouseenter', () => {
+            ctaButton.style.backgroundColor = '#276629';
+          });
+          ctaButton.addEventListener('mouseleave', () => {
+            ctaButton.style.backgroundColor = '#2F7D31';
+          });
+          ctaButton.addEventListener('click', () => {
+            // This is NOT an advertiser campaign - just a CTA link
+            // No click tracking should occur
+            window.open('/advertiser.html', '_blank', 'noopener,noreferrer');
+          });
+          content.appendChild(ctaButton);
+        }
+        
+        // Append content and close button to popup element (for both image ads and CTA)
         popupElement.appendChild(closeBtn);
         popupElement.appendChild(content);
         
-        // Add to page
+        // Add popup to DOM
         document.body.appendChild(popupElement);
         
-        // Return popup object
+        // CTA path: no image load to wait for — position and show immediately (same lifecycle as image-ad onload)
+        if (!imageAd) {
+          this.positionPopup(popupElement);
+          popupElement.classList.add('show');
+        }
+        
+        // Return popup object with image ad info
         return {
-          element: popupElement
+          element: popupElement,
+          imageAd: imageAd
         };
       }
 
       positionPopup(popupElement) {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        const popupWidth = 384;
-        const popupHeight = 384;
+        // Get actual popup dimensions (may vary by aspect ratio)
+        const popupWidth = popupElement.offsetWidth || 420;
+        const popupHeight = popupElement.offsetHeight || 420;
 
         // Calculate random position ensuring popup stays within viewport
         const maxX = Math.max(0, viewportWidth - popupWidth);
@@ -4324,21 +5638,26 @@
       }
 
       closePopup() {
-        if (!this.currentPopup) return;
+        // Idempotent: safe to call even if no popup
+        if (!this.currentPopup) {
+          this.clearPauseEnforcementTimers();
+          return;
+        }
 
         console.log('📢 Closing pop-up ad');
         
-        // Clear the pause check interval
-        if (this.pauseCheckInterval) {
-          clearInterval(this.pauseCheckInterval);
-          this.pauseCheckInterval = null;
-          console.log('📢 Cleared pause check interval');
+        // Clear ALL pause-enforcement timers first (no code may pause after this)
+        this.clearPauseEnforcementTimers();
+        
+        // Remove from DOM (defensive: element might already be removed)
+        try {
+          if (this.currentPopup.element && this.currentPopup.element.parentNode) {
+            this.currentPopup.element.remove();
+          }
+        } catch (e) {
+          console.warn('📢 Error removing popup element:', e);
         }
         
-        // Remove from DOM
-        this.currentPopup.element.remove();
-        
-        // Clear current popup reference
         this.currentPopup = null;
 
         // Resume video when popup is closed - try multiple ways to get the player
@@ -4360,22 +5679,25 @@
           } else {
             console.log('📢 No video player available for popup resume');
           }
-        }, 100); // Increased delay to ensure video player is ready
+        }, 100);
       }
 
       cleanup() {
-        console.log('📢 Cleaning up pop-up ad system');
+        // Idempotent: safe to call multiple times
+        this.clearPauseEnforcementTimers();
+        this.shouldShowPopupAfterTransition = false;
         
-        // Clear pause check interval
-        if (this.pauseCheckInterval) {
-          clearInterval(this.pauseCheckInterval);
-          this.pauseCheckInterval = null;
-        }
+        const popup = this.currentPopup;
+        this.currentPopup = null;
         
-        // Close current popup if exists
-        if (this.currentPopup) {
-          this.currentPopup.element.remove();
-          this.currentPopup = null;
+        if (popup) {
+          try {
+            if (popup.element && popup.element.parentNode) {
+              popup.element.remove();
+            }
+          } catch (e) {
+            console.warn('📢 Cleanup: error removing popup element:', e);
+          }
         }
       }
 
@@ -4389,6 +5711,15 @@
       resumePopups() {
         console.log('📢 Pop-up ads resumed');
         this.isActive = true;
+      }
+
+      // Set premium user status — adjusts popup interval
+      setPremiumUser(premium) {
+        this.isPremiumUser = premium;
+        if (premium) {
+          this.popupInterval = Math.floor(Math.random() * 2) + 20;
+          console.log(`👑 Premium: popup interval set to ${this.popupInterval} videos`);
+        }
       }
 
     }
@@ -4708,10 +6039,12 @@
 
     // Add premium status check and UI updates
     let isPremiumUser = false;
+    window._premiumSpeed = 1; // Persists 1x/1.25x preference across video changes
 
     // Check premium status on page load
     async function checkPremiumStatus() {
         const authToken = localStorage.getItem('authToken');
+        console.log('🔍 [PREMIUM] checkPremiumStatus called, authToken present:', !!authToken);
         if (!authToken) return;
 
         try {
@@ -4724,62 +6057,135 @@
             if (response.ok) {
                 const data = await response.json();
                 isPremiumUser = data.user.isPremium || false;
-                console.log('👑 Premium status:', isPremiumUser);
-                
+                console.log('👑 [PREMIUM] isPremium from API:', isPremiumUser, '| raw data.user:', data.user);
+
                 if (isPremiumUser) {
                     enablePremiumUI();
                 }
+            } else {
+                console.warn('⚠️ [PREMIUM] /api/auth/me returned non-OK status:', response.status);
             }
         } catch (error) {
-            console.error('❌ Error checking premium status:', error);
+            console.error('❌ [PREMIUM] Error checking premium status:', error);
         }
     }
 
     // Enable premium UI features
     function enablePremiumUI() {
-        console.log('🎉 Enabling premium features');
-        
-        // Premium users get enhanced features (pop-out, no ads, etc.)
-        // Quality is already HD for all users
-        
-        // Update quality display if element exists
-        const qualityDisplay = document.getElementById('currentQualityDisplay');
-        if (qualityDisplay) {
-            qualityDisplay.textContent = "Premium HD";
+        console.log('🎉 [PREMIUM] enablePremiumUI called');
+
+        // 1. Add speed and PiP controls to the Video.js control bar
+        function addPremiumPlayerControls() {
+            console.log('🔧 [PREMIUM] addPremiumPlayerControls called — player:', player, '| _premiumControlsAdded:', player && player._premiumControlsAdded);
+            if (!player) {
+                console.log('⏳ [PREMIUM] player not ready yet, retrying in 200ms...');
+                setTimeout(addPremiumPlayerControls, 200);
+                return;
+            }
+            if (player._premiumControlsAdded) {
+                console.log('ℹ️ [PREMIUM] Premium controls already added, skipping');
+                return;
+            }
+            player._premiumControlsAdded = true; // Set before ready() to prevent duplicate calls
+            console.log('🔧 [PREMIUM] Calling player.ready() to add controls');
+            player.ready(function() {
+                try {
+                    // Restore native requestPictureInPicture (was overridden to a no-op for non-premium)
+                    const videoEl = player.el().querySelector('video');
+                    if (videoEl) {
+                        delete videoEl.requestPictureInPicture;
+                        console.log('👑 [PREMIUM] Restored native requestPictureInPicture');
+                    }
+
+                    // Mark the player element so CSS can show the PiP control
+                    player.el().classList.add('vjs-premium');
+
+                    // Add 1.25x speed toggle button below the video player
+                    if (!document.getElementById('speedToggleBtn')) {
+                        const speedBtn = document.createElement('button');
+                        speedBtn.id = 'speedToggleBtn';
+                        speedBtn.className = 'speed-btn';
+                        speedBtn.textContent = window._premiumSpeed === 1.25 ? '1.25x Speed' : '1x Speed';
+                        if (window._premiumSpeed === 1.25) speedBtn.classList.add('active');
+                        speedBtn.onclick = function() {
+                            if (window._premiumSpeed === 1.25) {
+                                window._premiumSpeed = 1;
+                                if (player) player.playbackRate(1);
+                                this.textContent = '1x Speed';
+                                this.classList.remove('active');
+                            } else {
+                                window._premiumSpeed = 1.25;
+                                if (player) player.playbackRate(1.25);
+                                this.textContent = '1.25x Speed';
+                                this.classList.add('active');
+                            }
+                        };
+                        const actionButtonsContainer = document.querySelector('.action-buttons-container');
+                        if (actionButtonsContainer) {
+                            actionButtonsContainer.insertBefore(speedBtn, actionButtonsContainer.firstChild);
+                        }
+                    }
+                    console.log('✅ [PREMIUM] Speed toggle button added');
+
+                    // Add PiP toggle only if one isn't already in the DOM
+                    const existingPip = player.controlBar.el().querySelector('.vjs-picture-in-picture-control');
+                    if (!existingPip) {
+                        const pipBtn = player.controlBar.addChild('PictureInPictureToggle', {});
+                        pipBtn.enable();
+                        pipBtn.removeClass('vjs-hidden');
+                        console.log('✅ [PREMIUM] PictureInPictureToggle added');
+                    } else {
+                        console.log('ℹ️ [PREMIUM] PiP button already exists in DOM, skipping addChild');
+                        existingPip.style.display = '';
+                    }
+
+                    player._premiumControlsAdded = true;
+                    console.log('👑 [PREMIUM] Premium controls successfully added to Video.js control bar');
+                } catch (err) {
+                    console.error('❌ [PREMIUM] Error adding controls to control bar:', err);
+                }
+            });
         }
-        
-        // Add pop-out button
-        const videoControls = document.querySelector('.video-controls');
-        if (videoControls && !document.getElementById('popoutBtn')) {
-            const popoutBtn = document.createElement('button');
-            popoutBtn.id = 'popoutBtn';
-            popoutBtn.className = 'popout-btn';
-            popoutBtn.textContent = 'Pop Out';
-            popoutBtn.onclick = requestPictureInPicture;
-            videoControls.appendChild(popoutBtn);
+        addPremiumPlayerControls();
+
+        // 2. Fewer interruptions — 20-21 videos between popups
+        if (popupAdManager) {
+            popupAdManager.setPremiumUser(true);
         }
-        
-        // Update upgrade button text
+
+        // 3. Update upgrade button
         const upgradeBtn = document.querySelector('.upgrade-btn');
         if (upgradeBtn) {
             upgradeBtn.textContent = 'Premium Active';
             upgradeBtn.style.backgroundColor = '#10b981';
             upgradeBtn.onclick = null;
         }
-    }
 
-    // Picture-in-Picture function
-    async function requestPictureInPicture() {
-        try {
-            if (player && player.el()) {
-                await player.el().requestPictureInPicture();
-                console.log('✅ Picture-in-Picture activated');
+        // 4. Gold username on current user leaderboard row
+        const currentUserRow = document.getElementById('currentUserRow');
+        if (currentUserRow) {
+            const usernameSpan = currentUserRow.querySelector('.username.current-user');
+            if (usernameSpan) usernameSpan.classList.add('premium-username');
+        }
+
+        // 5. "Premium Member" badge in Your Impact card
+        const cardTitles = document.querySelectorAll('.card-title');
+        for (const title of cardTitles) {
+            if (title.textContent.trim() === 'Your Impact' && !document.getElementById('premiumBadge')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'premium-card-header';
+                title.parentNode.insertBefore(wrapper, title);
+                wrapper.appendChild(title);
+                const badge = document.createElement('div');
+                badge.id = 'premiumBadge';
+                badge.className = 'premium-badge';
+                badge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="#D4AF37" aria-hidden="true"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>Premium Member`;
+                wrapper.appendChild(badge);
+                break;
             }
-        } catch (error) {
-            console.error('❌ Picture-in-Picture failed:', error);
-            showMessage('Picture-in-Picture not supported or failed', 'error');
         }
     }
+
 
     // Manual debugging commands - available in browser console
     window.debugAPI = {
@@ -4873,5 +6279,6 @@
         console.log('🎬 Page loaded - premium status will be checked on user interaction');
     });
   </script>
+  <script src="/header-dropdown.js"></script>
 </body>
 </html>

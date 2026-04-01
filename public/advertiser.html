@@ -5,6 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>Advertise - Charity Stream</title>
+<script src="https://js.stripe.com/v3/"></script>
 <link href="https://fonts.googleapis.com" rel="preconnect"/>
 <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
@@ -31,18 +32,43 @@
     .container{max-width:1200px;margin:0 auto;padding:0 1rem}
 
     /* Header */
-    .header{position:sticky;top:0;z-index:50;background:rgba(255,255,255,.95);backdrop-filter:blur(10px);border-bottom:1px solid var(--gray-200)}
-    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
-    .logo{font-size:1.5rem;font-weight:700;color:var(--gray-900);letter-spacing:-.025em;text-decoration:none}
-    .nav{margin-left:auto;display:flex;align-items:center;gap:1rem;font-size:.875rem}
-    .nav-hidden-mobile{display:flex;align-items:center;gap:1rem}
-    .welcome{color:var(--gray-900)}
-    .welcome-bold{font-weight:500}
-    .nav-link{color:var(--gray-700);text-decoration:none;padding:.5rem 1rem;border-radius:.375rem;transition:.2s;font-weight:500}
-    .nav-link:hover{background:var(--gray-100);color:var(--gray-900)}
-    .nav-link.active{color:var(--gray-900);font-weight:600}
-    .nav-cta{background:var(--brand-600);color:#fff;padding:.5rem 1rem;border-radius:.5rem;font-weight:600;text-decoration:none;transition:.2s}
-    .nav-cta:hover{background:var(--brand-700);transform:translateY(-1px)}
+    .header {
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 16px 40px;
+      height: 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .logo:hover { color: var(--brand-600); }
+    .nav { display: flex; align-items: center; gap: 1rem; }
+    .nav-hidden-mobile { display: flex; align-items: center; gap: 1rem; }
+    .welcome { color: var(--gray-900); }
+    .welcome-bold { font-weight: 500; }
+    .nav-link { color: var(--gray-700); text-decoration: none; padding: .5rem 1rem; border-radius: .375rem; transition: .2s; font-weight: 500; }
+    .nav-link:hover { background: var(--gray-100); color: var(--gray-900); }
+    .nav-link.active { color: var(--brand-600); }
+    .nav-cta { background: var(--brand-600); color: #fff; padding: .5rem 1rem; border-radius: .5rem; font-weight: 600; text-decoration: none; transition: .2s; }
+    .nav-cta:hover { background: var(--brand-700); transform: translateY(-1px); }
+    @media (max-width: 768px) {
+      .header-container { padding: 16px 20px; }
+      .nav { gap: 16px; }
+      .nav-link { font-size: 14px; }
+      .nav-hidden-mobile { display: none; }
+    }
 
     /* Hero Section */
     .hero{
@@ -63,6 +89,21 @@
       font-weight:600;
       margin-bottom:1.5rem;
       border:1px solid rgba(47,125,49,.2);
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%) !important;
+      background-size: 200% 100% !important;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: 4px;
+      color: transparent !important;
+      border-color: transparent !important;
+      user-select: none;
+      pointer-events: none;
+    }
+    @keyframes skeleton-loading {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
     }
     
     .hero-title{
@@ -678,11 +719,12 @@ h2[id^="why-"] {
 }
 
 </style>
+  <link rel="stylesheet" href="/header-dropdown.css">
 </head>
 <body>
 <!-- Header -->
 <header class="header">
-  <div class="container">
+  <div class="header-container">
     <!-- LOGO (Top Left) -->
     <a href="#" class="logo" id="logoBtn">Charity Stream</a>
     
@@ -710,7 +752,7 @@ h2[id^="why-"] {
 <!-- Hero Section (WIP) -->
 <section class="hero" id="wip">
 <div class="container">
-<div class="hero-eyebrow">Trusted by 50+ Advertisers • $47K+ Donated • 1,247 Active Viewers</div>
+<div class="hero-eyebrow skeleton" id="hero-eyebrow" style="min-width:18em;height:1.75em">&nbsp;</div>
 <h1 class="hero-title">Stop Interrupting. <span class="hero-highlight">Start Connecting.</span></h1>
 <p class="hero-subtitle">Reach people who choose to watch. Every view fuels a cause. Every cause sparks connection. Your brand makes it possible.</p>
 <div class="hero-stats">
@@ -724,12 +766,12 @@ h2[id^="why-"] {
 </div>
 </div>
 <div style="display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-bottom: 2.5rem;">
-<a class="hero-cta" href="#signup">
+<a id="start-campaign-btn" class="hero-cta" href="#signup">
 <span>Start Your Campaign</span>
 <span>→</span>
 </a>
-<a class="hero-cta" href="/advertiser-login.html" style="background: var(--gray-700);">
-<span>Sign Into Advertiser Portal</span>
+<a class="hero-cta" href="/portal.html" style="background: var(--gray-700);">
+<span>Sign Into Portal</span>
 </a>
 </div>
 </div>
@@ -841,6 +883,10 @@ h2[id^="why-"] {
 <div class="form-group">
 <h2 class="section-header">Advertiser Information</h2>
 <div class="input-group">
+<label class="input-label" for="campaignName">Campaign Name *</label>
+<input class="input-field" id="campaignName" placeholder="e.g., Holiday Push 2025" required="" type="text"/>
+</div>
+<div class="input-group">
 <label class="input-label" for="companyName">Company/Organization Name *</label>
 <input class="input-field" id="companyName" placeholder="Enter your business, nonprofit, or personal brand name" required="" type="text"/>
 </div>
@@ -887,7 +933,7 @@ h2[id^="why-"] {
 </div>
 <div class="input-group">
 <label class="input-label" for="budget">Weekly Budget Cap *</label>
-<input class="input-field" id="budget" min="1" placeholder="$100" required="" type="number"/>
+<input class="input-field" id="budget" min="1" placeholder="$100" required="" type="number" onwheel="this.blur()"/>
 <small style="color:var(--gray-600);font-size:.75rem">Campaigns automatically pause when this amount is reached</small>
 </div>
 <div class="input-group">
@@ -935,12 +981,16 @@ h2[id^="why-"] {
 </div>
 <div class="input-group">
 <label class="input-label">Upload Creative *</label>
-<div class="upload-area" onclick="document.getElementById('fileUpload').click()">
+<div class="upload-area" id="uploadArea">
 <div class="upload-icon">📎</div>
 <div class="upload-text">Click to upload your ad creative</div>
-<div class="upload-subtext">MP4 video (max 15s) or PNG/JPG image</div>
+<div class="upload-subtext" id="uploadSubtext">Please select an ad format first</div>
 </div>
-<input accept="video/mp4,image/png,image/jpeg" id="fileUpload" required="" style="display:none" type="file"/>
+<input accept="" id="fileUpload" style="display:none" type="file" aria-label="Upload ad creative"/>
+<div id="fileUploadError" class="url-error" style="display: none; color: #dc3545; font-size: 0.875rem; margin-top: 0.5rem;"></div>
+<div id="aspectRatioHelper" class="aspect-ratio-helper" style="display: none; color: var(--gray-600); font-size: 0.875rem; margin-top: 0.5rem; font-style: italic;">
+  Supported image ratios: Square (1:1), Portrait (4:5), Landscape (16:9)
+</div>
 </div>
 </div>
 <!-- Legal -->
@@ -951,7 +1001,7 @@ h2[id^="why-"] {
 </div>
 <div class="checkbox-group">
 <input class="checkbox" id="terms" required="" type="checkbox"/>
-<label class="checkbox-label" for="terms">I agree to the <a href="#" style="color:var(--brand-600)">Terms and Conditions</a> *</label>
+<label class="checkbox-label" for="terms">I agree to the <a href="https://public.stream.charity/advertiser-terms-and-conditions.pdf" target="_blank" rel="noopener noreferrer" style="color:var(--brand-600)">Terms and Conditions</a> *</label>
 </div>
 </div>
 <button class="submit-btn" type="submit">Submit Campaign</button>
@@ -971,7 +1021,7 @@ h2[id^="why-"] {
 <div class="input-row">
 <div class="input-group">
 <label class="input-label" for="sp-org">Organization (legal name) *</label>
-<input class="input-field" id="sp-org" name="org" placeholder="Charity Stream" required="" type="text"/>
+<input class="input-field" id="sp-org" name="org" placeholder="Charity Stream" required="" type="text" maxlength="21"/>
 </div>
 <div class="input-group">
 <label class="input-label" for="sp-email">Contact Email *</label>
@@ -987,6 +1037,10 @@ h2[id^="why-"] {
 <label class="input-label" for="sp-ein">EIN / Tax ID *</label>
 <input class="input-field" id="sp-ein" name="ein" placeholder="12-3456789" required="" type="text"/>
 </div>
+</div>
+<div class="input-group">
+<label class="input-label" for="sp-tagline">Tagline for video (Optional)</label>
+<input class="input-field" id="sp-tagline" name="tagline" placeholder="A brief message for your video sponsorship" type="text" maxlength="40"/>
 </div>
 </div>
 <!-- Sponsorship Tiers -->
@@ -1053,15 +1107,20 @@ h2[id^="why-"] {
 <!-- Upload Logo -->
 <div class="form-group">
 <h2 class="section-header">Upload Logo *</h2>
-<div class="upload-area" onclick="document.getElementById('sp-logo').click()">
+<div id="logo-upload-area" class="upload-area" onclick="document.getElementById('sp-logo').click()">
 <div class="upload-icon">📎</div>
 <div class="upload-text">Click to upload your logo</div>
 <div class="upload-subtext">SVG or PNG (min 512×512)</div>
 </div>
-<input accept="image/svg+xml,image/png" id="sp-logo" name="logo" required="" style="display:none" type="file"/>
+<p id="logo-upload-error" style="display:none;color:#dc2626;font-size:.875rem;margin-top:.5rem">Please upload a logo to continue</p>
+<input accept="image/svg+xml,image/png" id="sp-logo" name="logo" style="display:none" type="file" aria-label="Upload logo"/>
 </div>
 <!-- Consent -->
 <div class="form-group">
+<div class="checkbox-group">
+<input class="checkbox" id="sp-recurring" name="recurring" type="checkbox"/>
+<label class="checkbox-label" for="sp-recurring">Make this a recurring weekly sponsorship (auto-renew with same tier and amount)</label>
+</div>
 <div class="checkbox-group">
 <input class="checkbox" id="sp-agree" name="agree" required="" type="checkbox"/>
 <label class="checkbox-label" for="sp-agree">
@@ -1069,7 +1128,8 @@ h2[id^="why-"] {
                   </label>
 </div>
 </div>
-<button class="submit-btn" type="submit">Submit Sponsorship Application</button>
+
+<button class="submit-btn" type="submit" id="sponsor-submit-btn">Submit Sponsorship Application</button>
 <div class="sponsor-note"><p style="font-style: italic;"><strong>Tax &amp; Compliance Notice:</strong> Processed by [Fiscal Sponsor Legal Name], a 501(c)(3) public charity (EIN [###-##-####]). Contributions may qualify as tax-deductible, subject to IRS rules. Promotional elements (discounts, CTAs, endorsements) may affect eligibility. All submissions are subject to review and approval per our Terms and Conditions.</p></div>
 </form>
 </div>
@@ -1096,22 +1156,35 @@ h2[id^="why-"] {
 <span><strong>CSR-ready visibility:</strong> neutral name/logo across static site placements, program pages, and socials + a shareable impact recap</span>
 </li>
 </ul>
-<div class="stats-box">
+<div class="stats-box section-hidden" id="platform-stats-box">
 <h4 class="stats-title">Platform Stats</h4>
-<div id="adv-stats"><div class="stat-item"><span class="stat-label">Total Raised</span><span class="stat-value">$832.11</span></div><div class="stat-item"><span class="stat-label">Active Users</span><span class="stat-value">241</span></div><div class="stat-item"><span class="stat-label">View-Through Rate</span><span class="stat-value">100%</span></div><div class="stat-item"><span class="stat-label">Company Advertisers</span><span class="stat-value">27</span></div></div>
+<div id="adv-stats">
+  <div class="stat-item" id="adv-stat-raised">
+    <span class="stat-label">Total Raised</span>
+    <span class="stat-value"><span class="skeleton" id="adv-raised-val" style="display:inline-block;width:3em;height:.9em"> </span></span>
+  </div>
+  <div class="stat-item" id="adv-stat-users">
+    <span class="stat-label">Active Users</span>
+    <span class="stat-value"><span class="skeleton" id="adv-users-val" style="display:inline-block;width:2em;height:.9em"> </span></span>
+  </div>
+  <div class="stat-item" id="adv-stat-advertisers">
+    <span class="stat-label">Company Advertisers</span>
+    <span class="stat-value"><span class="skeleton" id="adv-advertisers-val" style="display:inline-block;width:2em;height:.9em"> </span></span>
+  </div>
+</div>
 <div class="section-hidden" id="sp-stats">
-<div class="stat-item">
-<span class="stat-label">Total Raised</span>
-<span class="stat-value">$832.11</span>
-</div>
-<div class="stat-item">
-<span class="stat-label">Unique Viewers</span>
-<span class="stat-value">241</span>
-</div>
-<div class="stat-item">
-<span class="stat-label">Participating Charities</span>
-<span class="stat-value">12</span>
-</div>
+  <div class="stat-item" id="sp-stat-raised">
+    <span class="stat-label">Total Raised</span>
+    <span class="stat-value"><span class="skeleton" id="sp-raised-val" style="display:inline-block;width:3em;height:.9em"> </span></span>
+  </div>
+  <div class="stat-item" id="sp-stat-users">
+    <span class="stat-label">Active Users</span>
+    <span class="stat-value"><span class="skeleton" id="sp-users-val" style="display:inline-block;width:2em;height:.9em"> </span></span>
+  </div>
+  <div class="stat-item" id="sp-stat-charities">
+    <span class="stat-label">Participating Charities</span>
+    <span class="stat-value"><span class="skeleton" id="sp-charities-val" style="display:inline-block;width:2em;height:.9em"> </span></span>
+  </div>
 </div>
 </div>
 </div>
@@ -1176,6 +1249,56 @@ h2[id^="why-"] {
       showForm('adv');
     })();
 
+    // Define validateClickTrackingUrl function early (before it's used in ad format selection)
+    // Must be OUTSIDE IIFE to be accessible globally
+    // Track if user has attempted to submit (for conditional error display)
+    let hasAttemptedSubmit = false;
+
+    // Validation function for click tracking + destination URL
+    function validateClickTrackingUrl(showErrors = false) {
+      const clickTrackingCheckbox = document.getElementById('clickableLinkEnhancement');
+      const urlInput = document.getElementById('destinationUrl');
+      const urlError = document.getElementById('destinationUrlError');
+      const checkoutButton = document.querySelector('.modal-btn-primary');
+      
+      const clickTrackingEnabled = clickTrackingCheckbox && clickTrackingCheckbox.checked;
+      const urlValue = urlInput ? urlInput.value.trim() : '';
+      const isValid = !clickTrackingEnabled || (clickTrackingEnabled && urlValue.length > 0);
+      
+      // Only show errors if user has attempted submit OR if explicitly requested
+      const shouldShowErrors = showErrors || hasAttemptedSubmit;
+      
+      // Show/hide error message (only if shouldShowErrors is true)
+      if (urlError) {
+        if (clickTrackingEnabled && !urlValue && shouldShowErrors) {
+          urlError.style.display = 'block';
+          if (urlInput) {
+            urlInput.style.borderColor = '#dc3545';
+          }
+        } else {
+          // Hide error if URL is valid OR if errors shouldn't be shown yet
+          urlError.style.display = 'none';
+          if (urlInput) {
+            urlInput.style.borderColor = '';
+          }
+        }
+      }
+      
+      // Enable/disable checkout button (always validate, but don't show errors until submit attempt)
+      if (checkoutButton) {
+        checkoutButton.disabled = !isValid;
+        if (!isValid) {
+          checkoutButton.style.opacity = '0.6';
+          checkoutButton.style.cursor = 'not-allowed';
+        } else {
+          checkoutButton.style.opacity = '1';
+          checkoutButton.style.cursor = 'pointer';
+        }
+      }
+      
+      return isValid;
+    }
+
     // Function for "Select Sponsorship" button
     function __existingActivateSponsor(e) {
       e.preventDefault();
@@ -1186,6 +1309,122 @@ h2[id^="why-"] {
         document.getElementById('header-sp').click();
       }, 500);
     }
+
+    // Ad Format selection - Auto-enable click tracking for static images
+    document.querySelectorAll('input[name="adFormat"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        const clickTrackingCheckbox = document.getElementById('clickableLinkEnhancement');
+        const destinationUrlInput = document.getElementById('destinationUrl');
+        const urlLabel = document.getElementById('urlLabel');
+        const fileUpload = document.getElementById('fileUpload');
+        const uploadArea = document.getElementById('uploadArea');
+        const uploadSubtext = document.getElementById('uploadSubtext');
+        
+        // Update file upload based on ad format
+        const aspectRatioHelper = document.getElementById('aspectRatioHelper');
+        
+        if (this.value === 'video') {
+          // Video format: allow video files only
+          if (fileUpload) {
+            fileUpload.accept = 'video/mp4,video/quicktime,video/webm';
+            fileUpload.disabled = false;
+          }
+          if (uploadSubtext) {
+            uploadSubtext.textContent = 'MP4, MOV, or WebM video (max 15s)';
+          }
+          // Hide aspect ratio helper for video
+          if (aspectRatioHelper) {
+            aspectRatioHelper.style.display = 'none';
+          }
+          if (uploadArea) {
+            uploadArea.style.opacity = '1';
+            uploadArea.style.cursor = 'pointer';
+            uploadArea.style.pointerEvents = 'auto';
+          }
+        } else if (this.value === 'static') {
+          // Static image format: allow image files only
+          if (fileUpload) {
+            fileUpload.accept = 'image/png,image/jpeg,image/jpg,image/webp';
+            fileUpload.disabled = false;
+          }
+          if (uploadSubtext) {
+            uploadSubtext.textContent = 'PNG, JPG, or WebP image';
+          }
+          // Show aspect ratio helper for static images
+          if (aspectRatioHelper) {
+            aspectRatioHelper.style.display = 'block';
+          }
+          if (uploadArea) {
+            uploadArea.style.opacity = '1';
+            uploadArea.style.cursor = 'pointer';
+            uploadArea.style.pointerEvents = 'auto';
+          }
+        }
+        
+        // Clear any existing file if format changed
+        if (fileUpload && fileUpload.files.length > 0) {
+          const currentFile = fileUpload.files[0];
+          const isValid = validateFileType(currentFile, this.value);
+          if (!isValid) {
+            fileUpload.value = '';
+            clearUploadUI();
+            showFileUploadError(`Please upload a ${this.value === 'video' ? 'video' : 'image'} file for ${this.value === 'video' ? 'video' : 'static image'} campaigns.`);
+          }
+        }
+        
+        if (this.value === 'static') {
+          // Auto-enable click tracking for static image campaigns (default, but user can uncheck)
+          if (clickTrackingCheckbox) {
+            clickTrackingCheckbox.checked = true;
+            clickTrackingCheckbox.disabled = false; // Allow user to uncheck
+            console.log('✅ Auto-enabled click tracking for static image format (user can uncheck)');
+          }
+          
+          // Show/hide destination URL field based on click tracking state
+          if (destinationUrlInput && urlLabel) {
+            if (clickTrackingCheckbox && clickTrackingCheckbox.checked) {
+              // Click tracking is checked: show and require URL
+              destinationUrlInput.classList.add('active');
+              destinationUrlInput.required = true;
+              urlLabel.style.display = 'block';
+              // Validate silently after showing URL field (no errors until submit attempt)
+              setTimeout(() => validateClickTrackingUrl(false), 0);
+            } else {
+              // Click tracking is unchecked: hide URL
+              destinationUrlInput.classList.remove('active');
+              destinationUrlInput.required = false;
+              destinationUrlInput.value = '';
+              urlLabel.style.display = 'none';
+              // Clear validation when hiding (reset state)
+              hasAttemptedSubmit = false;
+              validateClickTrackingUrl(false);
+            }
+          }
+        } else if (this.value === 'video') {
+          // For video, allow manual toggle (no auto-check)
+          if (clickTrackingCheckbox) {
+            clickTrackingCheckbox.disabled = false;
+            // Don't auto-check for video - let user decide
+          }
+          
+          // Destination URL visibility depends on click tracking checkbox state
+          if (destinationUrlInput && urlLabel) {
+            if (clickTrackingCheckbox && clickTrackingCheckbox.checked) {
+              // Click tracking is checked: show and require URL
+              destinationUrlInput.classList.add('active');
+              destinationUrlInput.required = true;
+              urlLabel.style.display = 'block';
+            } else {
+              // Click tracking is unchecked: hide URL
+              destinationUrlInput.classList.remove('active');
+              destinationUrlInput.required = false;
+              destinationUrlInput.value = '';
+              urlLabel.style.display = 'none';
+            }
+          }
+        }
+      });
+    });
 
     // CPM option selection (Advertiser form)
     document.querySelectorAll('input[name="cpmRate"]').forEach(radio => {
@@ -1229,16 +1468,65 @@ h2[id^="why-"] {
 
     // File upload (Advertiser)
     const fileUpload = document.getElementById('fileUpload');
+    const uploadArea = document.getElementById('uploadArea');
+    
     if (fileUpload) {
-      fileUpload.addEventListener('change', function() {
-        const uploadArea = this.previousElementSibling;
+      // Initially disable upload until ad format is selected
+      fileUpload.disabled = true;
+      if (uploadArea) {
+        uploadArea.style.opacity = '0.6';
+        uploadArea.style.cursor = 'not-allowed';
+        uploadArea.style.pointerEvents = 'none';
+      }
+      
+      fileUpload.addEventListener('change', async function() {
+        const selectedFormat = document.querySelector('input[name="adFormat"]:checked')?.value;
+        
+        // Check if ad format is selected
+        if (!selectedFormat) {
+          showFileUploadError('Please select an ad format (Video or Static Image) before uploading a file.');
+          this.value = '';
+          return;
+        }
+        
+        // Validate file type
         if (this.files.length > 0) {
-          uploadArea.style.borderColor = 'var(--brand-600)';
-          uploadArea.style.background = 'rgba(47,125,49,.05)';
-          const txt = uploadArea.querySelector('.upload-text');
-          const sub = uploadArea.querySelector('.upload-subtext');
-          if (txt) txt.textContent = this.files[0].name;
-          if (sub) sub.textContent = 'File selected successfully';
+          const file = this.files[0];
+          const isValid = validateFileType(file, selectedFormat);
+          
+          if (!isValid) {
+            const errorMsg = selectedFormat === 'video' 
+              ? 'Please upload a video file (MP4, MOV, or WebM) for video campaigns.'
+              : 'Please upload an image file (PNG, JPG, or WebP) for static image campaigns.';
+            showFileUploadError(errorMsg);
+            this.value = '';
+            clearUploadUI();
+            return;
+          }
+          
+          // For static images, validate aspect ratio
+          if (selectedFormat === 'static') {
+            const aspectResult = await validateAspectRatio(file);
+            if (!aspectResult.valid) {
+              showFileUploadError('Please upload an image with a 1:1, 4:5, or 16:9 aspect ratio.');
+              this.value = '';
+              clearUploadUI();
+              return;
+            }
+            // Store aspect ratio type for later use (optional)
+            this.dataset.aspectRatio = aspectResult.type;
+          }
+          
+          // File is valid - update UI
+          hideFileUploadError();
+          if (uploadArea) {
+            uploadArea.style.borderColor = 'var(--brand-600)';
+            uploadArea.style.background = 'rgba(47,125,49,.05)';
+            const txt = uploadArea.querySelector('.upload-text');
+            const sub = uploadArea.querySelector('.upload-subtext');
+            if (txt) txt.textContent = file.name;
+            if (sub) sub.textContent = 'File selected successfully';
+          }
         }
       });
     }
@@ -1247,7 +1535,8 @@ h2[id^="why-"] {
     const spLogo = document.getElementById('sp-logo');
     if (spLogo) {
       spLogo.addEventListener('change', function() {
-        const uploadArea = this.previousElementSibling;
+        const uploadArea = document.getElementById('logo-upload-area');
+        const logoError = document.getElementById('logo-upload-error');
         if (this.files.length > 0) {
           uploadArea.style.borderColor = 'var(--brand-600)';
           uploadArea.style.background = 'rgba(47,125,49,.05)';
@@ -1255,6 +1544,7 @@ h2[id^="why-"] {
           const sub = uploadArea.querySelector('.upload-subtext');
           if (txt) txt.textContent = this.files[0].name;
           if (sub) sub.textContent = 'File selected successfully';
+          if (logoError) logoError.style.display = 'none';
         }
       });
     }
@@ -1268,8 +1558,70 @@ h2[id^="why-"] {
       
       const submitBtn = this.querySelector('button[type="submit"]');
       const originalText = submitBtn.textContent;
-      submitBtn.textContent = 'Submitting...';
-      submitBtn.disabled = true;
+
+      // Character limit validation
+      const orgInput = document.getElementById('sp-org');
+      const taglineInput = document.getElementById('sp-tagline');
+      if (orgInput && orgInput.value.trim().length > 21) {
+        alert('Organization (legal name) must be 21 characters or fewer.');
+        return;
+      }
+      if (taglineInput && taglineInput.value.trim().length > 40) {
+        alert('Tagline must be 40 characters or fewer.');
+        return;
+      }
+      
+      // Loading animation helper functions (reused from advertiser form)
+      let loadingAnimationInterval = null;
+      const startLoadingAnimation = (button) => {
+        let dots = 0;
+        const updateText = () => {
+          dots = (dots % 3) + 1;
+          button.textContent = '.'.repeat(dots);
+        };
+        updateText();
+        loadingAnimationInterval = setInterval(updateText, 500);
+      };
+      
+      const stopLoadingAnimation = () => {
+        if (loadingAnimationInterval) {
+          clearInterval(loadingAnimationInterval);
+          loadingAnimationInterval = null;
+        }
+      };
+      
+      // Validate Diamond tier amount if selected ($500 min, $50 increments)
+      const selectedTier = document.querySelector('input[name="tier"]:checked')?.value;
+      if (selectedTier === 'Diamond') {
+        const diamondAmount = parseFloat(document.getElementById('sp-amount').value);
+        if (!diamondAmount || diamondAmount < 500) {
+          alert('❌ Diamond tier requires a minimum contribution of $500.');
+          return;
+        }
+        if (diamondAmount % 50 !== 0) {
+          alert('❌ Diamond tier amount must be in $50 increments.');
+          return;
+        }
+      }
+      
+      // Validate logo is uploaded
+      const logoInput = document.getElementById('sp-logo');
+      if (!logoInput.files || logoInput.files.length === 0) {
+        var logoUploadArea = document.getElementById('logo-upload-area');
+        var logoError = document.getElementById('logo-upload-error');
+        if (logoUploadArea) {
+          logoUploadArea.style.borderColor = '#dc2626';
+          logoUploadArea.style.background = 'rgba(220,38,38,.05)';
+        }
+        if (logoError) logoError.style.display = 'block';
+        if (logoUploadArea) logoUploadArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      
+      const isRecurring = document.getElementById('sp-recurring').checked;
+      const submitBtnMain = document.getElementById('sponsor-submit-btn');
+      submitBtnMain.disabled = true;
+      startLoadingAnimation(submitBtnMain);
       
       try {
         const formData = new FormData();
@@ -1277,38 +1629,48 @@ h2[id^="why-"] {
         formData.append('contactEmail', document.getElementById('sp-email').value);
         formData.append('website', document.getElementById('sp-website').value);
         formData.append('einTaxId', document.getElementById('sp-ein').value);
-        formData.append('sponsorTier', document.querySelector('input[name="tier"]:checked')?.value || '');
-        
-        // Add logo file if selected
-        const logoInput = document.getElementById('sp-logo');
-        if (logoInput.files[0]) {
-          formData.append('logo', logoInput.files[0]);
+        formData.append('sponsorTier', selectedTier || '');
+        formData.append('isRecurring', isRecurring);
+        if (document.getElementById('sp-tagline').value.trim()) {
+          formData.append('tagline', document.getElementById('sp-tagline').value.trim());
         }
+        if (selectedTier === 'Diamond') {
+          formData.append('diamondAmount', parseFloat(document.getElementById('sp-amount').value));
+        }
+        formData.append('logo', logoInput.files[0]);
 
-        const response = await fetch('/api/sponsor/submit', {
-          method: 'POST',
-          body: formData
-        });
-
+        const response = await fetch('/api/sponsor/submit', { method: 'POST', body: formData });
         const data = await response.json();
 
-        if (response.ok) {
-          console.log('✅ Sponsor submission successful:', data);
-          alert('✅ Sponsorship application submitted successfully!\n\nOrganization: ' + data.data.organization + '\nEmail: ' + data.data.contactEmail + '\n\nWe will review your application and contact you shortly.');
-          this.reset();
-          
-          // Reset file upload UI
-          const uploadArea = document.querySelector('#sponsorForm .upload-area .upload-text');
-          if (uploadArea) uploadArea.textContent = 'Click to upload your logo';
-        } else {
-          alert('❌ Submission failed: ' + (data.message || 'Please try again later.'));
+        if (!response.ok) {
+          stopLoadingAnimation();
+          submitBtnMain.textContent = originalText;
+          submitBtnMain.disabled = false;
+          alert('❌ Submission failed: ' + (data.message || data.error || 'Please try again later.'));
+          return;
         }
+
+        // Recurring: redirect to Stripe Checkout
+        if (data.checkoutUrl) {
+          stopLoadingAnimation();
+          window.location.href = data.checkoutUrl;
+          return;
+        }
+
+        // Unexpected: no checkoutUrl returned
+        stopLoadingAnimation();
+        submitBtnMain.textContent = originalText;
+        submitBtnMain.disabled = false;
+        alert('❌ Invalid response. Please try again.');
       } catch (error) {
         console.error('❌ Sponsor submission error:', error);
+        stopLoadingAnimation();
+        submitBtnMain.textContent = originalText;
+        submitBtnMain.disabled = false;
+        if (document.getElementById('sponsor-submit-btn')) {
+          document.getElementById('sponsor-submit-btn').style.display = '';
+        }
         alert('❌ Network error: Unable to submit application. Please check your connection and try again.');
-      } finally {
-        submitBtn.textContent = originalText;
-        submitBtn.disabled = false;
       }
     });
 
@@ -1380,9 +1742,12 @@ function activateSponsor(e) {
       </div>
       <div class="url-label" id="urlLabel">Enter your destination URL:</div>
       <input type="url" id="destinationUrl" name="destinationUrl" class="url-input" placeholder="https://yourwebsite.com/landing-page" onclick="event.stopPropagation()">
+      <div id="destinationUrlError" class="url-error" style="display: none; color: #dc3545; font-size: 0.875rem; margin-top: 0.5rem;">
+        A destination URL is required when click tracking is enabled.
+      </div>
     </div>
 
-    <div class="enhancement-option">
+    <div class="enhancement-option" id="expeditedEnhancementOption">
       <div class="enhancement-header">
         <input type="checkbox" id="expeditedEnhancement" class="enhancement-checkbox">
         <div>
@@ -1481,9 +1846,35 @@ function activateSponsor(e) {
 </style>
 
 <script>
+// validateClickTrackingUrl and hasAttemptedSubmit are now defined in earlier script tag
 // Replace the existing advertiser form submission handler with this:
 document.getElementById('advertiserForm').addEventListener('submit', function(e) {
   e.preventDefault();
+  
+  // Validate ad format is selected
+  const selectedFormat = document.querySelector('input[name="adFormat"]:checked')?.value;
+  if (!selectedFormat) {
+    alert('Please select an ad format (Video or Static Image) before submitting.');
+    return;
+  }
+  
+  // Validate file is uploaded
+  const fileUpload = document.getElementById('fileUpload');
+  if (!fileUpload || !fileUpload.files || fileUpload.files.length === 0) {
+    alert('Please upload your ad creative before submitting.');
+    return;
+  }
+  
+  // Validate file type matches ad format
+  const file = fileUpload.files[0];
+  if (!validateFileType(file, selectedFormat)) {
+    const errorMsg = selectedFormat === 'video'
+      ? 'Please upload a video file (MP4, MOV, or WebM) for video campaigns.'
+      : 'Please upload an image file (PNG, JPG, or WebP) for static image campaigns.';
+    alert(errorMsg);
+    return;
+  }
+  
   showEnhancementModal();
 });
 
@@ -1506,8 +1897,25 @@ function setupEnhancementHandlers() {
     checkbox.addEventListener('change', function() {
       const type = this.id.replace('Enhancement', '');
       toggleEnhancement(type, this.checked);
+      // Validate after toggle (don't show errors until submit attempt)
+      if (type === 'clickableLink') {
+        validateClickTrackingUrl(false);
+      }
     });
   });
+  
+  // Set up validation on destination URL input change
+  const destinationUrlInput = document.getElementById('destinationUrl');
+  if (destinationUrlInput) {
+    destinationUrlInput.addEventListener('input', function() {
+      // Always validate on input (errors shown if hasAttemptedSubmit is true)
+      validateClickTrackingUrl(false);
+    });
+    destinationUrlInput.addEventListener('blur', function() {
+      // Always validate on blur (errors shown if hasAttemptedSubmit is true)
+      validateClickTrackingUrl(false);
+    });
+  }
 }
 
 // Updated toggleEnhancement function
@@ -1529,23 +1937,204 @@ function toggleEnhancement(type, shouldBeChecked) {
   if (type === 'clickableLink') {
     const urlInput = document.getElementById('destinationUrl');
     const urlLabel = document.getElementById('urlLabel');
+    const urlError = document.getElementById('destinationUrlError');
     
     if (checkbox.checked) {
+      // Click tracking enabled: show and require destination URL
       urlInput.classList.add('active');
       urlLabel.classList.add('active');
+      urlInput.required = true;
+      // Validate URL when checkbox is checked (don't show errors until submit attempt)
+      validateClickTrackingUrl(false);
     } else {
+      // Click tracking disabled: hide/clear destination URL
       urlInput.classList.remove('active');
       urlLabel.classList.remove('active');
       urlInput.value = '';
+      urlInput.required = false;
+      // Hide error when click tracking is disabled
+      if (urlError) {
+        urlError.style.display = 'none';
+      }
+      // Reset submission attempt state when click tracking is disabled
+      hasAttemptedSubmit = false;
+      // Validate silently
+      validateClickTrackingUrl(false);
     }
   }
 }
 
+// validateClickTrackingUrl and hasAttemptedSubmit are now defined in earlier script tag
+// File upload validation functions (must be defined before use)
+function validateFileType(file, adFormat) {
+  if (!file || !adFormat) return false;
+  
+  const fileName = file.name.toLowerCase();
+  const fileType = file.type.toLowerCase();
+  
+  if (adFormat === 'video') {
+    // Video files: .mp4, .mov, .webm
+    const videoExtensions = ['.mp4', '.mov', '.webm'];
+    const videoMimeTypes = ['video/mp4', 'video/quicktime', 'video/webm'];
+    const hasValidExtension = videoExtensions.some(ext => fileName.endsWith(ext));
+    const hasValidMimeType = videoMimeTypes.some(mime => fileType.startsWith(mime));
+    return hasValidExtension || hasValidMimeType;
+  } else if (adFormat === 'static') {
+    // Image files: .png, .jpg, .jpeg, .webp
+    const imageExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
+    const imageMimeTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
+    const hasValidExtension = imageExtensions.some(ext => fileName.endsWith(ext));
+    const hasValidMimeType = imageMimeTypes.some(mime => fileType.startsWith(mime));
+    return hasValidExtension || hasValidMimeType;
+  }
+  
+  return false;
+}
+
+// Aspect ratio validation for static images
+// Returns: { valid: boolean, type: 'square'|'portrait'|'landscape'|null }
+function validateAspectRatio(file) {
+  return new Promise((resolve) => {
+    if (!file || !file.type.startsWith('image/')) {
+      resolve({ valid: false, type: null });
+      return;
+    }
+    
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      
+      const width = img.naturalWidth;
+      const height = img.naturalHeight;
+      const ratio = width / height;
+      
+      // Allowed ratios with ±5% tolerance
+      // 1:1 (square) → 0.95 - 1.05
+      // 4:5 (portrait) → 0.75 - 0.85
+      // 16:9 (landscape) → 1.70 - 1.80
+      
+      if (ratio >= 0.95 && ratio <= 1.05) {
+        resolve({ valid: true, type: 'square' });
+      } else if (ratio >= 0.75 && ratio <= 0.85) {
+        resolve({ valid: true, type: 'portrait' });
+      } else if (ratio >= 1.70 && ratio <= 1.80) {
+        resolve({ valid: true, type: 'landscape' });
+      } else {
+        resolve({ valid: false, type: null });
+      }
+    };
+    
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve({ valid: false, type: null });
+    };
+    
+    img.src = objectUrl;
+  });
+}
+
+function showFileUploadError(message) {
+  const errorDiv = document.getElementById('fileUploadError');
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+  }
+}
+
+function hideFileUploadError() {
+  const errorDiv = document.getElementById('fileUploadError');
+  if (errorDiv) {
+    errorDiv.style.display = 'none';
+  }
+}
+
+function clearUploadUI() {
+  const uploadArea = document.getElementById('uploadArea');
+  if (uploadArea) {
+    uploadArea.style.borderColor = '';
+    uploadArea.style.background = '';
+    const txt = uploadArea.querySelector('.upload-text');
+    const sub = uploadArea.querySelector('.upload-subtext');
+    if (txt) txt.textContent = 'Click to upload your ad creative';
+    if (sub) {
+      const selectedFormat = document.querySelector('input[name="adFormat"]:checked')?.value;
+      if (selectedFormat === 'video') {
+        sub.textContent = 'MP4, MOV, or WebM video (max 15s)';
+      } else if (selectedFormat === 'static') {
+        sub.textContent = 'PNG, JPG, or WebP image';
+      } else {
+        sub.textContent = 'Please select an ad format first';
+      }
+    }
+  }
+}
+
+function handleUploadClick(e) {
+  console.log('handleUploadClick called'); // Debug log
+  // Prevent any default behavior
+  if (e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
+  const selectedFormat = document.querySelector('input[name="adFormat"]:checked')?.value;
+  const fileUpload = document.getElementById('fileUpload');
+  
+  console.log('Upload clicked, selectedFormat:', selectedFormat, 'fileUpload:', fileUpload); // Debug log
+  
+  // Check if ad format is selected (only requirement to open file picker)
+  if (!selectedFormat) {
+    showFileUploadError('Please select an ad format (Video or Static Image) before uploading a file.');
+    return;
+  }
+  
+  if (!fileUpload) {
+    console.error('fileUpload input not found');
+    return;
+  }
+  
+  // Ensure file input is enabled (defense-in-depth)
+  fileUpload.disabled = false;
+  
+  console.log('Opening file picker...'); // Debug log
+  // Open file picker (validation happens after file is selected)
+  fileUpload.click(); // ✅ MUST open native file picker
+  console.log('fileUpload.click() called'); // Debug log
+}
+
+// Attach click handler to upload area (after function is defined)
+(function attachUploadHandler() {
+  const uploadArea = document.getElementById('uploadArea');
+  if (uploadArea) {
+    console.log('handleUploadClick attached'); // Debug log
+    uploadArea.addEventListener('click', handleUploadClick);
+  } else {
+    console.error('uploadArea not found when attaching handler');
+  }
+})();
+
 // Modal functions
 function showEnhancementModal() {
+  const recurringWeekly = document.getElementById('recurringSpend')?.checked === true;
+  const expeditedOptionEl = document.getElementById('expeditedEnhancementOption');
+  const expeditedCheckbox = document.getElementById('expeditedEnhancement');
+  if (expeditedOptionEl) {
+    expeditedOptionEl.style.display = recurringWeekly ? '' : 'none';
+  }
+  if (!recurringWeekly && expeditedCheckbox) {
+    expeditedCheckbox.checked = false;
+    expeditedOptionEl?.classList.remove('selected');
+  }
+
   document.getElementById('enhancementModal').classList.add('active');
   document.body.style.overflow = 'hidden';
   setupEnhancementHandlers(); // Initialize the handlers
+  // Reset submission attempt state when modal opens
+  hasAttemptedSubmit = false;
+  // Validate silently (no error display) when modal opens
+  setTimeout(() => validateClickTrackingUrl(false), 0);
 }
 
 function closeEnhancementModal() {
@@ -1557,14 +2146,49 @@ function closeEnhancementModal() {
 async function proceedToCheckout() {
   console.log('🚀 ===== PROCEEDING TO CHECKOUT =====');
   
+  // Helper function to start loading animation
+  let loadingAnimationInterval = null;
+  const startLoadingAnimation = (button) => {
+    let dots = 0;
+    const updateText = () => {
+      dots = (dots % 3) + 1;
+      button.textContent = '.'.repeat(dots);
+    };
+    updateText(); // Show initial state
+    loadingAnimationInterval = setInterval(updateText, 500);
+  };
+  
+  const stopLoadingAnimation = () => {
+    if (loadingAnimationInterval) {
+      clearInterval(loadingAnimationInterval);
+      loadingAnimationInterval = null;
+    }
+  };
+  
   try {
+    // Mark that user has attempted to submit
+    hasAttemptedSubmit = true;
+    
+    // Validate click tracking + destination URL (show errors now)
+    if (!validateClickTrackingUrl(true)) {
+      alert('A destination URL is required when click tracking is enabled.');
+      return;
+    }
+    
     // Collect all form data
     const formData = collectFormData();
     console.log('📝 Form data collected:', formData);
     
     // Validate required fields
-    if (!formData.email || !formData.companyName || !formData.firstName || !formData.lastName) {
-      alert('Please fill in all required fields (Company Name, Email, First Name, Last Name)');
+    if (!formData.email || !formData.campaignName || !formData.companyName || !formData.firstName || !formData.lastName) {
+      alert('Please fill in all required fields (Campaign Name, Company Name, Email, First Name, Last Name)');
+      return;
+    }
+    
+    // Validate ad format is selected
+    const selectedFormat = document.querySelector('input[name="adFormat"]:checked')?.value;
+    if (!selectedFormat) {
+      alert('Please select an ad format (Video or Static Image) before proceeding to checkout.');
       return;
     }
     
@@ -1575,11 +2199,21 @@ async function proceedToCheckout() {
       return;
     }
     
-    // Show loading state
+    // Validate file type matches ad format
+    const selectedFile = fileInput.files[0];
+    if (!validateFileType(selectedFile, selectedFormat)) {
+      const errorMsg = selectedFormat === 'video'
+        ? 'Please upload a video file (MP4, MOV, or WebM) for video campaigns.'
+        : 'Please upload an image file (PNG, JPG, or WebP) for static image campaigns.';
+      alert(errorMsg);
+      return;
+    }
+    
+    // Show loading state with animation
     const checkoutButton = document.querySelector('.modal-btn-primary');
     const originalText = checkoutButton.textContent;
-    checkoutButton.textContent = 'Uploading file...';
     checkoutButton.disabled = true;
+    startLoadingAnimation(checkoutButton);
     
     // STEP 1: Get presigned URL for direct R2 upload (bypasses Vercel 4.5MB limit)
     console.log('📤 Step 1: Getting presigned URL for direct R2 upload...');
@@ -1596,6 +2230,7 @@ async function proceedToCheckout() {
     const authToken = localStorage.getItem('authToken');
     if (!authToken) {
       console.error('❌ No auth token found');
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert('Please log in to upload files.');
@@ -1642,6 +2277,7 @@ async function proceedToCheckout() {
           error: errorMessage
         });
         
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
         alert(`Upload preparation failed: ${errorMessage}`);
@@ -1658,6 +2294,7 @@ async function proceedToCheckout() {
       
     } catch (presignError) {
       console.error('❌ Presign request error:', presignError);
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert('Failed to prepare upload. Please try again.');
@@ -1666,6 +2303,7 @@ async function proceedToCheckout() {
     
     if (!presignData.success || !presignData.uploadUrl || !presignData.publicUrl) {
       console.error('❌ Presign response missing required fields:', presignData);
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert('Upload preparation did not return valid URLs. Please try again.');
@@ -1673,7 +2311,6 @@ async function proceedToCheckout() {
     }
     
     // STEP 2: Upload file directly to R2 using presigned URL
-    checkoutButton.textContent = 'Uploading file to R2...';
     console.log('📤 Step 2: Uploading file directly to R2...');
     console.log('📤 Upload URL:', presignData.uploadUrl.substring(0, 100) + '...');
     
@@ -1699,6 +2336,7 @@ async function proceedToCheckout() {
           error: errorText
         });
         
+        stopLoadingAnimation();
         checkoutButton.textContent = originalText;
         checkoutButton.disabled = false;
         alert(`File upload failed (status ${uploadResponse.status}). Please try again.`);
@@ -1710,6 +2348,7 @@ async function proceedToCheckout() {
       
     } catch (uploadError) {
       console.error('❌ Direct R2 upload error:', uploadError);
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert('File upload failed. Please check your connection and try again.');
@@ -1726,7 +2365,6 @@ async function proceedToCheckout() {
     };
     
     // STEP 3: Create checkout session with file URL (not the file itself)
-    checkoutButton.textContent = 'Creating checkout session...';
     console.log('🚀 Step 3: Proceeding to checkout...');
     console.log('📤 Upload success - file URL:', uploadData.fileUrl);
     console.log('📤 Upload success - file name:', uploadData.fileName);
@@ -1787,6 +2425,7 @@ async function proceedToCheckout() {
         error: errorMessage
       });
       
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert(`Checkout failed: ${errorMessage}`);
@@ -1803,6 +2442,7 @@ async function proceedToCheckout() {
       });
     } catch (jsonError) {
       console.error('❌ Failed to parse checkout response as JSON:', jsonError);
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert('Checkout succeeded but received invalid response. Please try again.');
@@ -1812,6 +2452,7 @@ async function proceedToCheckout() {
     // Validate checkout result
     if (!checkoutResult.sessionId || !checkoutResult.checkoutUrl) {
       console.error('❌ Checkout result missing required fields:', checkoutResult);
+      stopLoadingAnimation();
       checkoutButton.textContent = originalText;
       checkoutButton.disabled = false;
       alert('Checkout session creation did not return a valid session. Please try again.');
@@ -1825,10 +2466,12 @@ async function proceedToCheckout() {
       advertiserId: checkoutResult.advertiserId
     });
     console.log('🛒 Redirecting to Stripe Checkout...');
+    stopLoadingAnimation();
     window.location.href = checkoutResult.checkoutUrl;
     
   } catch (error) {
     console.error('❌ Error in proceedToCheckout:', error);
+    stopLoadingAnimation();
     alert('Failed to create checkout session: ' + (error.message || 'Please try again.'));
     
     // Restore button state
@@ -1847,6 +2490,7 @@ function collectFormData() {
   
   // Get basic form data
   const data = {
+    campaignName: document.getElementById('campaignName').value,
     companyName: document.getElementById('companyName').value,
     websiteUrl: document.getElementById('websiteUrl').value,
     firstName: document.getElementById('firstName').value,
@@ -1881,12 +2525,12 @@ function collectFormData() {
 }
 
 function submitWithEnhancements() {
-  // Validate URL if clickable link is selected
-  const clickableLink = document.getElementById('clickableLinkEnhancement').checked;
-  const urlInput = document.getElementById('destinationUrl');
+  // Mark that user has attempted to submit
+  hasAttemptedSubmit = true;
   
-  if (clickableLink && !urlInput.value) {
-    alert('Please enter a destination URL for your clickable link.');
+  // Validate click tracking + destination URL (show errors now)
+  if (!validateClickTrackingUrl(true)) {
+    alert('A destination URL is required when click tracking is enabled.');
     return;
   }
   
@@ -2097,17 +2741,180 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// ── Advertiser page public stats ──────────────────────────────────────
+var _advHasStats = false;
+var _spHasStats  = false;
+
+function formatStatK(amount) {
+  if (amount >= 1000) {
+    var k = amount / 1000;
+    return '$' + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1)) + 'K';
+  }
+  return '$' + Math.round(amount);
+}
+
+function formatDonatedAdv(amount) {
+  if (amount >= 1000) {
+    var k = amount / 1000;
+    return '$' + (k % 1 === 0 ? k.toFixed(0) : k.toFixed(1).replace(/\.0$/, '')) + 'K+ Donated';
+  }
+  return '$' + Math.round(amount) + ' Donated';
+}
+
+function updateStatsBox(type) {
+  var box = document.getElementById('platform-stats-box');
+  if (!box) return;
+  var hasStats = type === 'adv' ? _advHasStats : _spHasStats;
+  box.classList.toggle('section-hidden', !hasStats);
+}
+
+async function loadAdvertiserStats() {
+  try {
+    var res = await fetch('/api/advertiser/public-stats');
+    var data = await res.json();
+
+    var donated    = data.donatedToDate || 0;
+    var userCount  = data.userCount || 0;
+    var advCount   = data.advertiserCount || 0;
+    var charityCount = data.charityApplicationsCount || 0;
+
+    // ── Eyebrow ────────────────────────────────────────────────────────
+    var segments = [];
+    if (advCount > 25) segments.push('Trusted by ' + (advCount > 50 ? '50+' : advCount) + ' Advertisers');
+    if (donated > 0)   segments.push(formatDonatedAdv(donated));
+    if (userCount >= 10) segments.push(userCount.toLocaleString() + ' active users');
+    var eyebrow = document.getElementById('hero-eyebrow');
+    if (eyebrow) {
+      if (segments.length > 0) {
+        eyebrow.textContent = segments.join(' • ');
+        eyebrow.classList.remove('skeleton');
+        eyebrow.style.minWidth = '';
+        eyebrow.style.height = '';
+      } else {
+        eyebrow.style.display = 'none';
+      }
+    }
+
+    // ── Advertiser stats card ─────────────────────────────────────────
+    var advCount2 = 0;
+
+    if (donated > 0) {
+      var el = document.getElementById('adv-raised-val');
+      el.textContent = formatStatK(donated);
+      el.classList.remove('skeleton');
+      advCount2++;
+    } else {
+      document.getElementById('adv-stat-raised').style.display = 'none';
+    }
+
+    if (userCount > 0) {
+      var el = document.getElementById('adv-users-val');
+      el.textContent = userCount.toLocaleString();
+      el.classList.remove('skeleton');
+      advCount2++;
+    } else {
+      document.getElementById('adv-stat-users').style.display = 'none';
+    }
+
+    if (advCount >= 10) {
+      var el = document.getElementById('adv-advertisers-val');
+      el.textContent = advCount;
+      el.classList.remove('skeleton');
+      advCount2++;
+    } else {
+      document.getElementById('adv-stat-advertisers').style.display = 'none';
+    }
+
+    _advHasStats = advCount2 > 0;
+
+    // ── Sponsor stats card ────────────────────────────────────────────
+    var spCount = 0;
+
+    if (donated > 0) {
+      var el = document.getElementById('sp-raised-val');
+      el.textContent = formatStatK(donated);
+      el.classList.remove('skeleton');
+      spCount++;
+    } else {
+      document.getElementById('sp-stat-raised').style.display = 'none';
+    }
+
+    if (userCount > 0) {
+      var el = document.getElementById('sp-users-val');
+      el.textContent = userCount.toLocaleString();
+      el.classList.remove('skeleton');
+      spCount++;
+    } else {
+      document.getElementById('sp-stat-users').style.display = 'none';
+    }
+
+    if (charityCount > 0) {
+      var el = document.getElementById('sp-charities-val');
+      el.textContent = charityCount;
+      el.classList.remove('skeleton');
+      spCount++;
+    } else {
+      document.getElementById('sp-stat-charities').style.display = 'none';
+    }
+
+    _spHasStats = spCount > 0;
+
+    // Show stats box for whichever tab is currently active
+    var isAdvActive = document.getElementById('header-adv').classList.contains('active');
+    updateStatsBox(isAdvActive ? 'adv' : 'sp');
+
+    // Keep stats box in sync when tabs are switched
+    document.getElementById('header-adv').addEventListener('click', function() { updateStatsBox('adv'); });
+    document.getElementById('header-sp').addEventListener('click',  function() { updateStatsBox('sp');  });
+
+  } catch (e) {
+    var eyebrow = document.getElementById('hero-eyebrow');
+    if (eyebrow) eyebrow.style.display = 'none';
+    // Leave stats box hidden on error
+  }
+}
+// ── End advertiser page public stats ──────────────────────────────────
+
 // Initialize page
 document.addEventListener('DOMContentLoaded', () => {
   setInitialUIState();
+  loadAdvertiserStats();
   
   // Check if user returned from successful payment
   const urlParams = new URLSearchParams(window.location.search);
   if (urlParams.get('payment_success') === 'true') {
-    // Show confirmation modal
+    // Show advertiser confirmation modal
     showConfirmation();
     // Clean up URL (remove query parameter)
     window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  // Sponsor: show success modal only after Stripe checkout completes (success_url)
+  if (urlParams.get('sponsor_success') === 'true') {
+    showSponsorSuccess();
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  
+  // Check if user came from dashboard to start new campaign
+  const fromDashboard = urlParams.get('fromDashboard');
+  const autoStart = urlParams.get('autoStart');
+  
+  if (fromDashboard === 'true' || autoStart === 'true') {
+    // Find the "Start Your Campaign" button
+    const startBtn = document.getElementById('start-campaign-btn');
+    if (startBtn) {
+      // Auto-click it after a short delay to ensure layout loads
+      setTimeout(() => {
+        startBtn.click();
+      }, 300);
+    } else {
+      // Fallback: scroll to form if button not found
+      const signupSection = document.getElementById('signup');
+      if (signupSection) {
+        setTimeout(() => {
+          signupSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
   }
 });
 </script>
@@ -2135,8 +2942,24 @@ document.addEventListener('DOMContentLoaded', () => {
   </div>
 </div>
 
+<!-- Sponsor Success Modal (post-Stripe; same styling as advertiser confirmation) -->
+<div class="confirmation-overlay" id="sponsorSuccessModal">
+  <div class="confirmation-modal">
+    <div class="confirmation-icon">
+      <span class="checkmark">✓</span>
+    </div>
+    <h2 class="confirmation-title">Thanks, you're all set.</h2>
+    <p class="confirmation-message">Your sponsor submission is in.</p>
+    <div class="next-step-box">
+      <div class="next-step-label">NEXT STEP:</div>
+      <div class="next-step-text">Check your email for updates.</div>
+    </div>
+    <button class="confirmation-button" onclick="closeSponsorSuccess()">Done</button>
+  </div>
+</div>
+
 <script>
-  // Show confirmation modal
+  // Show confirmation modal (advertiser only)
   function showConfirmation() {
     const modal = document.getElementById('confirmationModal');
     if (modal) {
@@ -2154,17 +2977,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  // Sponsor success modal (shown only after Stripe checkout succeeds)
+  function showSponsorSuccess() {
+    const modal = document.getElementById('sponsorSuccessModal');
+    if (modal) {
+      modal.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function closeSponsorSuccess() {
+    const modal = document.getElementById('sponsorSuccessModal');
+    if (modal) {
+      modal.classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+  }
+
   // Close modal when clicking outside
   document.addEventListener('click', function(e) {
     if (e.target.classList.contains('confirmation-overlay')) {
-      closeConfirmation();
+      if (e.target.id === 'sponsorSuccessModal') {
+        closeSponsorSuccess();
+      } else {
+        closeConfirmation();
+      }
     }
   });
 
   // Close modal with Escape key
   document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-      closeConfirmation();
+      const sponsorModal = document.getElementById('sponsorSuccessModal');
+      if (sponsorModal && sponsorModal.classList.contains('active')) {
+        closeSponsorSuccess();
+      } else {
+        closeConfirmation();
+      }
     }
   });
 </script>
@@ -2375,5 +3224,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 </style>
 
+  <script src="/header-dropdown.js"></script>
 </body>
 </html>
