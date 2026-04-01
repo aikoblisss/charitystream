@@ -471,7 +471,9 @@
 
       function formatStartDate(dateStr) {
         if (!dateStr) return 'soon';
-        const d = new Date(dateStr);
+        // Parse as local date to avoid UTC-to-local shift (e.g. "2026-03-30" → Mar 29 in Pacific)
+        const parts = String(dateStr).slice(0, 10).split('-');
+        const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       }
 
