@@ -9519,7 +9519,7 @@ app.get('/api/sponsor/dashboard', requireSponsorAuth, async (req, res) => {
       status = 'APPROVED'; // video ready, waiting for trial to end
     } else if ((campaignStatus === 'approved' || campaignStatus === 'active') && generationCompleted && billingStatus === 'paid') {
       const todayStr = new Date().toISOString().slice(0, 10);
-      const startWeekStr = row.start_week ? String(row.start_week).slice(0, 10) : null;
+      const startWeekStr = row.start_week ? new Date(row.start_week).toISOString().slice(0, 10) : null;
       status = (startWeekStr && startWeekStr > todayStr) ? 'APPROVED' : 'LIVE';
     } else if (campaignStatus === 'pending_approval') {
       status = 'PENDING_APPROVAL';
@@ -10023,7 +10023,7 @@ app.get('/api/sponsor/campaigns', requireSponsorAuth, async (req, res) => {
       const billingStatus = (row.billing_status || '').toLowerCase();
       const genComplete = row.generation_completed === true;
       const todayStr = new Date().toISOString().slice(0, 10);
-      const startWeekStr = row.start_week ? String(row.start_week).slice(0, 10) : null;
+      const startWeekStr = row.start_week ? new Date(row.start_week).toISOString().slice(0, 10) : null;
       const startWeekFuture = startWeekStr && startWeekStr > todayStr;
       if (cs === 'rejected') status = 'REJECTED';
       else if (cs === 'ended' || cs === 'canceled') status = 'ENDED';
