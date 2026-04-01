@@ -159,8 +159,14 @@
       <button type="submit" class="submit-btn" id="submitBtn">Sign In</button>
     </form>
     
+    <div class="home-link" style="margin-top: 15px;">
+      <a href="/portal/request-password-reset?role=advertiser" style="color: #2F7D31; text-decoration: none; font-weight: 500; font-size: 14px;">
+        Forgot or never created your password? Click here.
+      </a>
+    </div>
+    
     <div class="home-link">
-      <a href="/">← Back to Homepage</a>
+      <a href="/portal.html">← Back</a>
     </div>
   </div>
   
@@ -210,12 +216,17 @@
         const data = await response.json();
         
         if (response.ok && data.success) {
-          // Store advertiser portal token
+          // Store advertiser portal token (matching React portal key: advertiserPortalToken)
           localStorage.setItem('advertiserPortalToken', data.token);
-          localStorage.setItem('advertiserId', data.advertiserId);
+          localStorage.setItem('advertiserId', String(data.advertiserId));
           
           // Redirect to portal
-          window.location.href = '/advertiser-portal.html';
+          window.location.href = '/portal';
+        } else if (data.needsPassword) {
+          // User needs to create a password
+          showError('You need to create a password. Check your email or request a new link.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Sign In';
         } else {
           showError(data.error || 'Invalid email or password. Please try again.');
           submitBtn.disabled = false;

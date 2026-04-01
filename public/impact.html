@@ -106,7 +106,16 @@
     }
     
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Inter',sans-serif;color:var(--gray-900);background:#fff;line-height:1.5}
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      font-feature-settings: 'liga' 1, 'calt' 1, 'tnum' 1;
+      background: #ffffff;
+      color: var(--gray-900);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
     .container{max-width:1200px;margin:0 auto;padding:0 1rem}
     /* Hero */
     .hero{text-align:center;padding:3rem 1rem 2.5rem;border-bottom:1px solid var(--gray-200);background:var(--gray-75)}
@@ -116,7 +125,7 @@
     /* Your Impact */
     .your-impact{padding:2.25rem 0 2rem;text-align:center}
     .section-h{text-align:center;font-size:var(--fs-3);font-weight:800;margin-bottom:1rem}
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;justify-content:center;max-width:900px;margin:0 auto}
     .stat{border:1px solid var(--gray-200);border-radius:.75rem;padding:1.25rem;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.06);text-align:center}
     .stat-label{color:var(--gray-600);font-size:.9rem;margin-bottom:.5rem;font-weight:600}
     .stat-value{font-size:1.85rem;font-weight:800;color:var(--brand-600);font-variant-numeric:tabular-nums}
@@ -140,29 +149,6 @@
     .value{font-weight:700;color:var(--brand-700);font-variant-numeric:tabular-nums;text-align:right;min-width:12ch}
     .me{background:#f0fdf4;border-left:4px solid var(--brand-600)}
     .me .title-sm{color:var(--brand-700)}
-    /* Reports rail */
-    .reports{padding:3rem 0}
-    .reports .section-h u{ text-decoration-color: var(--brand-primary); text-decoration-thickness:5px; text-underline-offset:10px }
-    .reports .sub{ text-align:center; color:var(--gray-600); margin-top:-.25rem; margin-bottom:2.5rem }
-    .rail{position:relative;max-width:1200px;margin:0 auto}
-    .scroller{display:flex;gap:1.25rem;overflow-x:auto;padding:0 .5rem 1rem;scroll-behavior:smooth}
-    .scroller::-webkit-scrollbar{height:8px}
-    .scroller::-webkit-scrollbar-track{background:var(--gray-100);border-radius:4px}
-    .scroller::-webkit-scrollbar-thumb{background:var(--gray-300);border-radius:4px}
-    .card{min-width:420px;max-width:420px;background:#fff;border:1px solid var(--gray-200);border-radius:.75rem;padding:1.25rem;box-shadow:0 2px 10px rgba(0,0,0,.06);transition:.2s}
-    .card:hover{transform:translateY(-2px);border-color:var(--brand-600);box-shadow:0 8px 24px rgba(47,125,49,.15)}
-    .c-head{display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem}
-    .c-ico{width:2.25rem;height:2.25rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center}
-    .i-blue{background:#dbeafe}.i-green{background:#f0fdf4}.i-amber{background:#fef3c7}.i-cyan{background:#ecfeff}
-    .c-title{font-weight:700;font-size:1.1rem}
-    .c-date{font-size:.9rem;color:var(--gray-600)}
-    .c-body{font-size:1rem;color:var(--gray-700);margin:.5rem 0 1rem;line-height:1.55}
-    .c-link{color:var(--brand-600);font-weight:700;text-decoration:none}
-    .arrow{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:44px;border-radius:9999px;background:#fff;border:1px solid var(--gray-200);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.08)}
-    .arrow:hover{background:var(--gray-50);border-color:var(--brand-600);color:var(--brand-600)}
-    .arrow.l{left:-20px}.arrow.r{right:-20px}
-    @media (max-width:768px){ .card{min-width:320px;max-width:320px} }
-  
     .section--green{background:var(--brand-primary);color:#fff}
     .cta{padding:3rem 0;text-align:center}
     .cta-title{font-size:1.75rem;font-weight:600;margin-bottom:.5rem}
@@ -181,17 +167,61 @@
     .social-icon:hover{background:rgba(255,255,255,.25)}
 
   
-    .header{border-bottom:1px solid var(--gray-200);width:100%}
-    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem;max-width:1200px;margin:0 auto;padding:0 1rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:inherit;text-decoration:none;cursor:pointer;transition:.2s}
-    .logo:hover{color:var(--brand-600)}
-    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
-    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
-    .welcome{color:var(--gray-900)}
-    .welcome-bold{font-weight:500}
-    .nav-link{text-decoration:none}
-    .nav-link:hover{color:var(--gray-900)}
-    .nav-link.active{color:var(--brand-600);font-weight:600}
+    .header {
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 16px 40px;
+      height: 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .logo:hover {
+      color: var(--brand-600);
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .nav-hidden-mobile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .welcome {
+      color: var(--gray-900);
+    }
+    .welcome-bold {
+      font-weight: 500;
+    }
+    .nav-link {
+      color: var(--gray-700);
+      text-decoration: none;
+      padding: .5rem 1rem;
+      border-radius: .375rem;
+      transition: .2s;
+      font-weight: 500;
+    }
+    .nav-link:hover {
+      background: var(--gray-100);
+      color: var(--gray-900);
+    }
+    .nav-link.active {
+      color: var(--gray-900);
+    }
     .nav-cta {
       background: var(--brand-600);
       color: #fff;
@@ -201,10 +231,23 @@
       text-decoration: none;
       transition: .2s;
     }
-
     .nav-cta:hover {
       background: var(--brand-700);
       transform: translateY(-1px);
+    }
+    @media (max-width: 768px) {
+      .header-container {
+        padding: 16px 20px;
+      }
+      .nav {
+        gap: 16px;
+      }
+      .nav-link {
+        font-size: 14px;
+      }
+      .nav-hidden-mobile {
+        display: none;
+      }
     }
 
     .user-menu{position:relative}
@@ -216,7 +259,6 @@
 
   
     /* ---- Professional rhythm & spacing ---- */
-    html, body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
     .hero{padding:3rem 1rem}
     .your-impact{padding:2.5rem 0}
     .tabs{padding:2.5rem 0}
@@ -238,8 +280,6 @@
     .board-card{margin:0 .5rem}
     .row{padding:.75rem 1rem}
     .cta-buttons{flex-direction:column}
-    .header .nav-hidden-mobile{display:none}
-    .header .container{padding:0 1rem}
   }
 
   
@@ -349,12 +389,13 @@
   }
 
   </style>
+  <link rel="stylesheet" href="/header-dropdown.css">
 </head>
 <body>
 
   <!-- Header -->
   <header class="header">
-    <div class="container">
+    <div class="header-container">
       <!-- LOGO (Top Left) -->
       <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       
@@ -421,10 +462,6 @@
           <div class="stat-label">Ads Watched</div>
           <div class="stat-value"><span class="skeleton skeleton-number">0</span></div>
         </div>
-        <div class="stat">
-          <div class="stat-label">Donations Generated</div>
-          <div class="stat-value"><span class="skeleton skeleton-number">$0.00</span></div>
-        </div>
       </div>
     </div>
   </section>
@@ -436,7 +473,8 @@
       <p class="intro">Discover the most engaged supporters, active sponsors, and impactful charities worldwide.</p>
       <div class="tabbar">
         <button class="tab active" onclick="showTab('watchers', this)">Top Supporters</button>
-        <button class="tab" onclick="showTab('sponsors', this)">Active Sponsors</button>
+        <button class="tab" onclick="showTab('sponsors', this)">Top Advertisers</button>
+        <button class="tab" onclick="showTab('topSponsors', this)">Top Sponsors</button>
         <button class="tab" onclick="showTab('charities', this)">Funded Charities</button>
       </div>
 
@@ -446,64 +484,64 @@
           <div class="board-head">Top Watchers — Worldwide</div>
           <div class="row">
             <div class="left">
-              <div class="rank">1</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">Branden4Good</div>
-                <div class="meta">12-day streak • Active 4 months</div>
+                <div class="title-sm skeleton" style="width:6em"> </div>
+                <div class="meta skeleton" style="width:10em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">2,517 mins</div>
+            <div class="value skeleton" style="width:5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">2</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">HiMom11</div>
-                <div class="meta">8-day streak • Active 2 months</div>
+                <div class="title-sm skeleton" style="width:5em"> </div>
+                <div class="meta skeleton" style="width:9em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">2,142 mins</div>
+            <div class="value skeleton" style="width:5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">3</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">AdsAreAwesome</div>
-                <div class="meta">5-day streak • Active 6 months</div>
+                <div class="title-sm skeleton" style="width:7em"> </div>
+                <div class="meta skeleton" style="width:11em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">1,894 mins</div>
+            <div class="value skeleton" style="width:5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">4</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">Payit4Ward</div>
-                <div class="meta">2-day streak • Active 3 months</div>
+                <div class="title-sm skeleton" style="width:5.5em"> </div>
+                <div class="meta skeleton" style="width:9.5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">1,563 mins</div>
+            <div class="value skeleton" style="width:5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">5</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">DrakeFan32</div>
-                <div class="meta">1-day streak • Active 1 month</div>
+                <div class="title-sm skeleton" style="width:6.5em"> </div>
+                <div class="meta skeleton" style="width:10.5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">1,244 mins</div>
+            <div class="value skeleton" style="width:5em;height:.85em"> </div>
           </div>
           <!-- You -->
-          <div class="row me">
+          <div class="row me" style="display:none">
             <div class="left">
-              <div class="rank">53</div>
+              <div class="rank">—</div>
               <div>
-                <div class="title-sm">StickyHenry (You)</div>
-                <div class="meta">3-day streak • Active 3 weeks • #53 of 847</div>
+                <div class="title-sm">— (You)</div>
+                <div class="meta">—</div>
               </div>
             </div>
-            <div class="value">554 mins</div>
+            <div class="value">—</div>
           </div>
         </div>
       </div>
@@ -511,56 +549,83 @@
       <!-- Sponsors -->
       <div id="sponsors" class="board">
         <div class="board-card">
+          <div class="board-head">Top Advertisers — Worldwide</div>
+          <div class="row">
+            <div class="left">
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:7em"> </div></div>
+            </div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:5.5em"> </div></div>
+            </div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:6.5em"> </div></div>
+            </div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:8em"> </div></div>
+            </div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
+          </div>
+          <div class="row">
+            <div class="left">
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:6em"> </div></div>
+            </div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top Sponsors -->
+      <div id="topSponsors" class="board">
+        <div class="board-card">
           <div class="board-head">Top Sponsors — Worldwide</div>
           <div class="row">
             <div class="left">
-              <div class="rank">1</div>
-              <div>
-                <div class="title-sm">Taco Bell</div>
-                <div class="meta">Quick‑service restaurant • 2,431 views</div>
-              </div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:6em"> </div></div>
             </div>
-            <div class="value">$12,430 donated</div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">2</div>
-              <div>
-                <div class="title-sm">Patagonia</div>
-                <div class="meta">Outdoor apparel • 1,904 views</div>
-              </div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:7.5em"> </div></div>
             </div>
-            <div class="value">$8,320 donated</div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">3</div>
-              <div>
-                <div class="title-sm">Acme Bank</div>
-                <div class="meta">Fintech savings app • 1,256 views</div>
-              </div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:5.5em"> </div></div>
             </div>
-            <div class="value">$5,210 donated</div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">4</div>
-              <div>
-                <div class="title-sm">Education Matters</div>
-                <div class="meta">Nonprofit education initiative • 2 views</div>
-              </div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:7em"> </div></div>
             </div>
-            <div class="value">$0.16 donated</div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">5</div>
-              <div>
-                <div class="title-sm">Clean Water Awareness</div>
-                <div class="meta">Global water crisis education • 0 views</div>
-              </div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
+              <div><div class="title-sm skeleton" style="width:6.5em"> </div></div>
             </div>
-            <div class="value">$0.00 donated</div>
+            <div class="value skeleton" style="width:6em;height:.85em"> </div>
           </div>
         </div>
       </div>
@@ -571,126 +636,60 @@
           <div class="board-head">Top Charities — Worldwide</div>
           <div class="row">
             <div class="left">
-              <div class="rank">1</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">World Wildlife Fund</div>
-                <div class="meta">Environmental • Wildlife Protection</div>
-                <div class="meta">Protecting animals & habitats worldwide</div>
-                <div class="meta">1,247 votes</div>
+                <div class="title-sm skeleton" style="width:8em"> </div>
+                <div class="meta skeleton" style="width:5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">$487 received</div>
+            <div class="value skeleton" style="width:5.5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">2</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">Education for All</div>
-                <div class="meta">Education • Global Access</div>
-                <div class="meta">Expanding learning opportunities</div>
-                <div class="meta">934 votes</div>
+                <div class="title-sm skeleton" style="width:6.5em"> </div>
+                <div class="meta skeleton" style="width:5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">$343 received</div>
+            <div class="value skeleton" style="width:5.5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">3</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">Clean Water Initiative</div>
-                <div class="meta">Water & Sanitation • Sustainable wells</div>
-                <div class="meta">756 votes</div>
+                <div class="title-sm skeleton" style="width:9em"> </div>
+                <div class="meta skeleton" style="width:5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">$298 received</div>
+            <div class="value skeleton" style="width:5.5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">4</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">Doctors Without Borders</div>
-                <div class="meta">Healthcare • Emergency Relief</div>
-                <div class="meta">612 votes</div>
+                <div class="title-sm skeleton" style="width:7em"> </div>
+                <div class="meta skeleton" style="width:5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">$235 received</div>
+            <div class="value skeleton" style="width:5.5em;height:.85em"> </div>
           </div>
           <div class="row">
             <div class="left">
-              <div class="rank">5</div>
+              <div class="rank"><span class="skeleton" style="display:inline-block;width:1.1em;height:.85em"> </span></div>
               <div>
-                <div class="title-sm">Local Food Bank Network</div>
-                <div class="meta">Hunger Relief • 98% Direct Impact</div>
-                <div class="meta">445 votes</div>
+                <div class="title-sm skeleton" style="width:7.5em"> </div>
+                <div class="meta skeleton" style="width:5em;margin-top:.25em"> </div>
               </div>
             </div>
-            <div class="value">$187 received</div>
+            <div class="value skeleton" style="width:5.5em;height:.85em"> </div>
           </div>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Recent Impact Reports (side scroll) -->
-  <section class="reports">
-    <div class="container">
-      <h2 class="section-h"><u>Recent Impact Reports</u></h2>
-      <p class="sub">Transparent reporting on where your donations make a difference</p>
-      <div class="rail">
-        <button class="arrow l" aria-label="Scroll left" onclick="scrollReports('left')">‹</button>
-        <button class="arrow r" aria-label="Scroll right" onclick="scrollReports('right')">›</button>
-        <div id="reportRail" class="scroller">
-          <article class="card">
-            <div class="c-head">
-              <div class="c-ico i-blue">📊</div>
-              <div>
-                <div class="c-title">September Transparency Report</div>
-                <div class="c-date">Published 3 days ago</div>
-              </div>
-            </div>
-            <div class="c-body">Last month we donated $2,847 across 8 charities. See the complete breakdown of where every dollar went, including administrative costs and charity verification.</div>
-            <a class="c-link" href="#">View full report →</a>
-          </article>
 
-          <article class="card">
-            <div class="c-head">
-              <div class="c-ico i-green">🌍</div>
-              <div>
-                <div class="c-title">WWF Impact Update</div>
-                <div class="c-date">Published 1 week ago</div>
-              </div>
-            </div>
-            <div class="c-body">Your collective $487 donation helped protect 2.3 acres of rainforest and supported anti‑poaching efforts for endangered tigers in Southeast Asia.</div>
-            <a class="c-link" href="#">Read impact story →</a>
-          </article>
-
-          <article class="card">
-            <div class="c-head">
-              <div class="c-ico i-amber">🎓</div>
-              <div>
-                <div class="c-title">Education for All — Results</div>
-                <div class="c-date">Published 2 weeks ago</div>
-              </div>
-            </div>
-            <div class="c-body">The $342 raised provided school supplies for 28 children and funded teacher training in three rural villages.</div>
-            <a class="c-link" href="#">See photos & updates →</a>
-          </article>
-
-          <article class="card">
-            <div class="c-head">
-              <div class="c-ico i-cyan">💧</div>
-              <div>
-                <div class="c-title">Clean Water — Project Progress</div>
-                <div class="c-date">Published 3 weeks ago</div>
-              </div>
-            </div>
-            <div class="c-body">Your $298 contribution finished 3 new water pumps, providing clean water for 500+ families this year.</div>
-            <a class="c-link" href="#">View project photos →</a>
-          </article>
-        </div>
-      </div>
-    </div>
-  </section>
 
   <script>
     // Check authentication status
@@ -790,7 +789,6 @@
           const rankElement = document.querySelector('.stat:nth-child(1) .stat-value');
           const timeElement = document.querySelector('.stat:nth-child(2) .stat-value');
           const adsElement = document.querySelector('.stat:nth-child(3) .stat-value');
-          const donationsElement = document.querySelector('.stat:nth-child(4) .stat-value');
           
           if (rankElement) {
             const rankDisplay = impact.watchTimeMinutes === 0 ? "-" : `#${impact.currentRank}`;
@@ -815,14 +813,6 @@
             console.log('✅ Updated ads watched:', impact.totalAdsWatched);
           } else {
             console.log('❌ Ads element not found');
-          }
-          
-          if (donationsElement) {
-            donationsElement.innerHTML = `$${impact.donationsGenerated}`;
-            donationsElement.classList.add('data-loaded');
-            console.log('✅ Updated donations:', `$${impact.donationsGenerated}`);
-          } else {
-            console.log('❌ Donations element not found');
           }
         } else {
           console.error('❌ API response not OK:', response.status, response.statusText);
@@ -864,7 +854,7 @@
                   <div class="rank">#${user.rank}</div>
                   <div>
                     <div class="title-sm">${user.username}</div>
-                    <div class="meta">${user.streakDays}-day streak • Active ${Math.floor(user.accountAgeDays / 30)} months</div>
+                    <div class="meta">Active ${Math.floor(user.accountAgeDays / 30)} months</div>
                   </div>
                 </div>
                 <div class="value">${user.minutesWatched} mins</div>
@@ -911,6 +901,159 @@
       }
     }
 
+    // Load top advertisers leaderboard data
+    async function loadTopAdvertisers() {
+      try {
+        const response = await fetch('/api/impact/top-advertisers');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch top advertisers');
+        }
+        
+        const result = await response.json();
+        const advertisers = result.advertisers || [];
+        
+        // Update leaderboard UI
+        const leaderboardContainer = document.querySelector('#sponsors .board-card');
+        if (!leaderboardContainer) {
+          console.error('❌ Top advertisers container not found');
+          return;
+        }
+        
+        // Clear existing rows (keep the header)
+        const existingRows = leaderboardContainer.querySelectorAll('.row');
+        existingRows.forEach(row => row.remove());
+        
+        // Add advertiser rows
+        advertisers.forEach((advertiser) => {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = `
+            <div class="left">
+              <div class="rank">${advertiser.rank}</div>
+              <div>
+                <div class="title-sm">${advertiser.companyName}</div>
+              </div>
+            </div>
+            <div class="value">$${advertiser.totalDonated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} donated</div>
+          `;
+          leaderboardContainer.appendChild(row);
+        });
+        
+        // Fill remaining slots with placeholders
+        for (let i = advertisers.length; i < 5; i++) {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = `
+            <div class="left">
+              <div class="rank">${i + 1}</div>
+              <div>
+                <div class="title-sm">Spot is open!</div>
+              </div>
+            </div>
+            <div class="value">—</div>
+          `;
+          leaderboardContainer.appendChild(row);
+        }
+        
+        console.log('✅ Top advertisers loaded:', advertisers);
+      } catch (error) {
+        console.error('❌ Error loading top advertisers:', error);
+        // On error, keep existing placeholder content (graceful degradation)
+      }
+    }
+
+    async function loadTopSponsors() {
+      try {
+        const response = await fetch('/api/leaderboards/top-sponsors');
+        if (!response.ok) throw new Error('Failed to fetch top sponsors');
+        const sponsors = await response.json();
+        const container = document.querySelector('#topSponsors .board-card');
+        if (!container) return;
+        const existingRows = container.querySelectorAll('.row');
+        existingRows.forEach(row => row.remove());
+        sponsors.forEach((sponsor, index) => {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = `
+            <div class="left">
+              <div class="rank">${index + 1}</div>
+              <div>
+                <div class="title-sm">${sponsor.name}</div>
+              </div>
+            </div>
+            <div class="value">$${Number(sponsor.totalDonated).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} donated</div>
+          `;
+          container.appendChild(row);
+        });
+        for (let i = sponsors.length; i < 5; i++) {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.innerHTML = `
+            <div class="left">
+              <div class="rank">${i + 1}</div>
+              <div>
+                <div class="title-sm">Spot is open</div>
+              </div>
+            </div>
+            <div class="value">—</div>
+          `;
+          container.appendChild(row);
+        }
+        console.log('✅ Top sponsors loaded:', sponsors.length);
+      } catch (error) {
+        console.error('❌ Error loading top sponsors:', error);
+      }
+    }
+
+    let topCharitiesLoaded = false;
+
+    async function loadTopCharities() {
+      try {
+        const response = await fetch('/api/impact/top-charities');
+        if (!response.ok) return;
+        const result = await response.json();
+        const charities = result.charities || [];
+
+        const board = document.querySelector('#charities .board-card');
+        if (!board) return;
+
+        board.querySelectorAll('.row').forEach(r => r.remove());
+
+        for (let i = 0; i < 5; i++) {
+          const c = charities[i];
+          const row = document.createElement('div');
+          row.className = 'row';
+          if (c) {
+            row.innerHTML = `
+              <div class="left">
+                <div class="rank">${c.rank}</div>
+                <div>
+                  <div class="title-sm">${c.charityName}</div>
+                  <div class="meta">Total received</div>
+                </div>
+              </div>
+              <div class="value">$${c.totalDonated.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            `;
+          } else {
+            row.innerHTML = `
+              <div class="left">
+                <div class="rank">${i + 1}</div>
+                <div>
+                  <div class="title-sm">Spot is open!</div>
+                  <div class="meta">Be the first to claim it</div>
+                </div>
+              </div>
+              <div class="value">—</div>
+            `;
+          }
+          board.appendChild(row);
+        }
+      } catch (err) {
+        console.error('❌ Failed to load top charities:', err);
+      }
+    }
+
     // Load user's "You" row data
     async function loadUserRow() {
       const token = localStorage.getItem('authToken');
@@ -939,11 +1082,12 @@
                 <div class="rank">${rankDisplay}</div>
                 <div>
                   <div class="title-sm">${username} (You)</div>
-                  <div class="meta">${impact.streakDays}-day streak • Active ${Math.floor(impact.accountAgeDays / 7)} weeks • ${metaRankDisplay} of ${impact.totalUsers}</div>
+                  <div class="meta">Active ${Math.floor(impact.accountAgeDays / 30)} months • ${metaRankDisplay} of ${impact.totalUsers}</div>
                 </div>
               </div>
               <div class="value">${impact.watchTimeMinutes} mins</div>
             `;
+            meRow.style.display = '';
           }
         }
       } catch (error) {
@@ -1030,13 +1174,15 @@
       document.querySelectorAll('.board').forEach(b=>b.classList.remove('active'));
       el.classList.add('active');
       document.getElementById(id).classList.add('active');
-    }
-    function scrollReports(dir){
-      const rail = document.getElementById('reportRail');
-      const delta = Math.min(rail.clientWidth, 600);
-      rail.scrollBy({left: dir==='left' ? -delta : delta, behavior:'smooth'});
-    }
+      localStorage.setItem('impactTab', id);
 
+      if (id === 'sponsors') loadTopAdvertisers();
+      if (id === 'topSponsors') loadTopSponsors();
+      if (id === 'charities' && !topCharitiesLoaded) {
+        loadTopCharities();
+        topCharitiesLoaded = true;
+      }
+    }
     function toggleUserMenu() {
       const dropdown = document.getElementById('userDropdown');
       dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
@@ -1118,6 +1264,13 @@
     // Initialize page
     document.addEventListener('DOMContentLoaded', () => {
       setInitialUIState();
+
+      // Restore previously selected leaderboard tab
+      var savedTab = localStorage.getItem('impactTab');
+      if (savedTab && savedTab !== 'watchers') {
+        var tabBtn = document.querySelector('.tab[onclick*="\'' + savedTab + '\'"]');
+        if (tabBtn) showTab(savedTab, tabBtn);
+      }
     });
   </script>
 
@@ -1146,5 +1299,6 @@
       </div>
     </div>
   </footer>
+  <script src="/header-dropdown.js"></script>
 </body>
 </html>

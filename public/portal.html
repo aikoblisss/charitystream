@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portal - Charity Stream</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+      max-width: 600px;
+      width: 100%;
+      padding: 40px;
+      text-align: center;
+    }
+    
+    .logo {
+      margin-bottom: 40px;
+    }
+    
+    .logo h1 {
+      color: #2F7D31;
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    
+    .title {
+      color: #2F7D31;
+      font-size: 28px;
+      font-weight: 600;
+      margin-bottom: 40px;
+    }
+    
+    .button-container {
+      display: flex;
+      gap: 20px;
+      flex-direction: column;
+    }
+    
+    .portal-btn {
+      width: 100%;
+      background: #2F7D31;
+      color: white;
+      border: none;
+      padding: 16px 24px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      display: block;
+    }
+    
+    .portal-btn:hover {
+      background: #276629;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(47, 125, 49, 0.3);
+    }
+    
+    .home-link {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .home-link a {
+      color: #6b7280;
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .home-link a:hover {
+      color: #2F7D31;
+      text-decoration: underline;
+    }
+    
+    @media (min-width: 640px) {
+      .button-container {
+        flex-direction: row;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">
+      <h1>Charity Stream</h1>
+    </div>
+    
+    <h2 class="title">Welcome to the Portal</h2>
+    
+    <div class="button-container">
+      <a href="/sponsor-login.html" class="portal-btn">
+        Sign Into Sponsor Portal
+      </a>
+      
+      <a href="/advertiser-login.html" class="portal-btn">
+        Sign Into Advertiser Portal
+      </a>
+    </div>
+    
+    <div class="home-link">
+      <a href="/advertiser/">← Back To Charity Stream</a>
+    </div>
+  </div>
+</body>
+</html>
+

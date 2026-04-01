@@ -1,60 +1,34 @@
-// PostgreSQL database for Vercel with Neon
-const { Pool } = require('pg');
+// Neon WebSocket + fetch adapters for Node.js
+const ws = require('ws');
+const { fetch } = require('undici');
 
-// Database connection
+// Provide globals expected by @neondatabase/serverless
+global.WebSocket = ws;
+global.fetch = fetch;
+
+// PostgreSQL database for Vercel with Neon (WebSocket driver)
+const { Pool } = require('@neondatabase/serverless');
+
+// Database connection - exactly ONE pool per process
 let pool = null;
 
 async function initializeDatabase() {
-  console.log('🔧 Initializing PostgreSQL database...');
-  
-  // Create connection pool with enhanced timeout settings for Vercel/serverless environments
+  if (pool) return;
+
+  console.log('🔧 Initializing Neon PostgreSQL database (WebSocket)...');
+
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false,
-      require: true
-    },
-    connectionTimeoutMillis: 30000, // 🚨 INCREASED: 30 seconds (was 5s) for Vercel/serverless cold starts
-    idleTimeoutMillis: 30000, // 🚨 INCREASED: 30 seconds (was 10s) 
-    max: 10, // Maximum number of clients in the pool
-    min: 1,  // Minimum number of clients in the pool
-    query_timeout: 30000, // 🚨 INCREASED: 30 seconds query timeout (was 5s)
-    statement_timeout: 30000 // 🚨 INCREASED: 30 seconds statement timeout (was 5s)
+    ssl: true
   });
 
-  // Add error handling for pool
-  pool.on('error', (err, client) => {
-    console.error('❌ Database pool error:', err);
-    console.error('❌ Error code:', err.code);
-    console.error('❌ Error message:', err.message);
+  pool.on('connect', () => {
+    console.log('🟢 Neon WebSocket connected');
   });
 
-  pool.on('connect', (client) => {
-    console.log('🔌 New database connection established');
+  pool.on('error', (err) => {
+    console.error('❌ Neon WebSocket error:', err);
   });
-
-  try {
-    // Test connection with timeout
-    console.log('🔍 Testing database connection with 30s timeout...');
-    const connectionPromise = pool.query('SELECT NOW()');
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Database connection timeout after 30 seconds')), 30000)
-    );
-    
-    const result = await Promise.race([connectionPromise, timeoutPromise]);
-    console.log('✅ Connected to PostgreSQL database');
-    console.log('📅 Database time:', result.rows[0].now);
-
-    // Create tables if they don't exist
-    await createTables();
-    console.log('🎉 PostgreSQL database initialization complete!');
-  } catch (error) {
-    console.error('❌ Database initialization failed:', error.message);
-    console.error('❌ Error code:', error.code);
-    console.error('❌ Full error:', error);
-    // Don't throw - allow server to continue with degraded functionality
-    console.log('⚠️ Server will continue but database operations may fail');
-  }
 }
 
 async function createTables() {
@@ -78,7 +52,6 @@ async function createTables() {
       current_month_minutes INTEGER DEFAULT 0,
       total_seconds_watched INTEGER DEFAULT 0,
       current_month_seconds INTEGER DEFAULT 0,
-      subscription_tier VARCHAR(50) DEFAULT 'free',
       auth_provider VARCHAR(50) DEFAULT 'google',
       is_premium BOOLEAN DEFAULT FALSE,
       premium_since TIMESTAMP,
@@ -162,6 +135,20 @@ async function createTables() {
     )
   `;
 
+  // New application-based charity intake flow
+  const createCharityApplicationsTable = `
+    CREATE TABLE IF NOT EXISTS charity_applications (
+      id SERIAL PRIMARY KEY,
+      charity_name TEXT NOT NULL,
+      federal_ein TEXT NOT NULL,
+      contact_email TEXT NOT NULL,
+      entry_payment_intent_id TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL DEFAULT 'pending',
+      reviewed_at TIMESTAMP,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+
   const createAdvertisersTable = `
     CREATE TABLE IF NOT EXISTS advertisers (
       id SERIAL PRIMARY KEY,
@@ -176,7 +163,7 @@ async function createTables() {
       cpm_rate DECIMAL(10,2),
       media_r2_link TEXT,
       recurring_weekly BOOLEAN DEFAULT false,
-      approved BOOLEAN DEFAULT false,
+      status TEXT NOT NULL DEFAULT 'payment_pending' CHECK (status IN ('payment_pending', 'pending_review', 'active', 'rejected', 'archived')),
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
@@ -225,6 +212,8 @@ async function createTables() {
     console.log('✅ Desktop active sessions table ready');
     await pool.query(createCharitiesTable);
     console.log('✅ Charities table ready');
+    await pool.query(createCharityApplicationsTable);
+    console.log('✅ Charity applications table ready');
     await pool.query(createAdvertisersTable);
     console.log('✅ Advertisers table ready');
     await pool.query(createSponsorsTable);
@@ -257,39 +246,12 @@ async function addMissingColumns() {
   }
 }
 
-// Ensure tables exist before any operation
-async function ensureTablesExist() {
-  if (!pool) {
-    throw new Error('Database not initialized');
-  }
-  
-  try {
-    // Check if users table exists
-    const result = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'users'
-      );
-    `);
-    
-    if (!result.rows[0].exists) {
-      console.log('🔧 Creating database tables...');
-      await createTables();
-      console.log('✅ Database tables created successfully');
-    }
-  } catch (error) {
-    console.error('❌ Error ensuring tables exist:', error);
-    throw error;
-  }
-}
 
 // Helper functions for database operations
 const dbHelpers = {
   // Get user by username or email
   getUserByLogin: async (login) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE username = $1 OR email = $1',
         [login]
@@ -313,7 +275,6 @@ const dbHelpers = {
   // Create new user (traditional)
   createUser: async (userData) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         `INSERT INTO users (username, email, password_hash, auth_provider) 
          VALUES ($1, $2, $3, 'traditional') 
@@ -329,7 +290,6 @@ const dbHelpers = {
   // Create new Google OAuth user
   createGoogleUser: async (userData) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         `INSERT INTO users (google_id, username, email, profile_picture, verified, auth_provider) 
          VALUES ($1, $2, $3, $4, $5, 'google') 
@@ -351,7 +311,6 @@ const dbHelpers = {
   // Get user by Google ID
   getUserByGoogleId: async (googleId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE google_id = $1',
         [googleId]
@@ -365,7 +324,6 @@ const dbHelpers = {
   // Get user by ID
   getUserById: async (id) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE id = $1',
         [id]
@@ -492,7 +450,6 @@ const dbHelpers = {
   // Get user rank
   getUserRank: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(`
         SELECT 
           u.id,
@@ -512,7 +469,6 @@ const dbHelpers = {
   // Email verification functions
   getUserByVerificationToken: async (plainToken) => {
     try {
-      await ensureTablesExist();
       // Get all users with non-expired verification tokens
       const result = await pool.query(
         'SELECT * FROM users WHERE verification_token IS NOT NULL AND token_expires_at > NOW()'
@@ -537,7 +493,6 @@ const dbHelpers = {
 
   verifyUserEmail: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET verified = true, verification_token = NULL, token_expires_at = NULL WHERE id = $1 RETURNING *',
         [userId]
@@ -550,7 +505,6 @@ const dbHelpers = {
 
   updateVerificationToken: async (userId, token, expiresAt) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET verification_token = $2, token_expires_at = $3 WHERE id = $1 RETURNING *',
         [userId, token, expiresAt]
@@ -563,7 +517,6 @@ const dbHelpers = {
 
   createUserWithVerification: async (userData) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         `INSERT INTO users (email, password_hash, auth_provider, verification_token, token_expires_at) 
          VALUES ($1, $2, $3, $4, $5) 
@@ -578,7 +531,6 @@ const dbHelpers = {
 
   getUserByEmail: async (email) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM users WHERE email = $1',
         [email]
@@ -592,7 +544,6 @@ const dbHelpers = {
   // Link Google account to existing user
   linkGoogleAccount: async (userId, googleId, profilePicture) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET google_id = $2, profile_picture = COALESCE($3, profile_picture), verified = true, auth_provider = CASE WHEN auth_provider = \'email\' THEN \'email_google\' ELSE \'google\' END WHERE id = $1 RETURNING *',
         [userId, googleId, profilePicture]
@@ -606,7 +557,6 @@ const dbHelpers = {
   // Set up password for Google users
   setupPassword: async (userId, passwordHash) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET password_hash = $2, auth_provider = CASE WHEN auth_provider = \'google\' THEN \'email_google\' ELSE auth_provider END WHERE id = $1 RETURNING *',
         [userId, passwordHash]
@@ -620,7 +570,6 @@ const dbHelpers = {
   // Password reset functions
   setPasswordResetToken: async (userId, hashedToken, expiresAt) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET reset_password_token = $2, reset_password_expires = $3 WHERE id = $1 RETURNING *',
         [userId, hashedToken, expiresAt]
@@ -633,7 +582,6 @@ const dbHelpers = {
 
   getUserByResetToken: async (plainToken) => {
     try {
-      await ensureTablesExist();
       // Get all users with non-expired reset tokens
       const result = await pool.query(
         'SELECT * FROM users WHERE reset_password_token IS NOT NULL AND reset_password_expires > NOW()'
@@ -667,7 +615,6 @@ const dbHelpers = {
 
   resetUserPassword: async (userId, newPasswordHash) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET password_hash = $2, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $1 RETURNING *',
         [userId, newPasswordHash]
@@ -681,7 +628,6 @@ const dbHelpers = {
   // Check username availability
   checkUsernameAvailability: async (username) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT id FROM users WHERE username = $1',
         [username]
@@ -695,7 +641,6 @@ const dbHelpers = {
   // Delete incomplete Google user (for cancelled registrations)
   deleteIncompleteGoogleUser: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'DELETE FROM users WHERE id = $1 AND auth_provider = $2 AND username = (SELECT split_part(email, \'@\', 1) FROM users WHERE id = $1) RETURNING *',
         [userId, 'google']
@@ -718,7 +663,6 @@ const dbHelpers = {
   // Start tracking an ad
   startAdTracking: async (userId, sessionId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'INSERT INTO ad_tracking (user_id, session_id, ad_start_time) VALUES ($1, $2, CURRENT_TIMESTAMP) RETURNING id',
         [userId, sessionId]
@@ -732,7 +676,6 @@ const dbHelpers = {
   // Complete ad tracking
   completeAdTracking: async (adTrackingId, durationSeconds, completed = true) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE ad_tracking SET ad_end_time = CURRENT_TIMESTAMP, duration_seconds = $2, completed = $3 WHERE id = $1 RETURNING *',
         [adTrackingId, durationSeconds, completed]
@@ -746,7 +689,6 @@ const dbHelpers = {
   // Update daily stats for a user
   updateDailyStats: async (userId, adsWatched = 1, watchTimeSeconds = 0) => {
     try {
-      await ensureTablesExist();
       // Use UTC date to ensure consistency across timezones
       const today = new Date().toISOString().split('T')[0];
       
@@ -788,7 +730,6 @@ const dbHelpers = {
   // Get user's daily stats
   getUserDailyStats: async (userId, date = null) => {
     try {
-      await ensureTablesExist();
       const targetDate = date || new Date().toISOString().split('T')[0];
       
       const result = await pool.query(
@@ -805,7 +746,6 @@ const dbHelpers = {
   // Get user's ads watched today
   getAdsWatchedToday: async (userId) => {
     try {
-      await ensureTablesExist();
       // Use UTC date to ensure consistency across timezones
       const today = new Date().toISOString().split('T')[0];
       
@@ -847,7 +787,6 @@ const dbHelpers = {
   // Manual function to restore daily stats (for recovery purposes)
   restoreDailyStats: async (userId, adsWatched, watchTimeSeconds = 0, date = null) => {
     try {
-      await ensureTablesExist();
       const targetDate = date || new Date().toISOString().split('T')[0];
       
       console.log(`🔧 Restoring daily stats for user ${userId}, date: ${targetDate}, ads: ${adsWatched}, seconds: ${watchTimeSeconds}`);
@@ -893,7 +832,6 @@ const dbHelpers = {
   // Debug function to check daily stats for a user
   debugDailyStats: async (userId) => {
     try {
-      await ensureTablesExist();
       const today = new Date().toISOString().split('T')[0];
       
       console.log(`🔍 Debug: Checking daily stats for user ${userId} on date ${today}`);
@@ -924,7 +862,6 @@ const dbHelpers = {
   // Get user's total ads watched
   getTotalAdsWatched: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT SUM(ads_watched) as total FROM daily_stats WHERE user_id = $1',
         [userId]
@@ -939,7 +876,6 @@ const dbHelpers = {
   // Calculate user's streak
   calculateUserStreak: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         `WITH RECURSIVE streak_calc AS (
           SELECT date, ads_watched, 1 as streak_length
@@ -970,12 +906,12 @@ const dbHelpers = {
   // Get monthly leaderboard (top 5 users by current month minutes)
   getMonthlyLeaderboard: async (limit = 5) => {
     try {
-      await ensureTablesExist();
       console.log('🔍 Getting monthly leaderboard with limit:', limit);
       const result = await pool.query(
-        `SELECT 
+        `SELECT
           u.id,
           u.username,
+          u.is_premium,
           FLOOR(u.current_month_seconds::numeric / 60) AS current_month_minutes,
           u.current_month_seconds,
           u.profile_picture,
@@ -983,12 +919,12 @@ const dbHelpers = {
           COALESCE(ds.ads_watched, 0) as ads_watched_today,
           0 as streak_days,
           ROW_NUMBER() OVER (
-            ORDER BY u.current_month_seconds DESC, 
+            ORDER BY u.current_month_seconds DESC,
             u.id ASC
           ) as rank_number
         FROM users u
         LEFT JOIN daily_stats ds ON u.id = ds.user_id AND ds.date = CURRENT_DATE
-        WHERE u.is_active = true 
+        WHERE u.is_active = true
           AND u.current_month_seconds >= 60
         ORDER BY u.current_month_seconds DESC, u.id ASC
         LIMIT $1`,
@@ -1006,7 +942,6 @@ const dbHelpers = {
   // Get user's rank in monthly leaderboard
   getUserMonthlyRank: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         `SELECT COUNT(*) + 1 as rank
          FROM users 
@@ -1027,7 +962,6 @@ const dbHelpers = {
   // Get user's overall rank (all time)
   getUserOverallRank: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         `SELECT COUNT(*) + 1 as rank
          FROM users 
@@ -1048,7 +982,6 @@ const dbHelpers = {
   // Get total number of active users
   getTotalActiveUsers: async () => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT COUNT(*) as total FROM users WHERE is_active = true'
       );
@@ -1062,9 +995,8 @@ const dbHelpers = {
   // Get user's account age in days
   getUserAccountAge: async (userId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
-        'SELECT EXTRACT(DAYS FROM (CURRENT_DATE - created_at::date)) as account_age_days FROM users WHERE id = $1',
+        'SELECT (CURRENT_DATE - created_at::date) as account_age_days FROM users WHERE id = $1',
         [userId]
       );
       
@@ -1077,7 +1009,6 @@ const dbHelpers = {
   // Reset monthly leaderboard (call this monthly)
   resetMonthlyLeaderboard: async () => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'UPDATE users SET current_month_minutes = 0, current_month_seconds = 0'
       );
@@ -1209,7 +1140,6 @@ const dbHelpers = {
   // Add video to database
   addVideo: async (title, video_url, duration) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'INSERT INTO videos (title, video_url, duration) VALUES ($1, $2, $3) RETURNING *',
         [title, video_url, duration]
@@ -1223,7 +1153,6 @@ const dbHelpers = {
   // Get current active video
   getCurrentVideo: async () => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM videos WHERE is_active = true ORDER BY order_index LIMIT 1'
       );
@@ -1236,7 +1165,6 @@ const dbHelpers = {
   // Get all active videos for playlist
   getActiveVideos: async () => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'SELECT * FROM videos WHERE is_active = true ORDER BY order_index'
       );
@@ -1249,7 +1177,6 @@ const dbHelpers = {
   // Delete a specific video
   deleteVideo: async (videoId) => {
     try {
-      await ensureTablesExist();
       const result = await pool.query(
         'DELETE FROM videos WHERE id = $1 RETURNING *',
         [videoId]

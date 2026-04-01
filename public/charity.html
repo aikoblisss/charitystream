@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://js.stripe.com/v3/"></script>
 
   <style>
     :root{
@@ -30,18 +31,43 @@
     .container{max-width:1200px;margin:0 auto;padding:0 1rem}
 
     /* Header */
-    .header{border-bottom:1px solid var(--gray-200);width:100%;background:#fff}
-    .header .container{height:4rem;display:flex;align-items:center;gap:1.5rem}
-    .logo{font-size:1.5rem;font-weight:600;letter-spacing:-.025em;color:var(--brand-600);text-decoration:none}
-    .nav{margin-left:auto;display:flex;align-items:center;gap:1.5rem;font-size:.875rem;color:var(--gray-700)}
-    .nav-hidden-mobile{display:flex;align-items:center;gap:1.5rem}
-    .welcome{color:var(--gray-900)}
-    .welcome-bold{font-weight:500}
-    .nav-link{text-decoration:none;font-weight:500;transition:.2s;color:var(--gray-700)}
-    .nav-link:hover{color:var(--brand-600)}
-    .nav-link.active{color:var(--brand-600);font-weight:600}
-    .watch-ads-btn{display:inline-flex;align-items:center;background:var(--brand-600);color:#fff;padding:.5rem 1rem;border:0;border-radius:.5rem;font-weight:500;text-decoration:none;cursor:pointer;transition:.2s}
-    .watch-ads-btn:hover{background:var(--brand-700)}
+    .header {
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .header-container {
+      max-width: 1320px;
+      margin: 0 auto;
+      padding: 16px 40px;
+      height: 4rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.25rem;
+    }
+    .logo {
+      font-size: 28px;
+      font-weight: 700;
+      color: #111;
+      text-decoration: none;
+      cursor: pointer;
+      transition: color 0.2s;
+    }
+    .logo:hover { color: var(--brand-600); }
+    .nav { display: flex; align-items: center; gap: 1rem; }
+    .nav-hidden-mobile { display: flex; align-items: center; gap: 1rem; }
+    .welcome { color: var(--gray-900); }
+    .welcome-bold { font-weight: 500; }
+    .nav-link { color: var(--gray-700); text-decoration: none; padding: .5rem 1rem; border-radius: .375rem; transition: .2s; font-weight: 500; }
+    .nav-link:hover { background: var(--gray-100); color: var(--gray-900); }
+    .nav-link.active { color: var(--brand-600); }
+    .nav-cta { background: var(--brand-600); color: #fff; padding: .5rem 1rem; border-radius: .5rem; font-weight: 600; text-decoration: none; transition: .2s; }
+    .nav-cta:hover { background: var(--brand-700); transform: translateY(-1px); }
+    @media (max-width: 768px) {
+      .header-container { padding: 16px 20px; }
+      .nav { gap: 16px; }
+      .nav-link { font-size: 14px; }
+      .nav-hidden-mobile { display: none; }
+    }
 
     /* Hero Section */
     .hero{
@@ -104,6 +130,21 @@
       font-size:.875rem;
       color:var(--gray-600);
       font-weight:500;
+    }
+
+    .skeleton {
+      background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+      background-size: 200% 100%;
+      animation: skeleton-loading 1.5s infinite;
+      border-radius: 4px;
+      color: transparent !important;
+      display: inline-block;
+      user-select: none;
+      pointer-events: none;
+    }
+    @keyframes skeleton-loading {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
     }
 
     .hero-cta{
@@ -350,9 +391,6 @@
       }
     }
     @media (max-width:768px){
-      .nav-hidden-mobile{
-        display:none;
-      }
       .container{
         padding:0 1rem;
       }
@@ -372,11 +410,12 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/header-dropdown.css">
 </head>
 <body>
   <!-- Header -->
   <header class="header">
-    <div class="container">
+    <div class="header-container">
       <!-- LOGO (Top Left) -->
       <a href="#" class="logo" id="logoBtn">Charity Stream</a>
       
@@ -388,7 +427,7 @@
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="#" class="nav-cta" id="watchAdsBtnLoggedIn">Watch Ads</a>
+          <a href="/" class="nav-cta" id="watchAdsBtnLoggedIn">Watch Ads</a>
         </div>
         
         <!-- GUEST USER NAV -->
@@ -396,7 +435,7 @@
           <a href="/about" class="nav-link">About</a>
           <a href="/advertise" class="nav-link">Advertise</a>
           <a href="/impact" class="nav-link">Impact</a>
-          <a href="/auth" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
+          <a href="/" class="nav-cta" id="watchAdsBtnGuest">Watch Ads</a>
         </div>
       </nav>
     </div>
@@ -405,17 +444,17 @@
   <!-- Hero Section -->
   <section class="hero">
     <div class="container">
-      <div class="hero-badge">Trusted by 127+ Verified Nonprofits</div>
+      <div class="hero-badge" id="hero-badge" style="display:none"></div>
       <h1 class="hero-title">Your Mission Deserves Funding</h1>
       <p class="hero-subtitle">Skip grants. 100% of corporate net ad revenue becomes unrestricted support for verified 501(c)(3)s.</p>
-      
-      <div class="hero-stats">
-        <div class="stat">
-          <span class="stat-number">$47K+</span>
+
+      <div class="hero-stats" id="hero-stats">
+        <div class="stat" id="stat-donated">
+          <span class="stat-number"><span class="skeleton" id="stat-donated-num" style="width:3em;height:.85em;vertical-align:middle"> </span></span>
           <span class="stat-label">Donated to Date</span>
         </div>
-        <div class="stat">
-          <span class="stat-number">127</span>
+        <div class="stat" id="stat-orgs">
+          <span class="stat-number"><span class="skeleton" id="stat-orgs-num" style="width:2em;height:.85em;vertical-align:middle"> </span></span>
           <span class="stat-label">Organizations Funded</span>
         </div>
         <div class="stat">
@@ -503,44 +542,11 @@
                 </div>
                 
                 <div style="background:var(--gray-50);border:1px solid var(--gray-200);border-radius:.5rem;padding:1rem">
-                  <div style="display:flex;gap:.75rem;margin-bottom:1rem">
-                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-                      <input type="radio" name="paymentMethod" value="card" checked style="accent-color:var(--brand-600)">
-                      <span style="font-size:.875rem">Credit/Debit Card</span>
-                    </label>
-                    <label style="display:flex;align-items:center;gap:.5rem;cursor:pointer">
-                      <input type="radio" name="paymentMethod" value="paypal" style="accent-color:var(--brand-600)">
-                      <span style="font-size:.875rem">PayPal</span>
-                    </label>
+                  <div style="font-size:.875rem;color:var(--gray-700);margin-bottom:.75rem">
+                    Enter your card details below. Your card will be charged <strong>$1</strong> as a refundable entry stake to reduce spam.
                   </div>
-                  
-                  <div id="cardPayment">
-                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:.75rem;margin-bottom:.75rem">
-                      <div>
-                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">Card Number</label>
-                        <input type="text" placeholder="1234 5678 9012 3456" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
-                      </div>
-                      <div>
-                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">CVV</label>
-                        <input type="text" placeholder="123" maxlength="4" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
-                      </div>
-                    </div>
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-                      <div>
-                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">Expiry Date</label>
-                        <input type="text" placeholder="MM/YY" maxlength="5" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
-                      </div>
-                      <div>
-                        <label style="display:block;font-size:.75rem;font-weight:600;color:var(--gray-700);margin-bottom:.25rem">Zip Code</label>
-                        <input type="text" placeholder="12345" style="width:100%;padding:.5rem;border:1px solid var(--gray-200);border-radius:.375rem;font-size:.875rem">
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div id="paypalPayment" style="display:none;text-align:center;padding:1rem">
-                    <div style="font-size:.875rem;color:var(--gray-600);margin-bottom:1rem">You'll be redirected to PayPal to complete your $1 payment</div>
-                    <div style="background:#0070ba;color:#fff;padding:.75rem 1.5rem;border-radius:.5rem;display:inline-block;font-weight:600">PayPal</div>
-                  </div>
+                  <div id="card-element" style="padding:.75rem;border-radius:.5rem;background:#fff;border:1px solid var(--gray-200)"></div>
+                  <div id="card-errors" role="alert" style="color:#b91c1c;font-size:.8rem;margin-top:.5rem;min-height:1em"></div>
                 </div>
               </div>
 
@@ -587,17 +593,13 @@
           </div>
 
           <div style="background:#fff;border-radius:.75rem;padding:1.5rem;border:1px solid var(--gray-200)">
-            <div style="display:flex;justify-content:space-between;margin-bottom:.75rem">
+            <div style="display:flex;justify-content:space-between;margin-bottom:.75rem" id="row-total-donated">
               <span style="color:var(--gray-700);font-size:.875rem">Total Donated</span>
-              <span style="color:var(--brand-600);font-weight:700">$832</span>
+              <span style="color:var(--brand-600);font-weight:700"><span class="skeleton" id="bottom-donated" style="width:2.5em;height:.9em"> </span></span>
             </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:.75rem">
+            <div style="display:flex;justify-content:space-between;margin-bottom:1rem" id="row-charities-supported">
               <span style="color:var(--gray-700);font-size:.875rem">Charities Supported</span>
-              <span style="color:var(--brand-600);font-weight:700">19</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;margin-bottom:1rem">
-              <span style="color:var(--gray-700);font-size:.875rem">Weekly Opportunities</span>
-              <span style="color:var(--brand-600);font-weight:700">52</span>
+              <span style="color:var(--brand-600);font-weight:700"><span class="skeleton" id="bottom-charities" style="width:1.5em;height:.9em"> </span></span>
             </div>
             <div style="font-size:.75rem;color:var(--gray-600)">
               Updated weekly • <a href="/impact" style="color:var(--brand-600);text-decoration:underline">See impact reports</a>
@@ -622,40 +624,32 @@
     </div>
   </footer>
 
+  <!-- Success Modal (matches advertiser/sponsor style) -->
+  <div class="modal-overlay" id="charitySuccessModal" style="display:none;align-items:center;justify-content:center;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.5);z-index:1000">
+    <div class="modal" style="background:#fff;border-radius:1rem;padding:2rem;max-width:640px;width:90%;max-height:90vh;overflow-y:auto;position:relative;box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 10px 10px -5px rgba(0,0,0,.04)">
+      <button class="modal-close" id="charitySuccessClose" style="position:absolute;top:1rem;right:1rem;background:none;border:none;font-size:1.5rem;color:#6b7280;cursor:pointer;width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border-radius:50%;">×</button>
+      <div class="success-content" style="text-align:center">
+        <div class="success-icon" style="font-size:3rem;margin-bottom:1rem">✅</div>
+        <h3 class="success-title" style="font-size:1.5rem;font-weight:700;color:#111827;margin-bottom:1rem">Application Submitted!</h3>
+        <p class="success-message" style="color:#4b5563;margin-bottom:1.5rem;line-height:1.5">
+          Your charity entry has been received and is now <strong>pending review</strong>.
+        </p>
+        <div class="next-steps" style="text-align:left;margin:1.5rem 0;background:#f9fafb;border-radius:.75rem;padding:1.25rem">
+          <div class="next-steps-title" style="font-weight:600;color:#111827;margin-bottom:.75rem">What happens next:</div>
+          <ol style="margin-left:1.5rem;color:#4b5563;font-size:.875rem;line-height:1.6">
+            <li>We verify your 501(c)(3) status and application details.</li>
+            <li>Our team reviews your fit for upcoming weekly pools.</li>
+            <li>You’ll receive an email with your status and next steps.</li>
+          </ol>
+        </div>
+        <button class="modal-btn modal-btn-primary" id="charitySuccessPrimaryBtn" style="padding:.875rem 1.75rem;border-radius:.75rem;border:none;font-weight:600;font-size:.9rem;cursor:pointer;background:#2F7D31;color:#fff;">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
-    // Payment method switching
-    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        const cardPayment = document.getElementById('cardPayment');
-        const paypalPayment = document.getElementById('paypalPayment');
-        
-        if (this.value === 'card') {
-          cardPayment.style.display = 'block';
-          paypalPayment.style.display = 'none';
-        } else {
-          cardPayment.style.display = 'none';
-          paypalPayment.style.display = 'block';
-        }
-      });
-    });
-
-    // Card number formatting
-    document.querySelector('input[placeholder="1234 5678 9012 3456"]').addEventListener('input', function(e) {
-      let value = e.target.value.replace(/\D/g, '');
-      value = value.replace(/(\d{4})(?=\d)/g, '$1 ');
-      if (value.length > 19) value = value.substring(0, 19);
-      e.target.value = value;
-    });
-
-    // Expiry date formatting
-    document.querySelector('input[placeholder="MM/YY"]').addEventListener('input', function(e) {
-      let value = e.target.value.replace(/\D/g, '');
-      if (value.length >= 2) {
-        value = value.substring(0, 2) + '/' + value.substring(2, 4);
-      }
-      e.target.value = value;
-    });
-
     // EIN formatting
     document.getElementById('ein').addEventListener('input', function(e) {
       let value = e.target.value.replace(/\D/g, '');
@@ -664,6 +658,211 @@
       }
       e.target.value = value;
     });
+
+    // Stripe Elements setup
+    let stripe;
+    let cardElement;
+    let stripeElementsInstance;
+
+    async function initializeStripeElements() {
+      const configRes = await fetch('/api/stripe-publishable-key');
+      const { publishableKey } = await configRes.json();
+      if (!publishableKey) {
+        console.error('❌ Stripe publishable key is missing');
+        const errorsEl = document.getElementById('card-errors');
+        if (errorsEl) {
+          errorsEl.textContent = 'Payment form is temporarily unavailable. Please try again later.';
+        }
+        return;
+      }
+
+      try {
+        stripe = Stripe(publishableKey);
+        stripeElementsInstance = stripe.elements({
+          appearance: {
+            theme: 'stripe',
+            variables: {
+              colorPrimary: '#2F7D31',
+              colorBackground: '#ffffff',
+              colorText: '#111827',
+              colorDanger: '#b91c1c',
+              fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif'
+            }
+          }
+        });
+
+        cardElement = stripeElementsInstance.create('card', {
+          hidePostalCode: false
+        });
+        cardElement.mount('#card-element');
+      } catch (err) {
+        console.error('❌ Failed to initialize Stripe Elements:', err);
+        const errorsEl = document.getElementById('card-errors');
+        if (errorsEl) {
+          errorsEl.textContent = 'Payment form failed to load. Please refresh the page or try again later.';
+        }
+      }
+    }
+
+    // ── Auth / nav state ──────────────────────────────────────────────
+    let authToken = localStorage.getItem('authToken') || null;
+    let currentUser = null;
+
+    const userStr = localStorage.getItem('currentUser');
+    if (authToken && userStr) {
+      try { currentUser = JSON.parse(userStr); } catch (e) {}
+    }
+
+    function setInitialUIState() {
+      const loggedInNav = document.getElementById('loggedInNav');
+      const guestNav    = document.getElementById('guestNav');
+
+      if (!authToken) {
+        if (guestNav)    guestNav.style.display    = 'flex';
+        if (loggedInNav) loggedInNav.style.display = 'none';
+        return;
+      }
+
+      if (loggedInNav) loggedInNav.style.display = 'flex';
+      if (guestNav)    guestNav.style.display    = 'none';
+
+      if (currentUser) {
+        const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+        const usernameDisplay = document.getElementById('usernameDisplay');
+        if (usernameDisplay) usernameDisplay.textContent = displayName;
+      }
+
+      // Refresh from server in background
+      fetch('/api/auth/me', { headers: { 'Authorization': `Bearer ${authToken}` } })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (!data) return;
+          currentUser = data.user;
+          localStorage.setItem('currentUser', JSON.stringify(currentUser));
+          const displayName = currentUser.username || currentUser.email?.split('@')[0] || 'User';
+          const usernameDisplay = document.getElementById('usernameDisplay');
+          if (usernameDisplay) usernameDisplay.textContent = displayName;
+        })
+        .catch(() => {});
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', setInitialUIState);
+    } else {
+      setInitialUIState();
+    }
+    // ── End auth / nav state ──────────────────────────────────────────
+
+    // ── Charity stats ─────────────────────────────────────────────────
+    function formatDonated(amount) {
+      if (amount >= 1000) return '$' + (amount / 1000).toFixed(1).replace(/\.0$/, '') + 'K+';
+      return '$' + Math.round(amount);
+    }
+
+    async function loadCharityStats() {
+      try {
+        const res = await fetch('/api/charity/stats');
+        const data = await res.json();
+
+        // Hero badge
+        const nonprofitCount = data.nonprofitCount || 0;
+        const badge = document.getElementById('hero-badge');
+        if (nonprofitCount > 0) {
+          badge.textContent = 'Trusted by ' + nonprofitCount + '+ Verified Nonprofits';
+          badge.style.display = '';
+        }
+
+        // Top stat: Donated to Date
+        const donatedToDate = data.donatedToDate || 0;
+        if (donatedToDate > 0) {
+          const numEl = document.getElementById('stat-donated-num');
+          numEl.textContent = formatDonated(donatedToDate);
+          numEl.classList.remove('skeleton');
+        } else {
+          document.getElementById('stat-donated').style.display = 'none';
+        }
+
+        // Top stat: Organizations Funded (same count as badge)
+        if (nonprofitCount > 0) {
+          const numEl = document.getElementById('stat-orgs-num');
+          numEl.textContent = nonprofitCount;
+          numEl.classList.remove('skeleton');
+        } else {
+          document.getElementById('stat-orgs').style.display = 'none';
+        }
+
+        // Bottom: Total Donated
+        if (donatedToDate > 0) {
+          const el = document.getElementById('bottom-donated');
+          el.textContent = formatDonated(donatedToDate);
+          el.classList.remove('skeleton');
+        } else {
+          document.getElementById('row-total-donated').style.display = 'none';
+        }
+
+        // Bottom: Charities Supported
+        const charitiesSupported = data.charitiesSupported || 0;
+        if (charitiesSupported > 0) {
+          const el = document.getElementById('bottom-charities');
+          el.textContent = charitiesSupported;
+          el.classList.remove('skeleton');
+        } else {
+          document.getElementById('row-charities-supported').style.display = 'none';
+        }
+      } catch (e) {
+        // On error hide all loading placeholders gracefully
+        ['stat-donated', 'stat-orgs'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+        ['row-total-donated', 'row-charities-supported'].forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+        });
+      }
+    }
+    // ── End charity stats ─────────────────────────────────────────────
+
+    // Initialize Stripe on page load
+    document.addEventListener('DOMContentLoaded', initializeStripeElements);
+    document.addEventListener('DOMContentLoaded', loadCharityStats);
+
+    function showCharitySuccessModal() {
+      const overlay = document.getElementById('charitySuccessModal');
+      if (overlay) {
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+    }
+
+    function hideCharitySuccessModal() {
+      const overlay = document.getElementById('charitySuccessModal');
+      if (overlay) {
+        overlay.style.display = 'none';
+        document.body.style.overflow = 'auto';
+      }
+    }
+
+    document.getElementById('charitySuccessClose').addEventListener('click', hideCharitySuccessModal);
+    document.getElementById('charitySuccessPrimaryBtn').addEventListener('click', hideCharitySuccessModal);
+
+    // Loading animation (same pattern as sponsor/advertiser forms)
+    let charityLoadingAnimationInterval = null;
+    function startCharityLoadingAnimation(button) {
+      let dots = 0;
+      const updateText = () => {
+        dots = (dots % 3) + 1;
+        button.textContent = '.'.repeat(dots);
+      };
+      updateText();
+      charityLoadingAnimationInterval = setInterval(updateText, 500);
+    }
+    function stopCharityLoadingAnimation() {
+      if (charityLoadingAnimationInterval) {
+        clearInterval(charityLoadingAnimationInterval);
+        charityLoadingAnimationInterval = null;
+      }
+    }
 
     // Form submission
     document.getElementById('charityForm').addEventListener('submit', async function(e) {
@@ -685,17 +884,19 @@
         return;
       }
 
-      const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
-      
-      // Disable submit button to prevent double submission
       const submitBtn = this.querySelector('.submit-btn');
       const originalText = submitBtn.textContent;
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Submitting...';
+      startCharityLoadingAnimation(submitBtn);
       
       try {
-        // Submit to backend API
-        const response = await fetch('/api/charity/submit', {
+        if (!stripe || !cardElement) {
+          alert('Payment form is not ready. Please refresh the page and try again.');
+          return;
+        }
+
+        // Step 1: Create PaymentIntent on backend
+        const intentResponse = await fetch('/api/charity-entry/create-payment-intent', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -706,33 +907,79 @@
             contactEmail: contactEmail
           })
         });
-        
-        const data = await response.json();
-        
-        if (response.ok) {
-          // Success
-          console.log('✅ Charity submission successful:', data);
-          
-          if (paymentMethod === 'paypal') {
-            alert("Thank you! Your application has been submitted successfully.\n\nYou'll be redirected to PayPal for the $1 entry payment.\n\nYou'll receive confirmation within 24 hours.");
-            // In real implementation, redirect to PayPal
-          } else {
-            alert("Thank you! Your application has been submitted successfully.\n\nProcessing $1 payment...\n\nYou'll receive confirmation within 24 hours.");
-            // In real implementation, process card payment
+
+        const intentData = await intentResponse.json();
+
+        if (!intentResponse.ok || !intentData.clientSecret) {
+          console.error('❌ Failed to create PaymentIntent:', intentData);
+          return;
+        }
+
+        const clientSecret = intentData.clientSecret;
+
+        // Step 2: Confirm card payment inline with Stripe Elements
+        const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret, {
+          payment_method: {
+            card: cardElement,
+            billing_details: {
+              name: charityName,
+              email: contactEmail
+            }
           }
-          
-          // Reset form
-          this.reset();
-        } else {
-          // Error from server
-          console.error('❌ Charity submission failed:', data);
-          alert('Submission failed: ' + (data.message || 'Please try again later.'));
+        });
+
+        if (error) {
+          console.error('❌ Error confirming card payment:', error);
+          const errorsEl = document.getElementById('card-errors');
+          if (errorsEl) {
+            errorsEl.textContent = error.message || 'Payment failed. Please check your card details and try again.';
+          }
+          return;
+        }
+
+        if (!paymentIntent || paymentIntent.status !== 'succeeded') {
+          console.error('❌ Payment did not succeed:', paymentIntent);
+          return;
+        }
+
+        // Step 3: Finalize application with backend
+        const finalizeResponse = await fetch('/api/charity-entry/finalize', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            charityName: charityName,
+            federalEin: federalEin,
+            contactEmail: contactEmail,
+            paymentIntentId: paymentIntent.id
+          })
+        });
+
+        const finalizeData = await finalizeResponse.json();
+
+        if (!finalizeResponse.ok) {
+          console.error('❌ Charity application finalize failed:', finalizeData);
+          return;
+        }
+
+        console.log('✅ Charity application submitted:', finalizeData);
+        showCharitySuccessModal();
+        
+        // Reset form and card element
+        this.reset();
+        const errorsEl = document.getElementById('card-errors');
+        if (errorsEl) {
+          errorsEl.textContent = '';
+        }
+        // Clear card Element appearance/state
+        if (cardElement && stripeElementsInstance) {
+          cardElement.clear();
         }
       } catch (error) {
         console.error('❌ Network error:', error);
-        alert('Network error: Unable to submit application. Please check your connection and try again.');
       } finally {
-        // Re-enable submit button
+        stopCharityLoadingAnimation();
         submitBtn.disabled = false;
         submitBtn.textContent = originalText;
       }
@@ -749,5 +996,6 @@
       }, 800);
     });
   </script>
+  <script src="/header-dropdown.js"></script>
 </body>
 </html>

@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sponsor Portal - Charity Stream</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://js.stripe.com/v3/"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#2F7D31",
+            "background-light": "#f6f8f6",
+            "background-dark": "#111111",
+            "container-light": "#ffffff",
+            "container-dark": "#1A1A1A",
+            "border-light": "#EAEAEA",
+            "border-dark": "#2E2E2E",
+            "text-primary-light": "#111111",
+            "text-primary-dark": "#EAEAEA",
+            "text-secondary-light": "#555555",
+            "text-secondary-dark": "#888888",
+          },
+          fontFamily: { "display": ["Inter", "sans-serif"] },
+        },
+      },
+    };
+  </script>
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+    /* Tier pill: same height/size as status pill, outlined */
+    .sponsor-tier-pill {
+      display: inline-flex;
+      align-items: center;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-width: 1px;
+    }
+    .sponsor-tier-pill.bronze { border-color: rgba(180, 83, 9, 0.7); color: #fcd34d; }
+    .sponsor-tier-pill.silver { border-color: rgba(156, 163, 175, 0.8); color: #e5e7eb; }
+    .sponsor-tier-pill.gold { border-color: rgba(234, 179, 8, 0.8); color: #fde047; }
+    .sponsor-tier-pill.diamond { border-color: rgba(34, 211, 238, 0.8); color: #22d3ee; }
+    /* End Campaign modal */
+    #end-campaign-modal { display: flex; align-items: center; justify-content: center; }
+    #end-campaign-modal.hidden { display: none; }
+    #end-campaign-modal .end-campaign-modal-backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+    /* View Creative modal */
+    #view-creative-modal { display: flex; align-items: center; justify-content: center; }
+    #view-creative-modal.hidden { display: none; }
+    #view-creative-modal .view-creative-modal-backdrop { background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); }
+    /* Sponsor Video thumbnail: 16:9, no cropping */
+    .sponsor-thumbnail {
+      aspect-ratio: 16 / 9;
+      overflow: hidden;
+      border-radius: 12px;
+      position: relative;
+      background: rgba(0, 0, 0, 0.2);
+      border: 1px solid var(--border-dark, #2E2E2E);
+    }
+    .sponsor-thumbnail video {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-background-dark text-text-primary-dark antialiased overflow-hidden font-display">
+  <div id="app" class="flex h-screen w-full overflow-hidden">
+    <!-- Sidebar -->
+    <aside class="w-64 flex-shrink-0 bg-container-dark border-r border-border-dark flex flex-col justify-between h-full px-4 pb-4 pt-6 md:pt-8">
+      <div class="flex flex-col gap-6">
+        <div class="flex items-center gap-3 px-2">
+          <h1 class="text-base font-semibold text-text-primary-dark">Charity Stream</h1>
+        </div>
+        <nav class="flex flex-col gap-2">
+          <button type="button" data-tab="overview" class="tab-btn flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sm font-semibold">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" /></svg>
+            <span>Overview</span>
+          </button>
+          <button type="button" data-tab="campaigns" class="tab-btn flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sm font-medium text-text-secondary-dark hover:bg-white/5">
+            <svg class="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M5 9l14-2v12L5 15V9z"/>
+              <path d="M5 15L5 21Q11 21 11 15"/>
+            </svg>
+            <span>Sponsorships</span>
+          </button>
+          <button type="button" data-tab="billing" class="tab-btn flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sm font-medium text-text-secondary-dark hover:bg-white/5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" /></svg>
+            <span>Billing</span>
+          </button>
+          <button type="button" data-tab="account" class="tab-btn flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sm font-medium text-text-secondary-dark hover:bg-white/5">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+            <span>Account</span>
+          </button>
+        </nav>
+      </div>
+      <div class="flex flex-col gap-2">
+        <a href="/portal.html" class="flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary-dark hover:bg-white/5 transition-colors w-full text-left text-sm font-medium">
+          ← Back to Portal
+        </a>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="flex-1 flex flex-col h-full overflow-hidden relative z-0">
+      <div id="content" class="flex-1 flex flex-col h-full p-3 md:p-4 max-w-7xl w-full mx-auto min-h-0 pb-4">
+        <!-- Loading -->
+        <div id="loading" class="flex-1 flex items-center justify-center">
+          <p class="text-text-secondary-dark">Loading...</p>
+        </div>
+        <!-- Error -->
+        <div id="error" class="flex-1 flex items-center justify-center hidden">
+          <p id="error-text" class="text-red-400"></p>
+        </div>
+        <!-- Dashboard (single campaign overview) -->
+        <div id="dashboard" class="hidden flex-1 flex flex-col gap-3 min-h-0">
+          <header class="flex items-center justify-between mb-2 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">Sponsor Portal</span>
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">/</span>
+              <span class="text-base md:text-lg font-medium text-text-primary-dark">Sponsor Dashboard</span>
+            </div>
+          </header>
+
+          <!-- Campaign header card (hero): status pill + tier, campaign title + End Campaign -->
+          <section id="campaign-header" class="mb-2 p-4 bg-container-dark rounded-xl border border-border-dark hidden">
+            <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+              <div class="flex-1">
+                <div class="flex items-center gap-2 mb-0.5 flex-wrap">
+                  <span id="status-badge"></span>
+                  <span id="tier-separator" class="text-text-secondary-dark text-xs font-medium hidden"> · </span>
+                  <span id="tier-pill" class="sponsor-tier-pill hidden"></span>
+                </div>
+                <h2 id="campaign-title" class="text-xl font-bold text-text-primary-dark"></h2>
+              </div>
+              <div id="end-campaign-wrap" class="flex-shrink-0 hidden">
+                <button type="button" id="end-campaign-btn" class="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">
+                  End Campaign
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Pending approval / Rejected message -->
+          <div id="pending-message" class="flex-1 flex flex-col items-center justify-center gap-3 hidden">
+            <p id="pending-message-text" class="text-text-secondary-dark font-medium text-center">Your campaign is currently pending approval.</p>
+            <button id="retry-payment-btn" type="button" class="hidden px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition-colors">Retry Payment</button>
+            <p id="retry-payment-error" class="hidden text-red-400 text-sm text-center"></p>
+          </div>
+
+          <!-- Row 1: KPI row — 3 equal-width cards -->
+          <section id="kpi-row" class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2 hidden">
+            <div class="p-3 bg-container-dark rounded-xl border border-border-dark flex flex-col h-full">
+              <p class="text-sm font-medium text-text-secondary-dark mb-1">Total Impressions</p>
+              <p id="kpi-impressions-total" class="text-2xl font-bold text-text-primary-dark leading-none">—</p>
+              <p class="text-xs text-text-secondary-dark mt-auto pt-1">all time</p>
+            </div>
+            <div class="p-3 bg-container-dark rounded-xl border border-border-dark flex flex-col h-full">
+              <p class="text-sm font-medium text-text-secondary-dark mb-1">Total Link Clicks</p>
+              <p id="kpi-clicks-total" class="text-2xl font-bold text-text-primary-dark leading-none">—</p>
+              <p class="text-xs text-text-secondary-dark mt-auto pt-1">all time</p>
+            </div>
+            <div class="p-3 bg-container-dark rounded-xl border border-border-dark flex flex-col h-full">
+              <p class="text-sm font-medium text-text-secondary-dark mb-1">This Week's Recipient</p>
+              <p id="kpi-recipient" class="text-lg font-bold text-text-primary-dark leading-none">To Be Announced</p>
+              <p id="kpi-recipient-caption" class="text-xs text-text-secondary-dark mt-auto pt-1">Donations go to the first charity to sign up on Charity Stream</p>
+            </div>
+          </section>
+
+          <!-- Row 2: Split row — wide "This Week" (2/3) + narrow "Sponsor Video" (1/3) -->
+          <section id="split-row" class="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2 hidden" style="max-height:200px">
+            <!-- Left: This Week (2/3) — metrics centered vertically, evenly spaced horizontally -->
+            <div class="md:col-span-2 p-3 bg-container-dark rounded-xl border border-border-dark flex flex-col h-full">
+              <p class="text-sm font-medium text-text-secondary-dark mb-2">This Week</p>
+              <div class="flex-1 flex items-center w-full">
+                <div class="flex justify-between items-center w-full gap-4">
+                  <div class="flex-1 flex flex-col items-center text-center">
+                    <p class="text-xs text-text-secondary-dark">Impressions</p>
+                    <p id="week-impressions" class="text-2xl font-bold text-text-primary-dark leading-none">—</p>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center text-center">
+                    <p class="text-xs text-text-secondary-dark">Clicks</p>
+                    <p id="week-clicks" class="text-2xl font-bold text-text-primary-dark leading-none">—</p>
+                  </div>
+                  <div class="flex-1 flex flex-col items-center text-center">
+                    <p class="text-xs text-text-secondary-dark">Unique Viewers</p>
+                    <p id="week-unique-viewers" class="text-2xl font-bold text-text-primary-dark leading-none">—</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Right: Sponsor Video (1/3) -->
+            <div class="p-3 bg-container-dark rounded-xl border border-border-dark flex flex-col h-full">
+              <p class="text-sm font-medium text-text-secondary-dark mb-2">Sponsor Video</p>
+              <div class="flex items-center gap-3 flex-1 min-h-0">
+                <div class="sponsor-thumbnail flex-shrink-0" style="width:55%">
+                  <video id="sponsorThumbnailVideo" class="hidden" preload="metadata" muted playsinline></video>
+                  <span id="sponsorThumbnailFallback" class="absolute inset-0 flex items-center justify-center text-text-secondary-dark text-xs">No creative available</span>
+                </div>
+                <button type="button" id="view-creative-btn" class="flex-1 py-2 rounded-lg text-sm font-semibold bg-container-dark border border-border-dark text-text-primary-dark hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                  View Creative
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- Row 3: Top Sponsors Leaderboard -->
+          <section class="bg-container-dark rounded-xl border border-border-dark p-4 mb-2">
+            <p class="text-sm font-medium text-text-secondary-dark mb-3">Top Sponsors — All Time</p>
+            <div id="sponsor-leaderboard" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <!-- Populated by JS -->
+              <div class="animate-pulse bg-white/5 rounded-lg h-24"></div>
+              <div class="animate-pulse bg-white/5 rounded-lg h-24"></div>
+              <div class="animate-pulse bg-white/5 rounded-lg h-24"></div>
+              <div class="animate-pulse bg-white/5 rounded-lg h-24"></div>
+            </div>
+          </section>
+        </div>
+
+        <!-- Sponsorships tab -->
+        <div id="tab-campaigns" class="hidden flex-1 flex flex-col min-h-0 overflow-hidden">
+          <header class="flex items-center justify-between mb-2 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">Sponsor Portal</span>
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">/</span>
+              <span class="text-base md:text-lg font-medium text-text-primary-dark">Sponsorships</span>
+            </div>
+          </header>
+          <div class="flex items-center gap-4 mb-2 flex-shrink-0">
+            <div class="relative flex-1 max-w-md">
+              <input type="text" id="campaigns-search" placeholder="Search campaigns..." class="w-full pl-10 pr-4 py-2 rounded-lg bg-container-dark border border-border-dark text-text-primary-dark placeholder-text-secondary-dark focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary-dark" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
+            <div class="relative">
+              <button type="button" id="campaigns-filter-sort-btn" class="flex items-center gap-2 px-4 py-2 border rounded-lg font-medium transition-colors bg-container-dark border-border-dark text-text-secondary-dark hover:bg-white/5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                <span>Filter & Sort</span>
+              </button>
+              <div id="filter-sort-panel" class="hidden absolute top-full right-0 w-64 bg-container-dark rounded-xl border border-border-dark shadow-xl z-30 p-4" style="margin-top: 8px;">
+                <div class="mb-4">
+                  <h3 class="text-xs font-semibold text-text-secondary-dark uppercase mb-2">Sort By</h3>
+                  <div class="space-y-1">
+                    <button type="button" data-sort="newest" class="filter-sort-option w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors text-left">
+                      <span>Newest First</span>
+                      <span class="filter-sort-check hidden">✓</span>
+                    </button>
+                    <button type="button" data-sort="oldest" class="filter-sort-option w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors text-left">
+                      <span>Oldest First</span>
+                      <span class="filter-sort-check hidden">✓</span>
+                    </button>
+                  </div>
+                </div>
+                <hr class="border-border-dark mb-4" />
+                <div>
+                  <h3 class="text-xs font-semibold text-text-secondary-dark uppercase mb-2">Status</h3>
+                  <div class="grid grid-cols-2 gap-2">
+                    <button type="button" data-status="ALL" class="filter-status-option px-3 py-1.5 rounded-md text-xs font-medium border border-border-dark text-text-secondary-dark hover:border-primary/50">All</button>
+                    <button type="button" data-status="LIVE" class="filter-status-option px-3 py-1.5 rounded-md text-xs font-medium border border-border-dark text-text-secondary-dark hover:border-primary/50">Live</button>
+                    <button type="button" data-status="PENDING_APPROVAL" class="filter-status-option px-3 py-1.5 rounded-md text-xs font-medium border border-border-dark text-text-secondary-dark hover:border-primary/50">Pending approval</button>
+                    <button type="button" data-status="REJECTED" class="filter-status-option px-3 py-1.5 rounded-md text-xs font-medium border border-border-dark text-text-secondary-dark hover:border-primary/50">Rejected</button>
+                    <button type="button" data-status="ENDED" class="filter-status-option px-3 py-1.5 rounded-md text-xs font-medium border border-border-dark text-text-secondary-dark hover:border-primary/50">Ended</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex-1 min-h-0 flex flex-col overflow-hidden pb-2">
+          <div class="flex-1 bg-container-dark rounded-xl border border-border-dark overflow-auto min-h-0">
+            <table class="w-full text-left">
+              <thead class="bg-white/5 border-b border-border-dark text-text-secondary-dark text-xs uppercase font-semibold sticky top-0">
+                <tr>
+                  <th class="px-6 py-4">Campaign Name</th>
+                  <th class="px-6 py-4">Tier</th>
+                  <th class="px-6 py-4">Status</th>
+                  <th class="px-6 py-4">Created Date</th>
+                  <th class="px-6 py-4">Recipient(s)</th>
+                  <th class="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="campaigns-tbody" class="divide-y divide-border-dark">
+                <tr><td colspan="6" class="px-6 py-8 text-center text-text-secondary-dark">Loading campaigns...</td></tr>
+              </tbody>
+            </table>
+          </div>
+          </div>
+        </div>
+
+        <!-- Billing tab -->
+        <div id="tab-billing" class="hidden flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <header class="flex items-center justify-between mb-4 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">Sponsor Portal</span>
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">/</span>
+              <span class="text-base md:text-lg font-medium text-text-primary-dark">Billing</span>
+            </div>
+          </header>
+          <section class="bg-container-dark rounded-xl border border-border-dark p-6 mb-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-text-primary-dark">Payment Methods</h2>
+              <button type="button" id="billing-add-card" class="text-sm font-semibold text-primary hover:text-primary/80 flex items-center gap-1">+ Add Card</button>
+            </div>
+            <div id="billing-payment-methods-list" class="space-y-3">
+              <p class="text-text-secondary-dark">Loading...</p>
+            </div>
+          </section>
+          <section class="bg-container-dark rounded-xl border border-border-dark overflow-hidden">
+            <div class="p-6 border-b border-border-dark">
+              <h2 class="text-lg font-semibold text-text-primary-dark">Billing History</h2>
+            </div>
+            <div class="overflow-x-auto overflow-y-auto max-h-80">
+              <table class="w-full">
+                <thead class="bg-container-dark border-b border-border-dark text-text-secondary-dark text-xs uppercase font-semibold sticky top-0 z-10">
+                  <tr>
+                    <th class="px-6 py-4 text-left">Date</th>
+                    <th class="px-6 py-4 text-left">Description</th>
+                    <th class="px-6 py-4 text-right">Amount</th>
+                    <th class="px-6 py-4 text-right">Status</th>
+                  </tr>
+                </thead>
+                <tbody id="billing-history-tbody" class="divide-y divide-border-dark">
+                  <tr><td colspan="4" class="px-6 py-8 text-center text-text-secondary-dark">Loading...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Account tab -->
+        <div id="tab-account" class="hidden flex-1 flex flex-col min-h-0 overflow-y-auto">
+          <header class="flex items-center justify-between mb-4 flex-shrink-0">
+            <div class="flex items-center gap-2">
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">Sponsor Portal</span>
+              <span class="text-base md:text-lg font-medium text-text-secondary-dark">/</span>
+              <span class="text-base md:text-lg font-medium text-text-primary-dark">Account</span>
+            </div>
+          </header>
+          <section class="bg-container-dark rounded-xl border border-border-dark p-6">
+            <h2 class="text-lg font-semibold mb-4 text-text-primary-dark">Profile Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-text-secondary-dark mb-1">Company Name</label>
+                <input type="text" id="account-company" readOnly class="w-full px-3 py-2 rounded-lg bg-background-dark border border-border-dark text-text-primary-dark cursor-default" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-text-secondary-dark mb-1">Contact Email</label>
+                <input type="email" id="account-email" readOnly class="w-full px-3 py-2 rounded-lg bg-background-dark border border-border-dark text-text-primary-dark cursor-default" />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-text-secondary-dark mb-1">Phone Number</label>
+                <input type="tel" id="account-phone" placeholder="Add a phone number" class="w-full px-3 py-2 rounded-lg bg-container-dark border border-border-dark text-text-primary-dark focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                <p id="account-phone-saving" class="text-xs text-text-secondary-dark mt-1 hidden">Saving...</p>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+    <!-- Add Card modal (Stripe) -->
+    <div id="add-card-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+      <div id="add-card-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
+      <div class="relative bg-container-dark border border-border-dark rounded-xl shadow-xl max-w-md w-full mx-4 p-6">
+        <h3 class="text-lg font-bold text-text-primary-dark mb-4">Add payment method</h3>
+        <div id="add-card-element" class="mb-4"></div>
+        <p id="add-card-error" class="text-red-400 text-sm mb-4 hidden"></p>
+        <div class="flex justify-end gap-3">
+          <button type="button" id="add-card-cancel" class="px-4 py-2 rounded-lg text-sm font-semibold border border-border-dark text-text-primary-dark hover:bg-white/5">Cancel</button>
+          <button type="button" id="add-card-submit" class="px-4 py-2 rounded-lg text-sm font-semibold bg-primary text-white hover:bg-primary/90 disabled:opacity-50">Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- End Campaign confirmation modal -->
+    <div id="end-campaign-modal" class="hidden fixed inset-0 z-50" aria-hidden="true">
+      <div id="end-campaign-modal-backdrop" class="end-campaign-modal-backdrop absolute inset-0" tabindex="-1"></div>
+      <div class="relative flex items-center justify-center min-h-full p-4" role="dialog" aria-modal="true" aria-labelledby="end-campaign-modal-title">
+        <div class="bg-container-dark border border-border-dark rounded-xl shadow-xl max-w-md w-full p-6">
+          <h3 id="end-campaign-modal-title" class="text-lg font-bold text-text-primary-dark mb-3">End Campaign?</h3>
+          <p class="text-text-secondary-dark text-sm mb-6">Ending this campaign is permanent.<br>You will not be able to restart it and will need to resubmit if you wish to sponsor again.</p>
+          <p id="end-campaign-modal-error" class="text-red-400 text-sm mb-4 hidden"></p>
+          <div class="flex justify-end gap-3">
+            <button type="button" id="end-campaign-modal-cancel" class="px-4 py-2 rounded-lg text-sm font-semibold border border-border-dark text-text-primary-dark hover:bg-white/5 transition-colors">Cancel</button>
+            <button type="button" id="end-campaign-modal-confirm" class="px-4 py-2 rounded-lg text-sm font-semibold bg-red-600 text-white hover:bg-red-700 transition-colors">End Campaign</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Creative modal -->
+    <div id="view-creative-modal" class="hidden fixed inset-0 z-50" aria-hidden="true">
+      <div id="view-creative-modal-backdrop" class="view-creative-modal-backdrop absolute inset-0" tabindex="-1"></div>
+      <div class="relative flex items-center justify-center min-h-full p-4">
+        <div class="relative w-full max-w-5xl mx-4 bg-container-dark border border-border-dark rounded-2xl shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="view-creative-modal-title" onclick="event.stopPropagation()">
+          <div class="flex items-center justify-between px-4 py-3 border-b border-border-dark">
+            <p id="view-creative-modal-title" class="text-sm font-medium text-text-primary-dark">Sponsor Creative</p>
+            <button type="button" id="view-creative-modal-close" class="inline-flex items-center justify-center w-8 h-8 rounded-full hover:bg-white/10 text-text-secondary-dark transition-colors" aria-label="Close">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+          <div class="bg-black p-4">
+            <video id="sponsorCreativeVideo" controls controlsList="nodownload noplaybackrate nopictureinpicture" disablePictureInPicture class="w-full rounded-lg bg-black aspect-video" oncontextmenu="return false;"></video>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const token = localStorage.getItem('sponsorPortalToken');
+      if (!token) {
+        window.location.href = '/sponsor-login.html';
+        return;
+      }
+
+      const loadingEl = document.getElementById('loading');
+      const errorEl = document.getElementById('error');
+      const errorTextEl = document.getElementById('error-text');
+      const dashboardEl = document.getElementById('dashboard');
+      const campaignHeaderEl = document.getElementById('campaign-header');
+      const statusBadgeEl = document.getElementById('status-badge');
+      const tierSeparatorEl = document.getElementById('tier-separator');
+      const tierPillEl = document.getElementById('tier-pill');
+      const campaignTitleEl = document.getElementById('campaign-title');
+      const pendingMessageEl = document.getElementById('pending-message');
+      const kpiRowEl = document.getElementById('kpi-row');
+      const splitRowEl = document.getElementById('split-row');
+      const endCampaignWrapEl = document.getElementById('end-campaign-wrap');
+      const endCampaignBtnEl = document.getElementById('end-campaign-btn');
+      const endCampaignModalEl = document.getElementById('end-campaign-modal');
+      const endCampaignModalBackdropEl = document.getElementById('end-campaign-modal-backdrop');
+      const endCampaignModalCancelEl = document.getElementById('end-campaign-modal-cancel');
+      const endCampaignModalConfirmEl = document.getElementById('end-campaign-modal-confirm');
+      const endCampaignModalErrorEl = document.getElementById('end-campaign-modal-error');
+      const viewCreativeBtnEl = document.getElementById('view-creative-btn');
+      const viewCreativeModalEl = document.getElementById('view-creative-modal');
+      const viewCreativeModalBackdropEl = document.getElementById('view-creative-modal-backdrop');
+      const viewCreativeModalCloseEl = document.getElementById('view-creative-modal-close');
+      const sponsorCreativeVideoEl = document.getElementById('sponsorCreativeVideo');
+      const sponsorThumbnailVideoEl = document.getElementById('sponsorThumbnailVideo');
+      const sponsorThumbnailFallbackEl = document.getElementById('sponsorThumbnailFallback');
+
+      let currentCampaignId = null;
+      let currentCreativeUrl = null;
+      let currentTab = 'overview';
+      let campaignIdToEnd = null;
+      let campaignsList = [];
+      let campaignsLoaded = false;
+      let campaignsSortOrder = 'newest';
+      let campaignsStatusFilter = 'ALL';
+      let filterSortModalOpen = false;
+      let sponsorStripeInstance = null;
+      let stripeElements = null;
+      let stripeElement = null;
+      let setupIntentClientSecret = null;
+
+      function getAuthHeaders() {
+        return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+      }
+
+      function formatStartDate(dateStr) {
+        if (!dateStr) return 'soon';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      }
+
+      var VALID_TABS = ['overview', 'campaigns', 'billing', 'account'];
+
+      function setActiveTab(tab, updateHash) {
+        if (!VALID_TABS.includes(tab)) tab = 'overview';
+        currentTab = tab;
+        if (updateHash !== false) {
+          history.replaceState(null, '', '#' + tab);
+        }
+        document.querySelectorAll('.tab-btn').forEach(function (btn) {
+          var isActive = btn.getAttribute('data-tab') === tab;
+          btn.className = 'tab-btn flex items-center gap-3 px-3 py-2 rounded-lg w-full text-left text-sm ' + (isActive ? 'bg-primary/10 text-primary font-semibold' : 'font-medium text-text-secondary-dark hover:bg-white/5');
+        });
+        dashboardEl.classList.toggle('hidden', tab !== 'overview');
+        document.getElementById('tab-campaigns').classList.toggle('hidden', tab !== 'campaigns');
+        document.getElementById('tab-billing').classList.toggle('hidden', tab !== 'billing');
+        document.getElementById('tab-account').classList.toggle('hidden', tab !== 'account');
+        if (tab === 'campaigns' && !campaignsLoaded) loadCampaigns();
+        if (tab === 'billing') { loadPaymentMethods(); loadBillingHistory(); }
+        if (tab === 'account') loadAccount();
+      }
+
+      function escapeHtml(str) {
+        return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      }
+
+      function renderRecipientCell(recipients) {
+        if (!recipients || recipients.length === 0) {
+          return '<td class="px-6 py-4 text-text-secondary-dark">TBA</td>';
+        }
+        if (recipients.length === 1) {
+          return '<td class="px-6 py-4 text-text-primary-dark">' + escapeHtml(recipients[0]) + '</td>';
+        }
+        var rest = recipients.length - 1;
+        return '<td class="px-6 py-4 text-text-primary-dark">' +
+          '<span>' + escapeHtml(recipients[0]) + '</span>' +
+          '<button type="button" class="recipient-more-btn ml-2 text-xs text-primary hover:text-primary/80 font-semibold" data-recipients="' + encodeURIComponent(JSON.stringify(recipients.slice(1))) + '">+' + rest + ' more</button>' +
+          '</td>';
+      }
+
+      var activeRecipientDropdown = null;
+
+      function showRecipientDropdown(triggerBtn, names) {
+        if (activeRecipientDropdown && activeRecipientDropdown.trigger === triggerBtn) {
+          closeRecipientDropdown();
+          return;
+        }
+        closeRecipientDropdown();
+        var dropdown = document.createElement('div');
+        dropdown.className = 'bg-container-dark border border-border-dark rounded-xl shadow-2xl py-1';
+        dropdown.style.cssText = 'position:fixed;min-width:180px;z-index:9999;';
+        names.forEach(function(name) {
+          var item = document.createElement('div');
+          item.className = 'px-4 py-2 text-sm text-text-primary-dark';
+          item.textContent = name;
+          dropdown.appendChild(item);
+        });
+        document.body.appendChild(dropdown);
+        var rect = triggerBtn.getBoundingClientRect();
+        var top = rect.bottom + 4;
+        var left = rect.left;
+        dropdown.style.top = top + 'px';
+        dropdown.style.left = left + 'px';
+        var dropRect = dropdown.getBoundingClientRect();
+        if (dropRect.right > window.innerWidth - 8) {
+          dropdown.style.left = (window.innerWidth - dropRect.width - 8) + 'px';
+        }
+        activeRecipientDropdown = { el: dropdown, trigger: triggerBtn };
+      }
+
+      function closeRecipientDropdown() {
+        if (activeRecipientDropdown) {
+          if (activeRecipientDropdown.el.parentNode) {
+            activeRecipientDropdown.el.parentNode.removeChild(activeRecipientDropdown.el);
+          }
+          activeRecipientDropdown = null;
+        }
+      }
+
+      document.addEventListener('mousedown', function(e) {
+        if (activeRecipientDropdown &&
+            !activeRecipientDropdown.el.contains(e.target) &&
+            !activeRecipientDropdown.trigger.contains(e.target)) {
+          closeRecipientDropdown();
+        }
+      });
+
+      function loadCampaigns() {
+        var tbody = document.getElementById('campaigns-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-text-secondary-dark">Loading campaigns...</td></tr>';
+        fetch('/api/sponsor/campaigns', { headers: getAuthHeaders() })
+          .then(function (r) {
+            if (r.status === 401) { localStorage.removeItem('sponsorPortalToken'); window.location.href = '/sponsor-login.html'; return; }
+            return r.json();
+          })
+          .then(function (list) {
+            if (!Array.isArray(list)) throw new Error(list && list.error || 'Failed to load campaigns');
+            campaignsList = list;
+            campaignsLoaded = true;
+            renderCampaignsTable();
+          })
+          .catch(function (err) {
+            tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-red-400">' + (err.message || 'Failed to load campaigns') + '</td></tr>';
+          });
+      }
+
+      function renderCampaignsTable() {
+        if (!campaignsLoaded) return;
+        var search = (document.getElementById('campaigns-search').value || '').toLowerCase();
+        var list = campaignsList.filter(function (c) {
+          var matchSearch = !search || (c.campaignName || '').toLowerCase().includes(search);
+          var matchStatus = campaignsStatusFilter === 'ALL' || c.status === campaignsStatusFilter;
+          return matchSearch && matchStatus;
+        });
+        list = list.slice().sort(function (a, b) {
+          var da = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          var db = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          return campaignsSortOrder === 'newest' ? db - da : da - db;
+        });
+        var tbody = document.getElementById('campaigns-tbody');
+        if (list.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" class="px-6 py-8 text-center text-text-secondary-dark">No campaigns found.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = list.map(function (c) {
+          var tierLabel = formatTier(c.tier);
+          var tierClass = (c.tier && ['bronze','silver','gold','diamond'].indexOf(c.tier.toLowerCase()) >= 0) ? c.tier.toLowerCase() : 'silver';
+          var dateStr = c.createdAt ? new Date(c.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+          var statusClass = c.status === 'LIVE' ? 'bg-primary/10 text-primary'
+            : c.status === 'APPROVED' ? 'bg-blue-500/10 text-blue-400'
+            : c.status === 'ENDED' ? 'bg-gray-500/10 text-gray-400'
+            : c.status === 'REJECTED' ? 'bg-red-500/10 text-red-400'
+            : c.status === 'PAYMENT_FAILED' ? 'bg-orange-500/10 text-orange-400'
+            : 'bg-yellow-500/10 text-yellow-400';
+          var statusLabel = c.status === 'APPROVED' && c.startWeek
+            ? 'APPROVED — Starting ' + formatStartDate(c.startWeek)
+            : c.status === 'PAYMENT_FAILED' ? 'Paused | Payment Failed'
+            : c.status === 'PENDING_APPROVAL' ? 'Pending Approval'
+            : c.status;
+          var manageBtn = '<button type="button" class="manage-campaign-btn text-primary hover:text-primary/80 text-sm font-semibold" data-id="' + c.id + '">Manage</button>';
+          return '<tr class="hover:bg-white/5">' +
+            '<td class="px-6 py-4 font-semibold text-text-primary-dark">' + (c.campaignName || '—') + '</td>' +
+            '<td class="px-6 py-4"><span class="sponsor-tier-pill ' + tierClass + '">' + tierLabel + '</span></td>' +
+            '<td class="px-6 py-4"><span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ' + statusClass + '">' + statusLabel + '</span></td>' +
+            '<td class="px-6 py-4 text-text-secondary-dark">' + dateStr + '</td>' +
+            renderRecipientCell(c.recipients) +
+            '<td class="px-6 py-4 text-right">' + manageBtn + '</td></tr>';
+        }).join('');
+        tbody.querySelectorAll('.manage-campaign-btn').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var id = btn.getAttribute('data-id');
+            setActiveTab('overview');
+            refreshOverview(id);
+          });
+        });
+        tbody.querySelectorAll('.recipient-more-btn').forEach(function (btn) {
+          btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var moreNames = JSON.parse(decodeURIComponent(btn.getAttribute('data-recipients')));
+            showRecipientDropdown(btn, moreNames);
+          });
+        });
+      }
+
+      function refreshOverview(campaignIdOptional) {
+        var url = '/api/sponsor/dashboard';
+        if (campaignIdOptional) url += '?campaignId=' + encodeURIComponent(campaignIdOptional);
+        fetch(url, { headers: getAuthHeaders() })
+          .then(function (res) {
+            if (res.status === 401) { localStorage.removeItem('sponsorPortalToken'); window.location.href = '/sponsor-login.html'; return null; }
+            return res.json();
+          })
+          .then(function (data) {
+            if (data && !data.error) showDashboard(data);
+          })
+          .catch(function () {});
+      }
+
+      function openFilterSortPanel() {
+        filterSortModalOpen = true;
+        document.getElementById('filter-sort-panel').classList.remove('hidden');
+        var btn = document.getElementById('campaigns-filter-sort-btn');
+        btn.classList.add('bg-primary/10', 'border-primary', 'text-primary');
+        btn.classList.remove('bg-container-dark', 'text-text-secondary-dark');
+        updateFilterSortModalUI();
+      }
+
+      function closeFilterSortModal() {
+        filterSortModalOpen = false;
+        document.getElementById('filter-sort-panel').classList.add('hidden');
+        var btn = document.getElementById('campaigns-filter-sort-btn');
+        btn.classList.remove('bg-primary/10', 'border-primary', 'text-primary');
+        btn.classList.add('bg-container-dark', 'text-text-secondary-dark');
+      }
+
+      function updateFilterSortModalUI() {
+        document.querySelectorAll('.filter-sort-option').forEach(function (btn) {
+          var sort = btn.getAttribute('data-sort');
+          var isActive = campaignsSortOrder === sort;
+          btn.className = 'filter-sort-option w-full flex items-center justify-between px-2 py-1.5 rounded-md text-sm transition-colors text-left ' + (isActive ? 'bg-primary/10 text-primary font-medium' : 'text-text-primary-dark hover:bg-white/5');
+          btn.querySelector('.filter-sort-check').classList.toggle('hidden', !isActive);
+        });
+        document.querySelectorAll('.filter-status-option').forEach(function (btn) {
+          var status = btn.getAttribute('data-status');
+          var isActive = campaignsStatusFilter === status;
+          btn.className = 'filter-status-option px-3 py-1.5 rounded-md text-xs font-medium border transition-colors ' + (isActive ? 'bg-primary text-white border-primary' : 'border-border-dark text-text-secondary-dark hover:border-primary/50');
+        });
+      }
+
+      function loadPaymentMethods() {
+        var container = document.getElementById('billing-payment-methods-list');
+        container.innerHTML = '<p class="text-text-secondary-dark">Loading...</p>';
+        fetch('/api/sponsor/payment-methods', { headers: getAuthHeaders() })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            var methods = data.paymentMethods || [];
+            if (methods.length === 0) {
+              container.innerHTML = '<p class="text-text-secondary-dark">No payment methods. Add a card to get started.</p>';
+              return;
+            }
+            var brandNames = { visa: 'VISA', mastercard: 'Mastercard', amex: 'Amex', discover: 'Discover' };
+            container.innerHTML = methods.map(function (pm) {
+              var brand = brandNames[pm.brand] || (pm.brand || '').toUpperCase();
+              var exp = (pm.exp_month && pm.exp_year) ? (String(pm.exp_month).padStart(2,'0') + '/' + String(pm.exp_year).slice(-2)) : 'N/A';
+              var defaultBadge = pm.is_default ? '<span class="px-2 py-1 bg-green-500/10 text-green-400 rounded text-xs font-semibold">Default</span>' : '<button type="button" class="set-default-pm text-primary hover:text-primary/80 text-xs font-semibold" data-pm="' + pm.id + '">Set as default</button>';
+              return '<div class="flex items-center justify-between p-4 border border-border-dark rounded-lg"><div class="flex items-center gap-4"><span class="font-medium text-text-primary-dark">' + brand + ' ending in ' + pm.last4 + '</span><span class="text-sm text-text-secondary-dark">Exp ' + exp + '</span></div><div>' + defaultBadge + '</div></div>';
+            }).join('');
+            container.querySelectorAll('.set-default-pm').forEach(function (btn) {
+              btn.addEventListener('click', function () {
+                var pmId = btn.getAttribute('data-pm');
+                fetch('/api/sponsor/set-default-payment-method', { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify({ payment_method_id: pmId }) })
+                  .then(function (r) { return r.json(); })
+                  .then(function () { loadPaymentMethods(); });
+              });
+            });
+          })
+          .catch(function () { container.innerHTML = '<p class="text-text-secondary-dark">Failed to load payment methods.</p>'; });
+      }
+
+      function loadBillingHistory() {
+        var tbody = document.getElementById('billing-history-tbody');
+        tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-text-secondary-dark">Loading...</td></tr>';
+        fetch('/api/sponsor/billing-history', { headers: getAuthHeaders() })
+          .then(function (r) { return r.json(); })
+          .then(function (list) {
+            if (!Array.isArray(list)) { tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-text-secondary-dark">No billing history.</td></tr>'; return; }
+            if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-text-secondary-dark">No billing history.</td></tr>'; return; }
+            var statusClass = function (s) { return s === 'paid' ? 'bg-green-500/10 text-green-400' : s === 'failed' ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'; };
+            tbody.innerHTML = list.map(function (row) {
+              var d = row.date ? new Date(row.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+              var amt = new Intl.NumberFormat('en-US', { style: 'currency', currency: (row.currency || 'USD').toUpperCase() }).format(row.amount || 0);
+              return '<tr class="hover:bg-white/5"><td class="px-6 py-4 text-text-secondary-dark">' + d + '</td><td class="px-6 py-4 text-text-primary-dark">' + (row.description || '—') + '</td><td class="px-6 py-4 text-right font-medium">' + amt + '</td><td class="px-6 py-4 text-right"><span class="inline-flex px-2.5 py-0.5 rounded-full text-xs font-medium ' + statusClass(row.status) + '">' + (row.status || '') + '</span></td></tr>';
+            }).join('');
+          })
+          .catch(function () { tbody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-text-secondary-dark">Failed to load billing history.</td></tr>'; });
+      }
+
+      var RANK_STYLES = [
+        { medal: '#F59E0B', label: '#1', ring: 'ring-1 ring-yellow-500/40' },
+        { medal: '#9CA3AF', label: '#2', ring: 'ring-1 ring-gray-500/30' },
+        { medal: '#B45309', label: '#3', ring: 'ring-1 ring-amber-700/30' },
+        { medal: '#6B7280', label: '#4', ring: 'ring-1 ring-gray-600/20' }
+      ];
+
+      function loadSponsorLeaderboard() {
+        var el = document.getElementById('sponsor-leaderboard');
+        if (!el) return;
+        fetch('/api/leaderboards/top-sponsors')
+          .then(function (r) { return r.json(); })
+          .then(function (list) {
+            var html = '';
+            for (var i = 0; i < 4; i++) {
+              var rs = RANK_STYLES[i];
+              var entry = list[i];
+              if (entry) {
+                html +=
+                  '<div class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl bg-white/5 ' + rs.ring + '">' +
+                    '<span class="text-xs font-bold" style="color:' + rs.medal + '">' + rs.label + '</span>' +
+                    '<p class="text-sm font-semibold text-text-primary-dark text-center leading-tight line-clamp-2">' + escapeHtml(entry.name) + '</p>' +
+                    '<p class="text-xs text-text-secondary-dark">$' + Number(entry.totalDonated).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' donated</p>' +
+                  '</div>';
+              } else {
+                html +=
+                  '<div class="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border border-dashed border-border-dark">' +
+                    '<span class="text-xs font-bold text-text-secondary-dark/50">' + rs.label + '</span>' +
+                    '<p class="text-sm text-text-secondary-dark italic">Spot is open</p>' +
+                  '</div>';
+              }
+            }
+            el.innerHTML = html;
+          })
+          .catch(function () {
+            el.innerHTML = '<p class="col-span-4 text-center text-text-secondary-dark text-sm">Could not load leaderboard.</p>';
+          });
+      }
+
+      function loadAccount() {
+        fetch('/api/sponsor/account', { headers: getAuthHeaders() })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            document.getElementById('account-company').value = data.companyName || '';
+            document.getElementById('account-email').value = data.email || '';
+            document.getElementById('account-phone').value = data.phoneNumber || '';
+          })
+          .catch(function () {});
+      }
+
+      function openAddCardModal() {
+        document.getElementById('add-card-error').classList.add('hidden');
+        fetch('/api/sponsor/create-setup-intent', { method: 'POST', headers: getAuthHeaders() })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.error) throw new Error(data.error);
+            setupIntentClientSecret = data.client_secret;
+            fetch('/api/sponsor/stripe-config', { headers: getAuthHeaders() })
+              .then(function (r) { return r.json(); })
+              .then(function (cfg) {
+                if (!window.Stripe || !cfg.publishableKey) throw new Error('Stripe not configured');
+                sponsorStripeInstance = window.Stripe(cfg.publishableKey);
+                stripeElements = sponsorStripeInstance.elements({ clientSecret: setupIntentClientSecret });
+                stripeElement = stripeElements.create('payment', {
+                  wallets: { link: 'never' },
+                  paymentMethodTypes: ['card']
+                });
+                stripeElement.mount('#add-card-element');
+                document.getElementById('add-card-modal').classList.remove('hidden');
+              });
+          })
+          .catch(function (err) {
+            document.getElementById('add-card-error').textContent = err.message || 'Failed to open form';
+            document.getElementById('add-card-error').classList.remove('hidden');
+          });
+      }
+
+      function closeAddCardModal() {
+        document.getElementById('add-card-modal').classList.add('hidden');
+        if (stripeElement) { stripeElement.unmount(); stripeElement = null; }
+        stripeElements = null;
+        setupIntentClientSecret = null;
+        sponsorStripeInstance = null;
+      }
+
+      async function confirmAddCard() {
+        if (!sponsorStripeInstance || !stripeElements || !setupIntentClientSecret) return;
+        var submitBtn = document.getElementById('add-card-submit');
+        var errorEl = document.getElementById('add-card-error');
+        errorEl.classList.add('hidden');
+        submitBtn.disabled = true;
+        try {
+          var submitError = await stripeElements.submit();
+          if (submitError && submitError.error) {
+            errorEl.textContent = submitError.error.message || 'Card validation failed.';
+            errorEl.style.display = 'block';
+            submitBtn.disabled = false;
+            return;
+          }
+          var result = await sponsorStripeInstance.confirmSetup({
+            elements: stripeElements,
+            clientSecret: setupIntentClientSecret,
+            redirect: 'if_required'
+          });
+          if (result.error) {
+            errorEl.textContent = result.error.message || 'Failed';
+            errorEl.classList.remove('hidden');
+            submitBtn.disabled = false;
+            return;
+          }
+          closeAddCardModal();
+          await loadPaymentMethods();
+        } catch (err) {
+          errorEl.textContent = 'Failed to add card. Please try again.';
+          errorEl.classList.remove('hidden');
+          submitBtn.disabled = false;
+          return;
+        }
+        submitBtn.disabled = false;
+      }
+
+      function openCreativeModal() {
+        if (!currentCreativeUrl) return;
+        sponsorCreativeVideoEl.src = currentCreativeUrl;
+        viewCreativeModalEl.classList.remove('hidden');
+        sponsorCreativeVideoEl.play().catch(function () {});
+      }
+
+      function closeCreativeModal() {
+        sponsorCreativeVideoEl.pause();
+        sponsorCreativeVideoEl.removeAttribute('src');
+        sponsorCreativeVideoEl.load();
+        viewCreativeModalEl.classList.add('hidden');
+      }
+
+      function openEndCampaignModal() {
+        endCampaignModalErrorEl.textContent = '';
+        endCampaignModalErrorEl.classList.add('hidden');
+        endCampaignModalCancelEl.disabled = false;
+        endCampaignModalConfirmEl.disabled = false;
+        endCampaignModalEl.classList.remove('hidden');
+      }
+
+      function closeEndCampaignModal() {
+        endCampaignModalEl.classList.add('hidden');
+      }
+
+      function setEndCampaignModalError(msg) {
+        endCampaignModalErrorEl.textContent = msg || 'Something went wrong.';
+        endCampaignModalErrorEl.classList.remove('hidden');
+      }
+
+      function formatTier(tier) {
+        if (!tier || typeof tier !== 'string') return '';
+        return tier.charAt(0).toUpperCase() + tier.slice(1).toLowerCase();
+      }
+
+      function showLoading() {
+        loadingEl.classList.remove('hidden');
+        errorEl.classList.add('hidden');
+        dashboardEl.classList.add('hidden');
+      }
+      function showError(message) {
+        loadingEl.classList.add('hidden');
+        dashboardEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        errorTextEl.textContent = message;
+      }
+      function showDashboard(data) {
+        loadingEl.classList.add('hidden');
+        errorEl.classList.add('hidden');
+        dashboardEl.classList.remove('hidden');
+        document.getElementById('tab-campaigns').classList.add('hidden');
+        document.getElementById('tab-billing').classList.add('hidden');
+        document.getElementById('tab-account').classList.add('hidden');
+
+        currentCampaignId = data.campaignId || null;
+        currentCreativeUrl = data.creativeUrl || null;
+        viewCreativeBtnEl.disabled = !currentCreativeUrl;
+        if (currentCreativeUrl) {
+          viewCreativeBtnEl.classList.remove('opacity-50', 'cursor-not-allowed');
+        } else {
+          viewCreativeBtnEl.classList.add('opacity-50', 'cursor-not-allowed');
+        }
+        if (currentCreativeUrl) {
+          sponsorThumbnailVideoEl.src = currentCreativeUrl;
+          sponsorThumbnailVideoEl.classList.remove('hidden');
+          sponsorThumbnailFallbackEl.classList.add('hidden');
+        } else {
+          sponsorThumbnailVideoEl.removeAttribute('src');
+          sponsorThumbnailVideoEl.load();
+          sponsorThumbnailVideoEl.classList.add('hidden');
+          sponsorThumbnailFallbackEl.classList.remove('hidden');
+        }
+        campaignHeaderEl.classList.remove('hidden');
+        campaignTitleEl.textContent = (data.campaignDisplayName || data.campaignTitle || 'Sponsorship');
+
+        var tierLabel = formatTier(data.tier);
+        var tierSlug = (data.tier && typeof data.tier === 'string') ? data.tier.toLowerCase() : '';
+        if (tierLabel && tierSlug) {
+          tierSeparatorEl.classList.remove('hidden');
+          tierPillEl.classList.remove('hidden');
+          tierPillEl.textContent = 'Tier: ' + tierLabel;
+          var tierClass = ['bronze','silver','gold','diamond'].indexOf(tierSlug) >= 0 ? tierSlug : 'silver';
+          tierPillEl.className = 'sponsor-tier-pill ' + tierClass;
+        } else {
+          tierSeparatorEl.classList.add('hidden');
+          tierPillEl.classList.add('hidden');
+        }
+
+        if (data.status === 'PENDING_APPROVAL') {
+          statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-yellow-500/10 text-yellow-400 text-xs font-semibold px-2 py-1 rounded-full"><span class="size-2 bg-yellow-500 rounded-full"></span>Pending Approval</span>';
+          var pendingTextEl = document.getElementById('pending-message-text');
+          if (pendingTextEl) pendingTextEl.textContent = 'Your campaign is currently pending approval.';
+          pendingMessageEl.classList.remove('hidden');
+          kpiRowEl.classList.add('hidden');
+          splitRowEl.classList.add('hidden');
+          endCampaignWrapEl.classList.add('hidden');
+        } else if (data.status === 'PAYMENT_FAILED') {
+          statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-orange-500/10 text-orange-400 text-xs font-semibold px-2 py-1 rounded-full"><span class="size-2 bg-orange-500 rounded-full"></span>Paused | Payment Failed</span>';
+          var pendingTextEl = document.getElementById('pending-message-text');
+          var isRecurring = data.stripeMode !== 'one_time';
+          if (pendingTextEl) {
+            if (isRecurring) {
+              pendingTextEl.innerHTML = 'Your payment failed. Update your payment method in the <strong>Billing</strong> tab — Stripe will automatically retry and resume your campaign.';
+            } else {
+              pendingTextEl.innerHTML = 'Your payment failed. Update your payment method in the <strong>Billing</strong> tab, then retry below.';
+            }
+          }
+          pendingMessageEl.classList.remove('hidden');
+          var retryBtnEl = document.getElementById('retry-payment-btn');
+          var retryErrEl = document.getElementById('retry-payment-error');
+          if (retryBtnEl) {
+            if (isRecurring) {
+              retryBtnEl.classList.add('hidden');
+            } else {
+            retryBtnEl.classList.remove('hidden');
+            retryBtnEl.onclick = function () {
+              retryBtnEl.disabled = true;
+              retryBtnEl.textContent = 'Processing…';
+              if (retryErrEl) retryErrEl.classList.add('hidden');
+              fetch('/api/sponsor/retry-payment', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ sponsor_campaign_id: currentCampaignId })
+              })
+                .then(function (r) { return r.json(); })
+                .then(function (body) {
+                  if (body.success) {
+                    retryBtnEl.textContent = 'Payment Confirmed';
+                    retryBtnEl.classList.remove('bg-orange-500', 'hover:bg-orange-600');
+                    retryBtnEl.classList.add('bg-green-600');
+                    setTimeout(function () { window.location.reload(); }, 1500);
+                  } else {
+                    if (retryErrEl) { retryErrEl.textContent = body.error || 'Payment failed. Please try again.'; retryErrEl.classList.remove('hidden'); }
+                    retryBtnEl.disabled = false;
+                    retryBtnEl.textContent = 'Retry Payment';
+                  }
+                })
+                .catch(function () {
+                  if (retryErrEl) { retryErrEl.textContent = 'Something went wrong. Please try again.'; retryErrEl.classList.remove('hidden'); }
+                  retryBtnEl.disabled = false;
+                  retryBtnEl.textContent = 'Retry Payment';
+                });
+            };
+            } // end else (one_time only)
+          }
+          kpiRowEl.classList.remove('hidden');
+          splitRowEl.classList.remove('hidden');
+          endCampaignWrapEl.classList.add('hidden');
+          document.getElementById('kpi-impressions-total').textContent = Number(data.impressionsTotal).toLocaleString();
+          document.getElementById('kpi-clicks-total').textContent = Number(data.clicksTotal).toLocaleString();
+          document.getElementById('week-impressions').textContent = Number(data.impressionsToday).toLocaleString();
+          document.getElementById('week-clicks').textContent = Number(data.clicksToday).toLocaleString();
+          document.getElementById('week-unique-viewers').textContent = Number(data.uniqueViewersToday).toLocaleString();
+        } else if (data.status === 'REJECTED') {
+          statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-red-500/10 text-red-400 text-xs font-semibold px-2 py-1 rounded-full"><span class="size-2 bg-red-500 rounded-full"></span>REJECTED</span>';
+          var pendingTextEl = document.getElementById('pending-message-text');
+          if (pendingTextEl) pendingTextEl.textContent = 'This campaign has been rejected.';
+          pendingMessageEl.classList.remove('hidden');
+          kpiRowEl.classList.add('hidden');
+          splitRowEl.classList.add('hidden');
+          endCampaignWrapEl.classList.add('hidden');
+        } else if (data.status === 'ENDED') {
+          statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-gray-500/10 text-gray-400 text-xs font-semibold px-2 py-1 rounded-full"><span class="size-2 bg-gray-500 rounded-full"></span>ENDED</span>';
+          pendingMessageEl.classList.add('hidden');
+          kpiRowEl.classList.remove('hidden');
+          splitRowEl.classList.remove('hidden');
+          endCampaignWrapEl.classList.add('hidden');
+          document.getElementById('kpi-impressions-total').textContent = Number(data.impressionsTotal).toLocaleString();
+          document.getElementById('kpi-clicks-total').textContent = Number(data.clicksTotal).toLocaleString();
+          document.getElementById('week-impressions').textContent = Number(data.impressionsToday).toLocaleString();
+          document.getElementById('week-clicks').textContent = Number(data.clicksToday).toLocaleString();
+          document.getElementById('week-unique-viewers').textContent = Number(data.uniqueViewersToday).toLocaleString();
+        } else if (data.status === 'APPROVED') {
+          statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-blue-500/10 text-blue-400 px-3 py-1 rounded-full text-sm font-medium">✓ APPROVED — Starting ' + formatStartDate(data.startWeek) + '</span>';
+          pendingMessageEl.classList.add('hidden');
+          kpiRowEl.classList.remove('hidden');
+          splitRowEl.classList.remove('hidden');
+          endCampaignWrapEl.classList.remove('hidden');
+          document.getElementById('kpi-impressions-total').textContent = Number(data.impressionsTotal).toLocaleString();
+          document.getElementById('kpi-clicks-total').textContent = Number(data.clicksTotal).toLocaleString();
+          document.getElementById('week-impressions').textContent = Number(data.impressionsToday).toLocaleString();
+          document.getElementById('week-clicks').textContent = Number(data.clicksToday).toLocaleString();
+          document.getElementById('week-unique-viewers').textContent = Number(data.uniqueViewersToday).toLocaleString();
+        } else {
+          statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-primary/10 text-primary text-xs font-semibold px-2 py-1 rounded-full"><span class="size-2 bg-primary rounded-full"></span>LIVE</span>';
+          pendingMessageEl.classList.add('hidden');
+          kpiRowEl.classList.remove('hidden');
+          splitRowEl.classList.remove('hidden');
+          endCampaignWrapEl.classList.remove('hidden');
+          document.getElementById('kpi-impressions-total').textContent = Number(data.impressionsTotal).toLocaleString();
+          document.getElementById('kpi-clicks-total').textContent = Number(data.clicksTotal).toLocaleString();
+          document.getElementById('week-impressions').textContent = Number(data.impressionsToday).toLocaleString();
+          document.getElementById('week-clicks').textContent = Number(data.clicksToday).toLocaleString();
+          document.getElementById('week-unique-viewers').textContent = Number(data.uniqueViewersToday).toLocaleString();
+        }
+        var kpiRecipientEl = document.getElementById('kpi-recipient');
+        var kpiRecipientCaptionEl = document.getElementById('kpi-recipient-caption');
+        if (kpiRecipientEl) {
+          if (data.status === 'LIVE' && data.weeklyRecipient) {
+            kpiRecipientEl.textContent = data.weeklyRecipient;
+            if (kpiRecipientCaptionEl) kpiRecipientCaptionEl.classList.add('hidden');
+          } else {
+            kpiRecipientEl.textContent = 'To Be Announced';
+            if (kpiRecipientCaptionEl) kpiRecipientCaptionEl.classList.remove('hidden');
+          }
+        }
+      }
+
+      endCampaignBtnEl.addEventListener('click', function () {
+        if (!currentCampaignId) return;
+        campaignIdToEnd = currentCampaignId;
+        openEndCampaignModal();
+      });
+
+      endCampaignModalCancelEl.addEventListener('click', function () {
+        closeEndCampaignModal();
+      });
+
+      endCampaignModalBackdropEl.addEventListener('click', function () {
+        if (!endCampaignModalConfirmEl.disabled) closeEndCampaignModal();
+      });
+
+      viewCreativeBtnEl.addEventListener('click', function () {
+        if (currentCreativeUrl) openCreativeModal();
+      });
+
+      viewCreativeModalBackdropEl.addEventListener('click', closeCreativeModal);
+      viewCreativeModalCloseEl.addEventListener('click', closeCreativeModal);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && !viewCreativeModalEl.classList.contains('hidden')) closeCreativeModal();
+      });
+
+      endCampaignModalConfirmEl.addEventListener('click', function () {
+        if (!campaignIdToEnd) return;
+        endCampaignModalCancelEl.disabled = true;
+        endCampaignModalConfirmEl.disabled = true;
+        endCampaignModalErrorEl.classList.add('hidden');
+        endCampaignModalErrorEl.textContent = '';
+        fetch('/api/sponsor/cancel', {
+          method: 'POST',
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ sponsor_campaign_id: campaignIdToEnd })
+        })
+          .then(function (res) { return res.json().then(function (body) { return { ok: res.ok, status: res.status, body: body }; }); })
+          .then(function (result) {
+            if (result.ok && result.body.success && result.body.ended) {
+              closeEndCampaignModal();
+              campaignIdToEnd = null;
+              if (currentTab === 'campaigns') {
+                loadCampaigns();
+              } else {
+                statusBadgeEl.innerHTML = '<span class="flex items-center gap-1.5 bg-gray-500/10 text-gray-400 text-xs font-semibold px-2 py-1 rounded-full"><span class="size-2 bg-gray-500 rounded-full"></span>ENDED</span>';
+                endCampaignWrapEl.classList.add('hidden');
+              }
+            } else if (!result.ok && result.body && result.body.error) {
+              setEndCampaignModalError(result.body.error);
+              endCampaignModalCancelEl.disabled = false;
+              endCampaignModalConfirmEl.disabled = false;
+            } else {
+              endCampaignModalCancelEl.disabled = false;
+              endCampaignModalConfirmEl.disabled = false;
+            }
+          })
+          .catch(function (err) {
+            setEndCampaignModalError(err.message || 'Failed to end campaign');
+            endCampaignModalCancelEl.disabled = false;
+            endCampaignModalConfirmEl.disabled = false;
+          });
+      });
+
+      document.querySelectorAll('.tab-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () { setActiveTab(btn.getAttribute('data-tab')); });
+      });
+
+      document.getElementById('campaigns-search').addEventListener('input', renderCampaignsTable);
+      document.getElementById('campaigns-filter-sort-btn').addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (filterSortModalOpen) closeFilterSortModal();
+        else openFilterSortPanel();
+      });
+      document.addEventListener('click', function (e) {
+        if (!filterSortModalOpen) return;
+        var panel = document.getElementById('filter-sort-panel');
+        var btn = document.getElementById('campaigns-filter-sort-btn');
+        if (panel.contains(e.target) || btn === e.target) return;
+        closeFilterSortModal();
+      });
+      document.querySelectorAll('.filter-sort-option').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          campaignsSortOrder = btn.getAttribute('data-sort');
+          updateFilterSortModalUI();
+          renderCampaignsTable();
+        });
+      });
+      document.querySelectorAll('.filter-status-option').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          campaignsStatusFilter = btn.getAttribute('data-status');
+          updateFilterSortModalUI();
+          renderCampaignsTable();
+        });
+      });
+      document.getElementById('billing-add-card').addEventListener('click', openAddCardModal);
+      document.getElementById('add-card-cancel').addEventListener('click', closeAddCardModal);
+      document.getElementById('add-card-backdrop').addEventListener('click', closeAddCardModal);
+      document.getElementById('add-card-submit').addEventListener('click', confirmAddCard);
+      var accountPhoneEl = document.getElementById('account-phone');
+      accountPhoneEl.addEventListener('blur', function () {
+        var val = accountPhoneEl.value.trim() || null;
+        var savingEl = document.getElementById('account-phone-saving');
+        savingEl.classList.remove('hidden');
+        fetch('/api/sponsor/account', { method: 'PATCH', headers: getAuthHeaders(), body: JSON.stringify({ phoneNumber: val }) })
+          .then(function (r) { return r.json(); })
+          .then(function (data) {
+            if (data.phoneNumber !== undefined) accountPhoneEl.value = data.phoneNumber || '';
+          })
+          .catch(function () {})
+          .finally(function () { savingEl.classList.add('hidden'); });
+      });
+
+      showLoading();
+      fetch('/api/sponsor/dashboard', { headers: getAuthHeaders() })
+        .then(function (res) {
+          if (res.status === 401) {
+            localStorage.removeItem('sponsorPortalToken');
+            localStorage.removeItem('sponsorAccountId');
+            window.location.href = '/sponsor-login.html';
+            return;
+          }
+          return res.json().then(function (body) {
+            if (!res.ok) throw new Error(body.error || 'Failed to load dashboard');
+            return body;
+          });
+        })
+        .then(function (data) {
+          if (data) {
+            showDashboard(data);
+            var hash = window.location.hash.replace('#', '');
+            setActiveTab(VALID_TABS.includes(hash) ? hash : 'overview', false);
+            loadSponsorLeaderboard();
+          }
+        })
+        .catch(function (err) {
+          showError(err.message || 'Failed to load dashboard');
+        });
+    })();
+  </script>
+</body>
+</html>

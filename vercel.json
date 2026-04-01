@@ -14,8 +14,32 @@
   ],
   "crons": [
     {
+      "path": "/api/system/fallback-winner-selection",
+      "schedule": "0 20 * * 6"
+    },
+    {
+      "path": "/api/system/finalize-weekly-donations",
+      "schedule": "0 10 * * 1"
+    },
+    {
+      "path": "/api/system/sponsor-monday-activation",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/system/weekly-recurring-billing",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/system/non-recurring-billing",
+      "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/system/sponsor-end-campaigns",
+      "schedule": "5 8 * * 1"
+    },
+    {
       "path": "/api/system/weekly-reset",
-      "schedule": "59 23 * * 0"
+      "schedule": "10 8 * * 1"
     }
   ]
 }

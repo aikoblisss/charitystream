@@ -329,18 +329,11 @@
         const data = await response.json();
         
         if (data.success) {
-          // Show success message
-          document.getElementById('signup-form').innerHTML = `
-            <div class="success-message">
-              <strong>Account Created Successfully!</strong><br>
-              Your advertiser portal account has been created.
-            </div>
-          `;
+          // Signup only creates account - do NOT store tokens
+          // User must log in through /advertiser-login.html to establish authenticated session
           
-          // Redirect to advertiser portal after signup
-          setTimeout(() => {
-            window.location.href = '/advertiser-portal.html';
-          }, 2000);
+          // Redirect to login page to establish authenticated session
+          window.location.href = '/advertiser-login.html';
           
         } else {
           showFormError(data.error || 'Failed to create account. Please try again.');

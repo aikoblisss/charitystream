@@ -1,0 +1,194 @@
+{
+    "timeline": {
+      "soundtrack": {
+        "src": "https://templates.shotstack.io/breaking-news-summary/a423e433-932d-47b7-adb2-d7860eaec9ad/dreams.mp3",
+        "effect": "fadeOut"
+      },
+      "fonts": [
+        {
+          "src": "https://templates.shotstack.io/breaking-news-summary/a87b7ba9-8d67-4e0f-83ff-ac36d3f3fc5b/source.ttf"
+        },
+        {
+          "src": "https://shotstack-ingest-api-v1-sources.s3.ap-southeast-2.amazonaws.com/o16f5vmh4q/zzz01k6k-zrmwf-6px18-q45fh-5fg1ck/source.otf"
+        }
+      ],
+      "background": "#000000",
+      "tracks": [
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "shape",
+                "shape": "rectangle",
+                "fill": { "color": "#ce8946", "opacity": 1 },
+                "stroke": { "color": "#000000", "width": 0 },
+                "width": 2093,
+                "height": 128,
+                "rectangle": { "width": 2093, "height": 128, "cornerRadius": 0 }
+              },
+              "start": 0,
+              "length": 18.41,
+              "offset": { "x": -0.015, "y": -0.503 },
+              "position": "center"
+            }
+          ]
+        },
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "shape",
+                "shape": "rectangle",
+                "fill": { "color": "#ce8946", "opacity": 1 },
+                "stroke": { "color": "#000000", "width": 0 },
+                "width": 2093,
+                "height": 122,
+                "rectangle": { "width": 2093, "height": 122, "cornerRadius": 0 }
+              },
+              "start": 0,
+              "length": 18.41,
+              "offset": { "x": -0.007, "y": 0.506 },
+              "position": "center"
+            }
+          ]
+        },
+  
+        {
+          "clips": [
+            {
+              "length": 11.8,
+              "asset": {
+                "type": "image",
+                "src": "__SPONSOR_LOGO_URL__"
+              },
+              "start": 0,
+              "offset": { "x": -0.007, "y": 0 },
+              "scale": 0.485,
+              "position": "center",
+              "transition": { "in": "fadeSlow", "out": "fade" }
+            }
+          ]
+        },
+  
+        {
+          "clips": [
+            {
+              "length": 6.65,
+              "asset": {
+                "type": "image",
+                "src": "__SPONSOR_QR_CODE_URL__"
+              },
+              "start": 11.78,
+              "offset": { "x": 0.005, "y": -0.033 },
+              "scale": 0.349,
+              "position": "center",
+              "transition": { "in": "fade", "out": "fade" }
+            }
+          ]
+        },
+  
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "text",
+                "text": "For Supporting This Week’s Charity Stream.",
+                "alignment": { "horizontal": "center", "vertical": "center" },
+                "font": { "color": "#ffffff", "family": "Raleway", "size": 75, "lineHeight": 1 },
+                "width": 1703,
+                "height": 72
+              },
+              "start": 0,
+              "length": 5.96,
+              "offset": { "x": 0, "y": -0.369 },
+              "position": "center",
+              "transition": { "out": "fade" }
+            }
+          ]
+        },
+  
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "text",
+                "text": "Thank You to Our Sponsor, Sponsor Name",
+                "alignment": { "horizontal": "center", "vertical": "center" },
+                "font": { "color": "#ffffff", "family": "Raleway", "size": 75, "lineHeight": 1 },
+                "width": 1952,
+                "height": 72
+              },
+              "start": 0,
+              "length": 6,
+              "offset": { "x": 0, "y": 0.385 },
+              "position": "center",
+              "transition": { "out": "fade" }
+            },
+            {
+              "asset": {
+                "type": "text",
+                "text": "Sponsor Name",
+                "alignment": { "horizontal": "center", "vertical": "center" },
+                "font": { "color": "#ffffff", "family": "Raleway", "size": 80, "lineHeight": 1 },
+                "width": 1952,
+                "height": 72
+              },
+              "start": 6.01,
+              "length": 5.79,
+              "offset": { "x": 0, "y": 0.378 },
+              "position": "center",
+              "transition": { "in": "carouselDown", "out": "fade" }
+            },
+            {
+              "asset": {
+                "type": "text",
+                "text": "Scan to Learn More about Our Sponsor, Sponsor Name.",
+                "alignment": { "horizontal": "center", "vertical": "center" },
+                "font": { "color": "#ffffff", "family": "Raleway", "size": 70, "lineHeight": 1 },
+                "width": 1952,
+                "height": 72
+              },
+              "start": 11.81,
+              "length": 6.64,
+              "offset": { "x": 0.008, "y": 0.369 },
+              "position": "center",
+              "transition": { "in": "fade", "out": "fade" }
+            }
+          ]
+        },
+  
+        {
+          "clips": [
+            {
+              "asset": {
+                "type": "text",
+                "text": "Tagline",
+                "alignment": { "horizontal": "center", "vertical": "center" },
+                "font": { "color": "#ffffff", "family": "Raleway", "size": 80, "lineHeight": 1 },
+                "width": 1703,
+                "height": 72
+              },
+              "start": 6,
+              "length": 5.82,
+              "offset": { "x": 0.006, "y": -0.775 },
+              "position": "center",
+              "transition": { "in": "carouselUp", "out": "fade" }
+            }
+          ]
+        }
+      ]
+    },
+  
+    "output": {
+      "format": "mp4",
+      "fps": 25,
+      "size": { "width": 1920, "height": 1080 },
+      "poster": { "capture": 0 }
+    },
+  
+    "merge": [
+      { "find": "Sponsor Name", "replace": "__SPONSOR_NAME__" },
+      { "find": "Tagline", "replace": "__SPONSOR_TAGLINE__" }
+    ]
+  }
+  

@@ -1,0 +1,239 @@
+/* ── Modal ── */
+.hd-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+}
+.hd-modal-overlay.hd-modal-open {
+  display: flex;
+}
+.hd-modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 28px 28px 22px;
+  max-width: 380px;
+  width: calc(100% - 40px);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.18);
+  text-align: center;
+}
+.hd-modal-icon {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+.hd-modal-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 8px;
+}
+.hd-modal-body {
+  font-size: 0.875rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+.hd-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.hd-modal-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: opacity 0.15s;
+}
+.hd-modal-btn:hover { opacity: 0.85; }
+.hd-modal-btn-secondary {
+  background: #f3f4f6;
+  color: #374151;
+}
+.hd-modal-btn-danger {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.hd-modal-btn-primary {
+  background: #10b981;
+  color: #fff;
+}
+
+/* ── Shimmer ── */
+@keyframes hd-shimmer {
+  0%   { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+.hd-username-shimmer {
+  display: inline-block;
+  width: 80px;
+  height: 0.85em;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #d1d5db 25%, #e5e7eb 50%, #d1d5db 75%);
+  background-size: 400px 100%;
+  animation: hd-shimmer 1.4s infinite linear;
+  vertical-align: middle;
+}
+
+.hd-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.hd-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hd-caret {
+  opacity: 0.6;
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+
+.hd-wrapper:hover .hd-caret {
+  transform: rotate(180deg);
+}
+
+.hd-username-premium {
+  color: #D4AF37 !important;
+  font-weight: 700;
+}
+
+.hd-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  padding-top: 10px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  min-width: 210px;
+  z-index: 9999;
+  padding: 6px 0;
+  white-space: nowrap;
+}
+
+.hd-wrapper:hover .hd-menu {
+  display: block;
+}
+
+.hd-email {
+  padding: 10px 16px;
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.hd-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 4px 0;
+}
+
+.hd-premium-row {
+  position: relative;
+}
+
+.hd-premium-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  font-weight: 500;
+  cursor: default;
+  position: relative;
+}
+
+.hd-premium-label {
+  color: #b7952a;
+  font-weight: 600;
+}
+
+.hd-chevron-right {
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+
+.hd-submenu {
+  display: none;
+  position: absolute;
+  left: 100%;
+  top: 0;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  padding: 6px 0;
+  min-width: 170px;
+  z-index: 10000;
+}
+
+.hd-premium-item:hover .hd-submenu {
+  display: block;
+}
+
+.hd-cancel-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: #fff;
+  color: #ef9999;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.hd-cancel-btn:hover {
+  background: #fff5f5;
+  color: #dc6868;
+}
+
+.hd-cancel-btn.hd-cancel-btn-ending {
+  color: #9ca3af;
+  cursor: default;
+  font-style: italic;
+}
+
+.hd-cancel-btn.hd-cancel-btn-ending:hover {
+  background: #fff;
+  color: #9ca3af;
+}
+
+.hd-logout-btn {
+  display: block;
+  width: 100%;
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  text-align: left;
+  font-size: 0.875rem;
+  color: #374151;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.hd-logout-btn:hover {
+  background: #f9fafb;
+  color: #111827;
+}

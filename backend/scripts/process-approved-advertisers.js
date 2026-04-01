@@ -1,7 +1,17 @@
-const { Pool } = require('pg');
-const { S3Client, CopyObjectCommand, HeadObjectCommand, ListObjectsV2Command } = require('@aws-sdk/client-s3');
+// Neon WebSocket + fetch adapters for Node.js (same as server.js)
+const ws = require('ws');
+const { fetch } = require('undici');
+
+// Provide globals expected by @neondatabase/serverless
+global.WebSocket = ws;
+global.fetch = fetch;
+
+// Use Neon WebSocket driver (same as server.js)
+const { Pool } = require('@neondatabase/serverless');
+const { S3Client, CopyObjectCommand, HeadObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // Load email service for sending approval notifications
 // Load environment variables from the correct .env file location
@@ -20,16 +30,22 @@ if (fs.existsSync(envPath)) {
 
 // NOW load email service after env vars are available
 const emailService = require('../services/emailService');
+const { normalizeBareMediaR2Link } = require('../lib/normalizeBareMediaR2Link');
 
 console.log('🔗 DATABASE_URL present:', !!process.env.DATABASE_URL);
 
-// Use the same database configuration as your server.js
+// Use the same database configuration as your server.js (Neon WebSocket)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-  // Add connection timeout and retry settings
-  connectionTimeoutMillis: 10000,
-  idleTimeoutMillis: 30000,
+  ssl: true
+});
+
+pool.on('connect', () => {
+  console.log('🟢 Neon WebSocket connected');
+});
+
+pool.on('error', (err) => {
+  console.error('❌ Neon WebSocket error:', err);
 });
 
 // Configure Cloudflare R2 client for bucket operations
@@ -52,7 +68,47 @@ const r2Client = new S3Client({
 // Bucket names
 const SOURCE_BUCKET = 'advertiser-media';
 const DESTINATION_BUCKET = 'charity-stream-videos';
-const R2_PUBLIC_URL = 'https://pub-83596556bc864db7aa93479e13f45deb.r2.dev';
+// Public URL for charity-stream-videos bucket (different from advertiser-media)
+const R2_PUBLIC_URL = process.env.R2_VIDEOS_URL || 'https://videos.stream.charity';
+
+/**
+ * Returns the next Monday at 00:00 America/Los_Angeles as a Date.
+ * If today is Monday (any time), returns the following Monday (never same day).
+ */
+function getNextMonday00LA() {
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    weekday: 'long'
+  });
+  const parts = formatter.formatToParts(now);
+  const get = (name) => parts.find((p) => p.type === name).value;
+  const laYear = parseInt(get('year'), 10);
+  const laMonth = parseInt(get('month'), 10);
+  const laDay = parseInt(get('day'), 10);
+  const laWeekday = get('weekday'); // 'Monday', 'Tuesday', ...
+
+  const weekdayNum = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 }[laWeekday];
+  const daysToAdd = weekdayNum === 1 ? 7 : (8 - weekdayNum) % 7;
+
+  const nextMondayUtc = new Date(Date.UTC(laYear, laMonth - 1, laDay + daysToAdd, 12, 0, 0));
+  const nextMonY = nextMondayUtc.getUTCFullYear();
+  const nextMonM = nextMondayUtc.getUTCMonth();
+  const nextMonD = nextMondayUtc.getUTCDate();
+
+  let midnightLA = new Date(Date.UTC(nextMonY, nextMonM, nextMonD, 8, 0, 0));
+  const laHour = parseInt(
+    midnightLA.toLocaleString('en-US', { timeZone: 'America/Los_Angeles', hour: '2-digit', hour12: false }),
+    10
+  );
+  if (laHour === 1) {
+    midnightLA = new Date(midnightLA.getTime() - 3600000);
+  }
+  return midnightLA;
+}
 
 // Check if file exists in a bucket
 async function checkFileExistsInBucket(bucketName, key) {
@@ -72,10 +128,10 @@ async function checkFileExistsInBucket(bucketName, key) {
   }
 }
 
-// Copy video from advertiser-media bucket to charity-stream-videos bucket
-async function copyVideoToCharityBucket(sourceKey, destinationFilename) {
+// Copy media (video or image) from advertiser-media bucket to charity-stream-videos bucket
+async function copyMediaToCharityBucket(sourceKey, destinationFilename) {
   try {
-    console.log(`📋 Copying video from ${SOURCE_BUCKET}/${sourceKey} to ${DESTINATION_BUCKET}/${destinationFilename}`);
+    console.log(`📋 Copying media from ${SOURCE_BUCKET}/${sourceKey} to ${DESTINATION_BUCKET}/${destinationFilename}`);
     
     // Verify source file exists
     const sourceExists = await checkFileExistsInBucket(SOURCE_BUCKET, sourceKey);
@@ -94,7 +150,7 @@ async function copyVideoToCharityBucket(sourceKey, destinationFilename) {
     });
 
     await r2Client.send(copyCommand);
-    console.log(`✅ Video copied successfully to ${DESTINATION_BUCKET}/${destinationFilename}`);
+    console.log(`✅ Media copied successfully to ${DESTINATION_BUCKET}/${destinationFilename}`);
     
     return { 
       success: true, 
@@ -107,46 +163,66 @@ async function copyVideoToCharityBucket(sourceKey, destinationFilename) {
   }
 }
 
-// Get next available video number by scanning charity-stream-videos bucket
-async function getNextVideoNumber() {
-  try {
-    console.log(`🔍 Scanning ${DESTINATION_BUCKET} bucket for existing videos...`);
-    
-    const listCommand = new ListObjectsV2Command({
-      Bucket: DESTINATION_BUCKET
-    });
-    
-    const response = await r2Client.send(listCommand);
-    const videoFiles = response.Contents || [];
-    
-    console.log(`📊 Found ${videoFiles.length} total files in bucket`);
-    
-    // Find highest video number from video_X.mp4 pattern
-    let maxNumber = 0;
-    videoFiles.forEach(file => {
-      const match = file.Key.match(/^video_(\d+)\.mp4$/);
-      if (match) {
-        const num = parseInt(match[1]);
-        console.log(`   Found: video_${num}.mp4`);
-        if (num > maxNumber) maxNumber = num;
+// Generate a globally unique filename based on ad_format
+// Videos: video_{advertiserId}_{timestamp}_{uuid}.mp4
+// Images: image_{advertiserId}_{timestamp}_{uuid}.{jpg|png|gif|webp}
+function generateUniqueFilename(advertiserId, originalFilename, adFormat) {
+  const uniqueId = crypto.randomUUID();
+  const timestamp = Date.now();
+  
+  // Determine prefix based on ad_format
+  const prefix = (adFormat === 'image' || adFormat === 'static_image') ? 'image' : 'video';
+  
+  // Extract extension from original filename, with fallback
+  const extension = originalFilename.split('.').pop() || 
+                    ((adFormat === 'image' || adFormat === 'static_image') ? 'jpg' : 'mp4');
+  
+  const newFilename = `${prefix}_${advertiserId}_${timestamp}_${uniqueId}.${extension}`;
+  return newFilename;
+}
+
+/**
+ * Parses --id=<n> or --id <n> from process.argv.
+ * Invalid/missing value after --id exits the process with code 1.
+ * @returns {number|null} campaign id, or null for batch mode
+ */
+function parseCliCampaignId() {
+  for (let i = 2; i < process.argv.length; i++) {
+    const arg = process.argv[i];
+    if (arg.startsWith('--id=')) {
+      const raw = arg.slice('--id='.length).trim();
+      const n = parseInt(raw, 10);
+      if (!Number.isFinite(n)) {
+        console.error('❌ Invalid --id=value: expected a numeric campaign id');
+        process.exit(1);
       }
-    });
-    
-    const nextNumber = maxNumber + 1;
-    console.log(`🎯 Next available video number: ${nextNumber}`);
-    return nextNumber;
-  } catch (error) {
-    console.error('❌ Error listing bucket contents:', error.message);
-    // Default to 6 if we can't list the bucket
-    console.log('⚠️ Defaulting to video number 6');
-    return 6;
+      return n;
+    }
+    if (arg === '--id') {
+      const next = process.argv[i + 1];
+      if (next === undefined || next.startsWith('-')) {
+        console.error('❌ --id requires a numeric value (e.g. --id 314 or --id=314)');
+        process.exit(1);
+      }
+      const n = parseInt(next, 10);
+      if (!Number.isFinite(n)) {
+        console.error('❌ Invalid --id value: expected a numeric campaign id');
+        process.exit(1);
+      }
+      return n;
+    }
   }
+  return null;
 }
 
 async function processApprovedAdvertisers() {
   let client;
   try {
+    const onlyId = parseCliCampaignId();
     console.log('🔄 Processing approved advertisers...');
+    if (onlyId != null) {
+      console.log('🎯 Single campaign mode: id =', onlyId);
+    }
     console.log('📦 Source bucket:', SOURCE_BUCKET);
     console.log('🎯 Destination bucket:', DESTINATION_BUCKET);
     
@@ -154,19 +230,40 @@ async function processApprovedAdvertisers() {
     client = await pool.connect();
     console.log('✅ Database connection established');
     
-    // Get all approved video advertisers that haven't been completed yet
-    // ONLY process video ads (not images)
-    const advertisersResult = await client.query(`
-      SELECT id, company_name, email, website_url, media_r2_link, ad_format, 
-             click_tracking, destination_url, cpm_rate, weekly_budget_cap, expedited
-      FROM advertisers 
-      WHERE approved = true 
-        AND completed = false 
-        AND ad_format = 'video'
+    // Batch: pending_review, not paused (script sets status = active after copy)
+    const selectParams = [];
+    let idClause = '';
+    if (onlyId != null) {
+      selectParams.push(onlyId);
+      idClause = ` AND id = $${selectParams.length}`;
+    }
+    const advertisersResult = await client.query(
+      `
+      SELECT id, company_name, email, website_url, media_r2_link, ad_format,
+             click_tracking, destination_url, cpm_rate, weekly_budget_cap, expedited,
+             is_paused, recurring_weekly, campaign_start_date
+      FROM advertisers
+      WHERE status = 'pending_review'
+        AND ad_format IN ('video', 'image', 'static_image')
         AND media_r2_link IS NOT NULL
-    `);
+        ${idClause}
+    `,
+      selectParams
+    );
 
-    console.log(`📊 Found ${advertisersResult.rows.length} approved video advertisers pending processing`);
+    if (onlyId != null && advertisersResult.rows.length === 0) {
+      console.error(
+        `❌ Campaign ${onlyId} not found or not eligible for processing. ` +
+          `Requires: status = 'pending_review', ` +
+          `ad_format IN ('video', 'image', 'static_image'), and media_r2_link IS NOT NULL.`
+      );
+      client.release();
+      client = null;
+      await pool.end();
+      process.exit(1);
+    }
+
+    console.log(`📊 Found ${advertisersResult.rows.length} advertiser campaign(s) pending activation`);
 
     let successCount = 0;
     let errorCount = 0;
@@ -176,6 +273,17 @@ async function processApprovedAdvertisers() {
       console.log(`\n🔍 Processing advertiser: ${advertiser.company_name}`);
       console.log(`📧 Advertiser ID: ${advertiser.id}`);
       console.log(`📧 Email: ${advertiser.email}`);
+
+      const rawMediaLink = advertiser.media_r2_link;
+      const cleanedMediaLink = normalizeBareMediaR2Link(rawMediaLink);
+      if (cleanedMediaLink != null && cleanedMediaLink !== rawMediaLink) {
+        await client.query(
+          `UPDATE advertisers SET media_r2_link = $1 WHERE id = $2`,
+          [cleanedMediaLink, advertiser.id]
+        );
+        advertiser.media_r2_link = cleanedMediaLink;
+        console.log(`🧹 Normalized media_r2_link for id=${advertiser.id}`);
+      }
       
       // Log click tracking status for existing icon system
       console.log(`🔗 Click tracking enabled: ${advertiser.click_tracking ? 'YES' : 'NO'}`);
@@ -185,68 +293,116 @@ async function processApprovedAdvertisers() {
         console.log(`⚠️ Click tracking enabled but no destination_url - icon may not work properly`);
       }
       
-      // Extract video filename from R2 link
-      const originalVideoFilename = extractVideoFilename(advertiser.media_r2_link);
+      // Extract media filename from R2 link or use video_filename if available
+      // For creative replacements, media_r2_link points to advertiser-media bucket
+      // The filename is stored in video_filename or can be extracted from media_r2_link
+      let originalMediaFilename = advertiser.video_filename;
       
-      if (!originalVideoFilename) {
-        console.log(`❌ Could not extract video filename from: ${advertiser.media_r2_link}`);
+      // If video_filename is not set, try to extract from media_r2_link
+      if (!originalMediaFilename && advertiser.media_r2_link) {
+        originalMediaFilename = extractMediaFilename(advertiser.media_r2_link, advertiser.ad_format);
+      }
+      
+      // If still no filename, try to extract just the filename from the URL
+      if (!originalMediaFilename && advertiser.media_r2_link) {
+        // Handle both full URLs and just filenames
+        const urlParts = advertiser.media_r2_link.split('/');
+        const lastPart = urlParts[urlParts.length - 1];
+        // Support both video and image extensions
+        const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+        const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+        const allExtensions = [...videoExtensions, ...imageExtensions];
+        if (lastPart && allExtensions.some(ext => lastPart.toLowerCase().endsWith(ext))) {
+          originalMediaFilename = lastPart;
+        }
+      }
+      
+      if (!originalMediaFilename) {
+        console.log(`❌ Could not determine media filename from media_r2_link: ${advertiser.media_r2_link}`);
         errorCount++;
         continue;
       }
 
-      console.log(`📹 Original video: ${originalVideoFilename}`);
+      const mediaType = advertiser.ad_format === 'image' || advertiser.ad_format === 'static_image' ? 'image' : 'video';
+      console.log(`📹 Original ${mediaType}: ${originalMediaFilename}`);
       
-      // Get next available video number to follow video_X.mp4 pattern
-      const nextVideoNumber = await getNextVideoNumber();
-      const standardizedFilename = `video_${nextVideoNumber}.mp4`;
-      console.log(`🎯 Standardized filename: ${standardizedFilename} (auto-numbered)`);
+      // Generate a globally unique filename based on ad_format
+      // Videos: video_{id}_{timestamp}_{uuid}.mp4
+      // Images: image_{id}_{timestamp}_{uuid}.{ext}
+      const standardizedFilename = generateUniqueFilename(advertiser.id, originalMediaFilename, advertiser.ad_format);
+      console.log(`🎯 Unique filename: ${standardizedFilename}`);
       
       try {
-        // CRITICAL FIX: Check if video exists in SOURCE bucket before copying
-        console.log(`📦 Checking if source video exists in ${SOURCE_BUCKET} bucket...`);
+        // CRITICAL FIX: Check if media exists in SOURCE bucket before copying
+        console.log(`📦 Checking if source media exists in ${SOURCE_BUCKET} bucket...`);
         
-        const sourceExists = await checkFileExistsInBucket(SOURCE_BUCKET, originalVideoFilename);
+        const sourceExists = await checkFileExistsInBucket(SOURCE_BUCKET, originalMediaFilename);
         if (!sourceExists) {
-          console.log(`❌ Source video not found in ${SOURCE_BUCKET} bucket: ${originalVideoFilename}`);
+          console.log(`❌ Source media not found in ${SOURCE_BUCKET} bucket: ${originalMediaFilename}`);
           errorCount++;
           continue;
         }
         
-        console.log(`✅ Source video found, copying to ${DESTINATION_BUCKET}...`);
+        console.log(`✅ Source media found, copying to ${DESTINATION_BUCKET}...`);
         
-        // Copy the video from advertiser-media to charity-stream-videos with standardized name
-        const copyResult = await copyVideoToCharityBucket(originalVideoFilename, standardizedFilename);
+        // Copy the media from advertiser-media to charity-stream-videos with standardized name
+        const copyResult = await copyMediaToCharityBucket(originalMediaFilename, standardizedFilename);
         
         if (copyResult.success) {
-          console.log(`✅ Video copied successfully!`);
-          console.log(`🔗 New video URL: ${copyResult.destinationUrl}`);
+          // Delete the original file from advertiser-media bucket after successful copy
+          try {
+            const deleteCommand = new DeleteObjectCommand({
+              Bucket: SOURCE_BUCKET,
+              Key: originalMediaFilename
+            });
+            await r2Client.send(deleteCommand);
+            console.log(`✅ Deleted original file from ${SOURCE_BUCKET}: ${originalMediaFilename}`);
+          } catch (deleteError) {
+            console.error(`⚠️ Failed to delete original file from ${SOURCE_BUCKET} (non-critical):`, deleteError.message);
+            // Continue even if delete fails - the file is already copied
+          }
+          console.log(`✅ Media copied successfully!`);
+          console.log(`🔗 New media URL: ${copyResult.destinationUrl}`);
           
           // Update advertiser record with all required fields
           console.log(`💾 Updating advertiser record with approval status...`);
           
           // Build update query with all required columns
-          // Note: Some columns may not exist - PostgreSQL will ignore them gracefully
-          // IMPORTANT: Only set video_filename if it's NULL (don't overwrite existing values)
+          // After approval, video is in charity-stream-videos bucket, so media_r2_link must point there
+          // Generate full public URL for the standardized filename in charity-stream-videos bucket
+          const fullPublicUrl = normalizeBareMediaR2Link(`${R2_PUBLIC_URL}/${standardizedFilename}`);
+          
+          // Non-recurring: go-live next Monday 00:00 LA. Recurring: start now.
+          const isNonRecurring = advertiser.recurring_weekly === false;
+          const startDate = isNonRecurring ? getNextMonday00LA() : new Date();
+          if (isNonRecurring) {
+            console.log(`📅 Non-recurring campaign: go-live set to next Monday (LA): ${startDate.toISOString()}`);
+          }
+          
+          // Always update media_r2_link and video_filename after approval (both new and replacement)
+          // The video is now in charity-stream-videos, so media_r2_link must point there
           const updateQuery = `
             UPDATE advertisers SET
-              completed = true,
-              application_status = 'approved',
-              video_filename = COALESCE(video_filename, $2),
-              current_week_start = COALESCE(current_week_start, NOW()),
-              campaign_start_date = COALESCE(campaign_start_date, NOW()),
+              status = 'active',
+              video_filename = $2,
+              media_r2_link = $3,
+              is_paused = false,
+              current_week_start = $4,
+              campaign_start_date = $5,
               approved_at = COALESCE(approved_at, NOW()),
               updated_at = NOW()
             WHERE id = $1
           `;
           
           try {
-            await client.query(updateQuery, [advertiser.id, standardizedFilename]);
+            await client.query(updateQuery, [advertiser.id, standardizedFilename, fullPublicUrl, startDate, startDate]);
             console.log(`✅ Advertiser record updated: ${advertiser.company_name} (ID: ${advertiser.id})`);
-            console.log(`📹 Video filename set: ${standardizedFilename}`);
+            console.log(`📹 Media filename set: ${standardizedFilename}`);
+            console.log(`🎉 Updated media_r2_link → ${fullPublicUrl}`);
             
             // Verification: ensure click tracking data saved correctly
             const verifyResult = await client.query(
-              `SELECT click_tracking, destination_url, application_status, completed 
+              `SELECT click_tracking, destination_url, status 
                FROM advertisers WHERE id = $1`,
               [advertiser.id]
             );
@@ -254,30 +410,37 @@ async function processApprovedAdvertisers() {
             console.log('✅ Verification - Saved data:', {
               click_tracking: saved.click_tracking,
               destination_url: saved.destination_url,
-              application_status: saved.application_status,
-              completed: saved.completed
+              status: saved.status
             });
           } catch (updateError) {
             // If some columns don't exist, try a simpler update
             console.log(`⚠️ Full update failed, trying simplified update...`);
             console.log(`⚠️ Error: ${updateError.message}`);
             try {
-              // Still try to set video_filename in simplified update
-              await client.query(
-                `UPDATE advertisers SET 
-                  completed = true, 
-                  application_status = 'approved', 
-                  video_filename = COALESCE(video_filename, $2),
+              // Generate full public URL for the standardized filename in charity-stream-videos bucket
+              const fullPublicUrl = normalizeBareMediaR2Link(`${R2_PUBLIC_URL}/${standardizedFilename}`);
+              
+              // Simplified update - same start date logic (recurring = now, non-recurring = next Monday LA)
+              const simpleUpdateQuery = `
+                UPDATE advertisers SET 
+                  status = 'active',
+                  video_filename = $2,
+                  media_r2_link = $3,
+                  is_paused = false,
+                  current_week_start = $4,
+                  campaign_start_date = $5,
                   updated_at = NOW() 
-                WHERE id = $1`,
-                [advertiser.id, standardizedFilename]
-              );
+                WHERE id = $1
+              `;
+              
+              await client.query(simpleUpdateQuery, [advertiser.id, standardizedFilename, fullPublicUrl, startDate, startDate]);
               console.log(`✅ Advertiser record updated (simplified): ${advertiser.company_name}`);
               console.log(`📹 Video filename set: ${standardizedFilename}`);
+              console.log(`🎉 Updated media_r2_link → ${fullPublicUrl}`);
               
               // Verification for simplified path
               const verifyResult = await client.query(
-                `SELECT click_tracking, destination_url, application_status, completed 
+                `SELECT click_tracking, destination_url, status 
                  FROM advertisers WHERE id = $1`,
                 [advertiser.id]
               );
@@ -285,8 +448,7 @@ async function processApprovedAdvertisers() {
               console.log('✅ Verification - Saved data (simplified):', {
                 click_tracking: saved.click_tracking,
                 destination_url: saved.destination_url,
-                application_status: saved.application_status,
-                completed: saved.completed
+                status: saved.status
               });
             } catch (simpleError) {
               console.error(`❌ Database update failed:`, simpleError.message);
@@ -299,23 +461,10 @@ async function processApprovedAdvertisers() {
             try {
               console.log(`📧 Sending approval email to: ${advertiser.email}`);
               
-              // Generate portal signup token for approval email
-              const crypto = require('crypto');
-              const portalSignupToken = crypto.randomUUID();
-              console.log(`🔑 [PORTAL SIGNUP] Generated token for advertiser approval: ${portalSignupToken.substring(0, 8)}...`);
-              
-              // Save token to database
-              try {
-                await client.query(`
-                  UPDATE advertisers
-                  SET portal_signup_token = $1,
-                      portal_signup_token_created_at = NOW()
-                  WHERE id = $2
-                `, [portalSignupToken, advertiser.id]);
-                console.log(`✅ [PORTAL SIGNUP] Token saved to database for advertiser: ${advertiser.id}`);
-              } catch (tokenError) {
-                console.error(`❌ [PORTAL SIGNUP] Failed to save token:`, tokenError.message);
-              }
+              // Generate initial setup token for approval email
+              // Campaign approval email (Email #2) does NOT generate tokens
+              // Approval email only links to advertiser-login.html
+              let rawInitialSetupToken = null; // Always null for approval emails
               
               // Build campaign summary for email
               const campaignSummary = {
@@ -331,7 +480,7 @@ async function processApprovedAdvertisers() {
                 advertiser.email,
                 advertiser.company_name,
                 campaignSummary,
-                portalSignupToken
+                rawInitialSetupToken
               );
               
               if (emailResult.success) {
@@ -350,7 +499,7 @@ async function processApprovedAdvertisers() {
           
           successCount++;
         } else {
-          console.log(`❌ Failed to copy video for ${advertiser.company_name}: ${copyResult.error}`);
+          console.log(`❌ Failed to copy media for ${advertiser.company_name}: ${copyResult.error}`);
           errorCount++;
         }
         
@@ -365,11 +514,12 @@ async function processApprovedAdvertisers() {
     console.log(`❌ Errors: ${errorCount}`);
     
     if (successCount > 0) {
-      console.log('\n📢 IMPORTANT: Videos have been copied to charity-stream-videos bucket');
-      console.log('📢 Videos have been auto-numbered following the video_X.mp4 pattern');
-      console.log('📢 These videos will AUTOMATICALLY appear in website/app rotation');
+      console.log('\n📢 IMPORTANT: Media (videos and images) have been copied to charity-stream-videos bucket');
+      console.log('📢 Media have been assigned unique filenames to prevent collisions');
+      console.log('📢 Videos will AUTOMATICALLY appear in video playlist rotation');
+      console.log('📢 Images will AUTOMATICALLY appear in popup ad rotation');
       console.log('📢 No code changes needed - dynamic discovery is enabled!');
-      console.log('📢 Just refresh the website/app to see new videos');
+      console.log('📢 Just refresh the website/app to see new media');
     }
     
   } catch (error) {
@@ -392,19 +542,24 @@ async function processApprovedAdvertisers() {
   }
 }
 
-function extractVideoFilename(r2Url) {
+function extractMediaFilename(r2Url, adFormat) {
   if (!r2Url) return null;
   
   // Extract filename from R2 URL
   // Example: https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/video_1.mp4
+  // Example: https://pub-83596556bc864db7aa93479e13f45deb.r2.dev/image_1.jpg
   const urlParts = r2Url.split('/');
   const filename = urlParts[urlParts.length - 1];
   
-  // Validate it's a video file
-  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
-  const isVideo = videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+  if (!filename) return null;
   
-  if (filename && isVideo) {
+  // Validate it matches the expected format
+  const videoExtensions = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+  const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
+  const allExtensions = [...videoExtensions, ...imageExtensions];
+  const isValidMedia = allExtensions.some(ext => filename.toLowerCase().endsWith(ext));
+  
+  if (filename && isValidMedia) {
     return filename;
   }
   
@@ -432,5 +587,5 @@ if (require.main === module) {
   processApprovedAdvertisers();
 }
 
-module.exports = { processApprovedAdvertisers, extractVideoFilename };
+module.exports = { processApprovedAdvertisers, extractMediaFilename };
 
