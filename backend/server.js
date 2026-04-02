@@ -1444,10 +1444,57 @@ const processStripeEvent = async (event) => {
           console.error('❌ [INVOICE.PAID] PaymentIntent fallback failed:', piErr.message);
         }
       }
+      // Fallback: retrieve the full invoice from Stripe — manually-ended trials sometimes
+      // omit invoice.subscription from the webhook payload entirely
+      if (!subscriptionId && invoice.id && stripe) {
+        try {
+          console.log('🔍 [INVOICE.PAID] Retrieving full invoice from Stripe to find subscription ID...');
+          const fullInvoice = await stripe.invoices.retrieve(invoice.id, {
+            expand: ['subscription', 'lines.data.subscription']
+          });
+          rawSub = fullInvoice.subscription;
+          subscriptionId = typeof rawSub === 'string' ? rawSub : rawSub?.id;
+          if (!subscriptionId && fullInvoice.lines?.data) {
+            for (const line of fullInvoice.lines.data) {
+              rawSub = line.subscription;
+              subscriptionId = typeof rawSub === 'string' ? rawSub : rawSub?.id;
+              if (subscriptionId) break;
+            }
+          }
+          if (subscriptionId) {
+            console.log('✅ [INVOICE.PAID] Found subscription ID via full invoice retrieval:', subscriptionId);
+          }
+        } catch (invErr) {
+          console.error('❌ [INVOICE.PAID] Full invoice retrieval failed:', invErr.message);
+        }
+      }
+      // Final fallback: look up subscription ID from DB using Stripe customer ID
+      if (!subscriptionId && invoice.customer) {
+        try {
+          const pool = getPool();
+          if (pool) {
+            console.log('🔍 [INVOICE.PAID] Looking up subscription ID from DB by customer ID:', invoice.customer);
+            const custResult = await pool.query(
+              `SELECT sb.stripe_subscription_id
+               FROM sponsor_billing sb
+               JOIN sponsor_accounts sa ON sb.sponsor_account_id = sa.id
+               WHERE sa.stripe_customer_id = $1
+                 AND sb.stripe_subscription_id IS NOT NULL
+               ORDER BY sb.created_at DESC
+               LIMIT 1`,
+              [invoice.customer]
+            );
+            if (custResult.rows.length > 0) {
+              subscriptionId = custResult.rows[0].stripe_subscription_id;
+              console.log('✅ [INVOICE.PAID] Found subscription ID via DB customer lookup:', subscriptionId);
+            }
+          }
+        } catch (custErr) {
+          console.error('❌ [INVOICE.PAID] DB customer lookup failed:', custErr.message);
+        }
+      }
       if (!subscriptionId) {
-        console.warn(invoice.payment_intent
-          ? '⚠️ [INVOICE.PAID] Unable to resolve subscription ID after PaymentIntent fallback'
-          : '⚠️ [INVOICE.PAID] Could not extract subscription ID (tried invoice.subscription and invoice.lines.data[0].subscription)');
+        console.warn('⚠️ [INVOICE.PAID] Could not resolve subscription ID after all fallbacks');
         console.warn('⚠️ [INVOICE.PAID] (Invoice may be advertiser recurring — sponsor block skipped)');
       } else {
         console.log('💳 Subscription ID:', subscriptionId);
