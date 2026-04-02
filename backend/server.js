@@ -1506,9 +1506,12 @@ const processStripeEvent = async (event) => {
           if (!pool) {
             console.warn('⚠️ [INVOICE.PAID] Database pool not available');
           } else {
-        // CRITICAL FIX: Update sponsor_billing directly using subscription ID
-        // No longer depends on subscription metadata - uses normalized subscriptionId
-        // This ensures payment is recorded even if metadata is missing or invoice.subscription is expanded
+        // Skip $0 trial-start invoices entirely — keep sponsor_billing as 'trialing'
+        // until the real payment fires at trial end.
+        if ((invoice.amount_paid || 0) === 0) {
+          console.log('ℹ️ [INVOICE.PAID] $0 trial invoice — skipping sponsor_billing update');
+          break;
+        }
         const updateResult = await pool.query(
           `UPDATE sponsor_billing
            SET status = 'paid',
@@ -1522,8 +1525,9 @@ const processStripeEvent = async (event) => {
           console.log('✅ [INVOICE.PAID] Subscription ID:', subscriptionId);
           console.log('✅ [INVOICE.PAID] Payment Intent ID:', invoice.payment_intent);
           console.log('✅ [INVOICE.PAID] Invoice ID:', invoice.id);
-          // Activate the sponsor campaign now that billing has started.
-          // Also correct start_week if it is in the past (e.g. trial ended early).
+          console.log('✅ [INVOICE.PAID] Amount paid:', invoice.amount_paid);
+          // Activate the campaign — $0 invoices are already rejected above via break,
+          // so reaching here guarantees a real payment was made.
           const todayStr = new Date().toISOString().slice(0, 10);
           const campaignActivateResult = await pool.query(
             `UPDATE sponsor_campaigns
@@ -1537,7 +1541,7 @@ const processStripeEvent = async (event) => {
             [subscriptionId, todayStr]
           );
           if (campaignActivateResult.rowCount > 0) {
-            console.log('✅ [INVOICE.PAID] Activated sponsor campaign (first billing started)');
+            console.log('✅ [INVOICE.PAID] Activated sponsor campaign (first real billing started)');
           }
         } else {
           // Improved failure visibility: Check why update failed
