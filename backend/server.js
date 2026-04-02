@@ -8480,8 +8480,9 @@ app.get("/api/system/weekly-recurring-billing", async (req, res) => {
   // Verify this is a legitimate Vercel cron request (security check)
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
-  
-  if (!isVercelCron && !isLocalDev) {
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({ 
       success: false, 
@@ -8532,8 +8533,9 @@ app.get("/api/system/non-recurring-billing", async (req, res) => {
   // Verify this is a legitimate Vercel cron request (security check)
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
-  
-  if (!isVercelCron && !isLocalDev) {
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({ 
       success: false, 
@@ -8585,8 +8587,9 @@ app.get("/api/system/weekly-reset", async (req, res) => {
   // In production, Vercel will send this header. For local testing, we allow it without the header.
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
-  
-  if (!isVercelCron && !isLocalDev) {
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({ 
       success: false, 
@@ -8629,8 +8632,9 @@ app.get("/api/system/finalize-weekly-donations", async (req, res) => {
 
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
 
-  if (!isVercelCron && !isLocalDev) {
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({
       success: false,
@@ -8852,8 +8856,9 @@ app.get("/api/system/sponsor-monday-activation", async (req, res) => {
   // Verify this is a legitimate Vercel cron request (security check)
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
-  
-  if (!isVercelCron && !isLocalDev) {
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
+
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({ 
       success: false, 
@@ -8897,8 +8902,9 @@ app.get("/api/system/sponsor-end-campaigns", async (req, res) => {
 
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
 
-  if (!isVercelCron && !isLocalDev) {
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({
       success: false,
@@ -8940,8 +8946,9 @@ app.get("/api/system/fallback-winner-selection", async (req, res) => {
 
   const isVercelCron = req.headers['x-vercel-cron'] === '1';
   const isLocalDev = process.env.NODE_ENV !== 'production';
+  const isManualTrigger = process.env.CRON_SECRET && req.query.secret === process.env.CRON_SECRET;
 
-  if (!isVercelCron && !isLocalDev) {
+  if (!isVercelCron && !isLocalDev && !isManualTrigger) {
     console.warn("⚠️ [CRON] Request missing x-vercel-cron header - rejecting");
     return res.status(401).json({
       success: false,
