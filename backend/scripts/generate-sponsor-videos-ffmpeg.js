@@ -650,44 +650,6 @@ async function processCampaign(campaign, sponsorAccount) {
       }
     }
     
-    // For recurring sponsors: Set billing_cycle_anchor after approval to align weekly renewals to Monday
-    if (campaign.is_recurring && stripe) {
-      try {
-        // Get the subscription ID from sponsor_billing
-        const billingResult = await pool.query(
-          `SELECT stripe_subscription_id
-           FROM sponsor_billing
-           WHERE sponsor_campaign_id = $1
-             AND stripe_subscription_id IS NOT NULL
-           LIMIT 1`,
-          [campaign.id]
-        );
-        
-        if (billingResult.rows.length > 0 && billingResult.rows[0].stripe_subscription_id) {
-          const subscriptionId = billingResult.rows[0].stripe_subscription_id;
-          const nextMonday = getNextMondayLA();
-          const nextMondayUnix = Math.floor(nextMonday.getTime() / 1000);
-
-          console.log(`📅 [RECURRING SPONSOR] Setting billing_cycle_anchor for subscription ${subscriptionId}`);
-          console.log(`📅 [RECURRING SPONSOR] Next Monday for billing alignment:`, nextMonday.toISOString());
-          
-          // Set billing_cycle_anchor to align weekly renewals to Monday
-          // This doesn't charge immediately and doesn't create prorations
-          await stripe.subscriptions.update(subscriptionId, {
-            billing_cycle_anchor: nextMondayUnix,
-            proration_behavior: 'none'
-          });
-          
-          console.log(`✅ [RECURRING SPONSOR] billing_cycle_anchor set for Monday-aligned renewals`);
-        } else {
-          console.log(`⚠️ [RECURRING SPONSOR] No subscription ID found for campaign ${campaign.id} - skipping billing_cycle_anchor`);
-        }
-      } catch (stripeError) {
-        // Log but don't fail the entire process if Stripe update fails
-        console.error(`❌ [RECURRING SPONSOR] Failed to set billing_cycle_anchor:`, stripeError.message);
-      }
-    }
-    
     // Send approval email after successful video generation and campaign activation
     if (emailService && emailService.isEmailConfigured()) {
       try {
